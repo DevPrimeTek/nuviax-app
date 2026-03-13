@@ -9,8 +9,6 @@ on:
 env:
   DOCKERHUB_USERNAME: devprimetek
   API_IMAGE: devprimetek/nuviax-api
-  WEB_IMAGE: devprimetek/nuviax-web
-  LANDING_IMAGE: devprimetek/nuviax-landing
 
 jobs:
   test:
@@ -88,8 +86,8 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.short_sha }}
-            ${{ env.WEB_IMAGE }}:latest
+            devprimetek/nuviax-web:${{ steps.meta.outputs.short_sha }}
+            devprimetek/nuviax-web:latest
 
       - name: Build & push Landing (skip if not ready)
         if: hashFiles('landing/Dockerfile') != ''
@@ -98,8 +96,8 @@ jobs:
           context: ./landing
           push: true
           tags: |
-            ${{ env.LANDING_IMAGE }}:${{ steps.meta.outputs.short_sha }}
-            ${{ env.LANDING_IMAGE }}:latest
+            devprimetek/nuviax-landing:${{ steps.meta.outputs.short_sha }}
+            devprimetek/nuviax-landing:latest
 
   deploy:
     name: Deploy
@@ -108,23 +106,28 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_DEPLOY_KEY }}" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p 55232 -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - uses: actions/checkout@v4
 
-      - name: Deploy
-        env:
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-        run: |
-          ssh -i ~/.ssh/deploy_key \
-              -p 55232 \
-              -o StrictHostKeyChecking=no \
-              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-              "cd /var/www/wxr-nuviax && \
-               git pull origin main && \
-               docker pull devprimetek/nuviax-api:${IMAGE_TAG} && \
-               IMAGE_TAG=${IMAGE_TAG} docker compose -f infra/docker-compose.yml up -d --no-deps --remove-orphans nuviax_api && \
-               echo 'Deploy ${IMAGE_TAG} complete'"
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/wxr-nuviax
+            echo "== Pull latest code =="
+            git fetch origin
+            git reset --hard origin/main
+            echo "== Deploy API =="
+            docker pull devprimetek/nuviax-api:${{ needs.build.outputs.image_tag }}
+            IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
+              docker compose -f infra/docker-compose.yml up -d \
+              --no-deps --remove-orphans nuviax_api
+            echo "== Health check =="
+            sleep 5
+            curl -sf http://localhost:8080/health && echo "API healthy" || echo "API not ready yet"
+            docker image prune -f --filter "until=24h"
+            echo "== DONE =="

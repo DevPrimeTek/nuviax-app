@@ -355,10 +355,8 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 	res, err := s.db.Exec(ctx,
 		`DELETE FROM user_sessions WHERE expires_at < NOW() OR revoked = TRUE`)
 	if err == nil {
-		if tag, ok := res.(interface{ RowsAffected() int64 }); ok {
-			logger.Info("Job: cleaned expired sessions",
-				zap.Int64("deleted", tag.RowsAffected()))
-		}
+		logger.Info("Job: cleaned expired sessions",
+			zap.Int64("deleted", res.RowsAffected()))
 	}
 
 	// Curăță audit log mai vechi de 180 zile

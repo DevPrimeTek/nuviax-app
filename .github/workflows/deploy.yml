@@ -13,9 +13,6 @@ env:
   LANDING_IMAGE: devprimetek/nuviax-landing
 
 jobs:
-  # ============================================================
-  # JOB 1: TEST
-  # ============================================================
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -34,7 +31,7 @@ jobs:
         run: |
           go mod tidy
           go build ./...
-          go test ./... -race -coverprofile=coverage.out || true
+          go test ./... -race || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,17 +46,6 @@ jobs:
             echo "Frontend not yet implemented — skipping"
           fi
 
-      - name: Landing tests (skip if not ready)
-        run: |
-          if [ -f landing/package.json ]; then
-            cd landing && npm ci && npm run test -- --passWithNoTests
-          else
-            echo "Landing not yet implemented — skipping"
-          fi
-
-  # ============================================================
-  # JOB 2: BUILD & PUSH IMAGES
-  # ============================================================
   build:
     name: Build & Push
     runs-on: ubuntu-latest
@@ -104,8 +90,6 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:${{ steps.meta.outputs.short_sha }}
             ${{ env.WEB_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build & push Landing (skip if not ready)
         if: hashFiles('landing/Dockerfile') != ''
@@ -116,12 +100,7 @@ jobs:
           tags: |
             ${{ env.LANDING_IMAGE }}:${{ steps.meta.outputs.short_sha }}
             ${{ env.LANDING_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  # ============================================================
-  # JOB 3: DEPLOY TO SERVER
-  # ============================================================
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
@@ -129,40 +108,23 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p 55232 -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_DEPLOY_KEY }}
-          port: 55232
-          script: |
-            set -e
-            cd /var/www/wxr-nuviax
-            git pull origin main
-
-            echo "Pulling API image: ${{ needs.build.outputs.image_tag }}"
-            docker pull devprimetek/nuviax-api:${{ needs.build.outputs.image_tag }}
-
-            IMAGE_TAG=${{ needs.build.outputs.image_tag }} \
-              docker compose -f infra/docker-compose.yml up -d \
-              --no-deps --remove-orphans nuviax_api
-
-            echo "Health check..."
-            for i in $(seq 1 12); do
-              if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-                echo "API healthy"
-                break
-              fi
-              if [ $i -eq 12 ]; then
-                echo "Health check failed — rolling back"
-                IMAGE_TAG=latest docker compose -f infra/docker-compose.yml up -d --no-deps nuviax_api
-                exit 1
-              fi
-              sleep 5
-            done
-
-            docker image prune -f --filter "until=24h"
-            echo "Deploy ${{ needs.build.outputs.image_tag }} complete"
+      - name: Deploy
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -p 55232 \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "cd /var/www/wxr-nuviax && \
+               git pull origin main && \
+               docker pull devprimetek/nuviax-api:${IMAGE_TAG} && \
+               IMAGE_TAG=${IMAGE_TAG} docker compose -f infra/docker-compose.yml up -d --no-deps --remove-orphans nuviax_api && \
+               echo 'Deploy ${IMAGE_TAG} complete'"

@@ -1,6 +1,8 @@
 # NUViaX App
 
-Monorepo pentru aplicația NUViaX Growth Framework.
+Monorepo pentru aplicația NUViaX bazată pe principiile fundamentale din NUViaX Framework rev5.6.
+
+## 
 
 ## Structura
 
@@ -22,3 +24,4 @@ bash infra/setup-server.sh
 ## Documentație API
 
 Vezi `backend/API.md`
+

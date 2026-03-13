@@ -27,7 +27,7 @@ type Scheduler struct {
 func New(pool *pgxpool.Pool, rdb *redis.Client) *Scheduler {
 	c := cron.New(
 		cron.WithLocation(time.UTC),
-		cron.WithLogger(cron.VerbosePrintfLogger(nil)),
+		cron.WithLogger(cron.DefaultLogger),
 	)
 	return &Scheduler{cron: c, db: pool, redis: rdb}
 }

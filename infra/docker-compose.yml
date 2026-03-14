@@ -1,3 +1,5 @@
+version: '3.9'
+
 # ============================================================
 # NUViaX — docker-compose.yml
 # Se integrează cu nginx_proxy + acme-companion EXISTENTE
@@ -119,11 +121,11 @@ services:
       start_period: 20s
 
   # ============================================================
-  # 4. FRONTEND — Next.js 14
+  # 4. APLICAȚIA PRINCIPALĂ — Next.js 14 (nuviax.app)
   # ============================================================
-  nuviax_web:
-    image: devprimetek/nuviax-web:${IMAGE_TAG:-latest}
-    container_name: nuviax_web
+  nuviax_app:
+    image: devprimetek/nuviax-app:${IMAGE_TAG:-latest}
+    container_name: nuviax_app
     restart: unless-stopped
     expose:
       - "3000"
@@ -158,6 +160,7 @@ services:
       - "3001"
     environment:
       NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: https://nuviax.app
       VIRTUAL_HOST: nuviaxapp.com,www.nuviaxapp.com
       VIRTUAL_PORT: "3001"
       LETSENCRYPT_HOST: nuviaxapp.com,www.nuviaxapp.com

@@ -15,3 +15,7 @@ Makefile
 
 # Go test cache
 **/*_test.go
+
+# Environment files
+.env
+.env.*

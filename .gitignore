@@ -1,22 +1,41 @@
-# ── Secrets ───────────────────────────────────────────────────
+# Environment
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+
+# Keys
 .keys/
+*.pem
 
-# ── Go ────────────────────────────────────────────────────────
-backend/vendor/
-backend/*.out
-backend/coverage.out
-
-# ── Node ─────────────────────────────────────────────────────
+# Dependencies
 node_modules/
-frontend/.next/
-frontend/out/
-landing/.next/
-landing/out/
-*.log
+vendor/
 
-# ── OS ───────────────────────────────────────────────────────
+# Build artifacts
+bin/
+dist/
+.next/
+out/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Testing
+coverage.out
+coverage.html
+*.test
+
+# Temporary
+tmp/
+temp/

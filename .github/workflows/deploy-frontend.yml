@@ -93,13 +93,11 @@ jobs:
   # ── Deploy pe server ─────────────────────────────
   deploy:
     needs: [build-app, build-landing]
-     if: |
-      needs.build-app.result == 'success' ||  needs.build-landing.result == 'success'
-  #   if: |
- #     always() &&
- #     (needs.build-app.result == 'success' || needs.build-app.result == 'skipped') &&
- #     (needs.build-landing.result == 'success' || needs.build-landing.result == 'skipped') &&
- #     !(needs.build-app.result == 'skipped' && needs.build-landing.result == 'skipped')
+    if: |
+      always() &&
+      (needs.build-app.result == 'success' || needs.build-app.result == 'skipped') &&
+      (needs.build-landing.result == 'success' || needs.build-landing.result == 'skipped') &&
+      !(needs.build-app.result == 'skipped' && needs.build-landing.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

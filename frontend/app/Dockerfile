@@ -47,6 +47,8 @@ RUN if [ ! -f app/page.tsx ]; then \
         echo 'export default function Home(){return <main><h1>NuviaX App</h1><p>Coming Soon</p></main>}' > app/page.tsx; \
     fi
 
+RUN mkdir -p public
+
 RUN npm run build || \
     (echo "Next.js build failed, creating fallback..." && \
      mkdir -p .next/standalone .next/static && \

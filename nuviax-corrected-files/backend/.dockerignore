@@ -1,0 +1,21 @@
+# Development artifacts
+.keys/
+bin/
+coverage.out
+coverage.html
+*.test
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+Makefile
+
+# Go test cache
+**/*_test.go
+
+# Environment files
+.env
+.env.*

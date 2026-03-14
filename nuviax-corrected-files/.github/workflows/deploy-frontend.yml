@@ -1,0 +1,132 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  APP_IMAGE: devprimetek/nuviax-app
+  LANDING_IMAGE: devprimetek/nuviax-landing
+
+jobs:
+  # ── Detectează ce s-a schimbat ──────────────────
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app:     ${{ steps.filter.outputs.app }}
+      landing: ${{ steps.filter.outputs.landing }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'frontend/app/**'
+              - 'packages/**'
+              - 'package.json'
+            landing:
+              - 'frontend/landing/**'
+              - 'packages/**'
+              - 'package.json'
+
+  # ── Build & push nuviax-app ──────────────────────
+  build-app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: devprimetek
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push nuviax-app
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/app/Dockerfile
+          push: true
+          tags: |
+            ${{ env.APP_IMAGE }}:latest
+            ${{ env.APP_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=app
+          cache-to:   type=gha,scope=app,mode=max
+
+  # ── Build & push nuviax-landing ──────────────────
+  build-landing:
+    needs: changes
+    if: needs.changes.outputs.landing == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: devprimetek
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push nuviax-landing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/landing/Dockerfile
+          push: true
+          tags: |
+            ${{ env.LANDING_IMAGE }}:latest
+            ${{ env.LANDING_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=landing
+          cache-to:   type=gha,scope=landing,mode=max
+
+  # ── Deploy pe server ─────────────────────────────
+  deploy:
+    needs: [build-app, build-landing]
+    if: |
+      always() &&
+      (needs.build-app.result == 'success' || needs.build-app.result == 'skipped') &&
+      (needs.build-landing.result == 'success' || needs.build-landing.result == 'skipped') &&
+      !(needs.build-app.result == 'skipped' && needs.build-landing.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          port:     ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/wxr-nuviax
+
+            echo "==> Pulling latest images..."
+            docker pull devprimetek/nuviax-app:latest    || true
+            docker pull devprimetek/nuviax-landing:latest || true
+
+            echo "==> Restarting containers..."
+            docker compose \
+              -f infra/docker-compose.yml \
+              -f infra/docker-compose.frontend.yml \
+              up -d --no-build nuviax_app nuviax_landing
+
+            echo "==> Cleanup old images..."
+            docker image prune -f
+
+            echo "==> Health checks..."
+            sleep 8
+            curl -sf http://localhost:3000 > /dev/null && echo "✓ app OK" || echo "✗ app FAIL"
+            curl -sf http://localhost:3001 > /dev/null && echo "✓ landing OK" || echo "✗ landing FAIL"

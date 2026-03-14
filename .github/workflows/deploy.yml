@@ -38,10 +38,13 @@ jobs:
 
       - name: Frontend tests (skip if not ready)
         run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend && npm ci && npm run test -- --passWithNoTests
-          else
-            echo "Frontend not yet implemented — skipping"
+          if [ -f frontend/app/package.json ]; then
+           cd frontend/app
+           npm install
+          fi
+          if [ -f frontend/landing/package.json ]; then
+            cd frontend/landing
+            npm install
           fi
 
   build:

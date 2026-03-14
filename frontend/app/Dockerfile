@@ -75,10 +75,12 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 WORKDIR /app
 
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/.next/standalone ./ 2>/dev/null || true
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/.next/static ./.next/static 2>/dev/null || mkdir -p ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/public ./public 2>/dev/null || mkdir ./public
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/server.js ./server.js 2>/dev/null || true
+RUN mkdir -p .next/static public
+
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/app/server.js ./server.js
 
 RUN if [ ! -f server.js ]; then \
         echo 'const http = require("http");' > server.js && \

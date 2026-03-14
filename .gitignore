@@ -1,0 +1,22 @@
+# ── Secrets ───────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.keys/
+
+# ── Go ────────────────────────────────────────────────────────
+backend/vendor/
+backend/*.out
+backend/coverage.out
+
+# ── Node ─────────────────────────────────────────────────────
+node_modules/
+frontend/.next/
+frontend/out/
+landing/.next/
+landing/out/
+*.log
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+{
+  "name": "nuviax-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web":     "yarn workspace @nuviax/web dev",
+    "dev:landing": "yarn workspace @nuviax/landing dev",
+    "build:web":   "yarn workspace @nuviax/web build",
+    "build:landing": "yarn workspace @nuviax/landing build",
+    "lint": "yarn workspaces run lint"
+  }
+}

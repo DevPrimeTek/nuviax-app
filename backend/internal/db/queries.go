@@ -413,6 +413,27 @@ func CreateCheckpoint(ctx context.Context, pool *pgxpool.Pool,
 	return c, err
 }
 
+// CreateDefaultCheckpoints creează 3 checkpoints standard pentru un sprint nou.
+// Faza 1 (UPCOMING) devine IN_PROGRESS prin scheduler la 23:55 UTC.
+func CreateDefaultCheckpoints(ctx context.Context, pool *pgxpool.Pool, sprintID uuid.UUID, goalName string) {
+	label := goalName
+	if len(label) > 50 {
+		label = label[:50]
+	}
+	phases := []struct {
+		name  string
+		order int
+	}{
+		{"Faza 1 — Start: " + label, 0},
+		{"Faza 2 — Execuție: " + label, 1},
+		{"Faza 3 — Finalizare: " + label, 2},
+	}
+	for _, p := range phases {
+		n := p.name
+		CreateCheckpoint(ctx, pool, sprintID, n, nil, p.order) //nolint:errcheck
+	}
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SCORES
 // ═══════════════════════════════════════════════════════════════

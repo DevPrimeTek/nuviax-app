@@ -275,7 +275,7 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 
 	// Găsește etapele care s-au terminat ieri
 	rows, err := s.db.Query(ctx, `
-		SELECT s.id, s.go_id, s.sprint_number, g.end_date
+		SELECT s.id, s.go_id, s.sprint_number, g.end_date, g.name
 		FROM sprints s
 		JOIN global_objectives g ON g.id = s.go_id
 		WHERE s.status = 'ACTIVE'
@@ -288,14 +288,15 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 	defer rows.Close()
 
 	type expiredSprint struct {
-		id, goalID    uuid.UUID
-		number        int
-		goalEndDate   time.Time
+		id, goalID  uuid.UUID
+		number      int
+		goalEndDate time.Time
+		goalName    string
 	}
 	var expired []expiredSprint
 	for rows.Next() {
 		var sp expiredSprint
-		rows.Scan(&sp.id, &sp.goalID, &sp.number, &sp.goalEndDate)
+		rows.Scan(&sp.id, &sp.goalID, &sp.number, &sp.goalEndDate, &sp.goalName)
 		expired = append(expired, sp)
 	}
 
@@ -317,7 +318,9 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 		}
 
 		if nextStart.Before(sp.goalEndDate) {
-			db.CreateSprint(ctx, s.db, sp.goalID, sp.number+1, nextStart, nextEnd)
+			if sprint, err := db.CreateSprint(ctx, s.db, sp.goalID, sp.number+1, nextStart, nextEnd); err == nil {
+				db.CreateDefaultCheckpoints(ctx, s.db, sprint.ID, sp.goalName)
+			}
 			nextCreated++
 		} else {
 			// Obiectivul s-a terminat
@@ -561,14 +564,17 @@ func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uui
 		WHERE id=$2
 	`, today, waitingID)
 
-	// Creează Sprint 1 pentru noul obiectiv
+	// Creează Sprint 1 + checkpoints pentru noul obiectiv
 	var goalEndDate time.Time
-	s.db.QueryRow(ctx, `SELECT end_date FROM global_objectives WHERE id=$1`, waitingID).Scan(&goalEndDate)
+	var goalName string
+	s.db.QueryRow(ctx, `SELECT end_date, name FROM global_objectives WHERE id=$1`, waitingID).Scan(&goalEndDate, &goalName)
 	sprintEnd := today.AddDate(0, 0, 30)
 	if sprintEnd.After(goalEndDate) {
 		sprintEnd = goalEndDate
 	}
-	db.CreateSprint(ctx, s.db, waitingID, 1, today, sprintEnd)
+	if sprint, err := db.CreateSprint(ctx, s.db, waitingID, 1, today, sprintEnd); err == nil {
+		db.CreateDefaultCheckpoints(ctx, s.db, sprint.ID, goalName)
+	}
 
 	cache.InvalidateDashboard(ctx, s.redis, userID.String())
 	logger.Info("Job: activated waiting goal",

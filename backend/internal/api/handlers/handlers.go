@@ -340,7 +340,24 @@ func (h *Handlers) GetGoals(c *fiber.Ctx) error {
 	if err != nil {
 		return serverError(c, err)
 	}
-	return c.JSON(goals)
+
+	// Returnează structura {goals, waiting} așteptată de frontend
+	var active, waiting []models.Goal
+	for _, g := range goals {
+		switch g.Status {
+		case models.GoalActive:
+			active = append(active, g)
+		case models.GoalWaiting:
+			waiting = append(waiting, g)
+		}
+	}
+	if active == nil {
+		active = []models.Goal{}
+	}
+	if waiting == nil {
+		waiting = []models.Goal{}
+	}
+	return c.JSON(fiber.Map{"goals": active, "waiting": waiting})
 }
 
 type createGoalReq struct {
@@ -397,13 +414,15 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		return serverError(c, err)
 	}
 
-	// Dacă e activ, creează Sprint 1 automat
+	// Dacă e activ, creează Sprint 1 + checkpoints implicite
 	if status == models.GoalActive {
 		sprintEnd := startDate.AddDate(0, 0, 30)
 		if sprintEnd.After(endDate) {
 			sprintEnd = endDate
 		}
-		db.CreateSprint(c.Context(), h.db, goal.ID, 1, startDate, sprintEnd)
+		if sprint, err := db.CreateSprint(c.Context(), h.db, goal.ID, 1, startDate, sprintEnd); err == nil {
+			db.CreateDefaultCheckpoints(c.Context(), h.db, sprint.ID, goal.Name)
+		}
 	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
@@ -532,12 +551,14 @@ func (h *Handlers) ActivateGoal(c *fiber.Ctx) error {
 		return serverError(c, err)
 	}
 
-	// Creează Sprint 1
+	// Creează Sprint 1 + checkpoints implicite
 	sprintEnd := goal.StartDate.AddDate(0, 0, 30)
 	if sprintEnd.After(goal.EndDate) {
 		sprintEnd = goal.EndDate
 	}
-	db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd)
+	if sprint, err := db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd); err == nil {
+		db.CreateDefaultCheckpoints(c.Context(), h.db, sprint.ID, goal.Name)
+	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
 	return c.JSON(fiber.Map{"message": "Obiectivul a fost activat. Sprint 1 creat automat.", "warning": reason})

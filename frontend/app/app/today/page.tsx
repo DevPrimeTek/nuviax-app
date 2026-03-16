@@ -18,7 +18,7 @@ export default function TodayPage() {
         setTasks([...(d.main_tasks||[]), ...(d.personal_tasks||[])])
       })
       .catch((err) => {
-        if (err.message === '401') router.push('/auth/login')
+        if (err.message === '401') window.location.href = '/auth/login'
       })
   }, [])
 

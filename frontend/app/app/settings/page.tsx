@@ -20,7 +20,7 @@ export default function SettingsPage() {
     fetch('/api/proxy/settings')
       .then(r => { if(!r.ok) throw new Error(r.status.toString()); return r.json() })
       .then(d => { const l=d.locale||d.Locale; if(l) setLangS(l) })
-      .catch((err) => { if(err.message==='401') router.push('/auth/login') })
+      .catch((err) => { if(err.message==='401') window.location.href = '/auth/login' })
   }, [])
 
   function setLang(l: Lang) {
@@ -34,7 +34,7 @@ export default function SettingsPage() {
   }
   async function logout() {
     await fetch('/api/auth/logout', { method:'POST' })
-    router.push('/auth/login')
+    window.location.href = '/auth/login'
   }
 
   const themeSubLabel = theme==='dark' ? 'Întunecat activ' : 'Deschis activ'

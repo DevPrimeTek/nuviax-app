@@ -1,10 +1,8 @@
 'use client'
 import { useState, FormEvent } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -16,16 +14,18 @@ export default function RegisterPage() {
     if (password.length < 8) { setError('Parola trebuie să aibă minim 8 caractere'); return }
     setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/api/v1/auth/register`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       })
-      if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error||'Înregistrare eșuată') }
-      const { access_token, refresh_token } = await res.json()
-      await fetch('/api/auth/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ access_token, refresh_token }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Înregistrare eșuată')
       window.location.href = '/onboarding'
-    } catch(err: unknown) { setError(err instanceof Error ? err.message : 'Eroare') }
-    finally { setLoading(false) }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Eroare')
+      setLoading(false)
+    }
   }
 
   return (

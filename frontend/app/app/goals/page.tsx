@@ -2,40 +2,29 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
-import { goalsApi } from '@/lib/api'
+import { goalsApi, ApiError } from '@/lib/api'
+import type { Goal } from '@/lib/api'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Obiective' }
 
-interface Goal {
-  id: string
-  name: string
-  status: string
-  color?: string
-  progress_pct: number
-  current_sprint: number
-  total_sprints: number
-  sprint_days_left: number
-  overall_score: number
-}
-
-interface GoalsData {
-  goals: Goal[]
-  waiting: Goal[]
-}
+const GOAL_COLORS = ['var(--l0)', 'var(--l2)', 'var(--l5)', 'var(--u)']
 
 export default async function GoalsPage() {
   const token = cookies().get('nv_access')?.value
   if (!token) redirect('/auth/login')
-  
-  let data: GoalsData = { goals: [], waiting: [] }
-  try { 
-    data = await goalsApi.list(token) as GoalsData
-  } catch { 
-    redirect('/auth/login') 
+
+  let allGoals: Goal[] = []
+  try {
+    allGoals = await goalsApi.list(token)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect('/auth/login')
   }
 
-  const { goals, waiting } = data
+  const goals = Array.isArray(allGoals) ? allGoals : []
+  const active = goals.filter(g => g.status === 'ACTIVE')
+  const waiting = goals.filter(g => g.status === 'WAITING')
+  const other = goals.filter(g => g.status !== 'ACTIVE' && g.status !== 'WAITING')
 
   return (
     <AppShell>
@@ -43,9 +32,9 @@ export default async function GoalsPage() {
         <div className="greet" style={{marginBottom:18}}>
           <div>
             <div className="greet-title">Obiectivele mele</div>
-            <div className="greet-sub">{goals.length} active · {waiting.length} în așteptare</div>
+            <div className="greet-sub">{active.length} active · {waiting.length} în așteptare</div>
           </div>
-          <Link href="/goals/new" style={{
+          <Link href="/onboarding" style={{
             display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',
             borderRadius:10,border:'1.5px solid var(--line2)',background:'var(--bg3)',
             color:'var(--ink3)',textDecoration:'none',fontSize:13,fontWeight:500,
@@ -56,31 +45,24 @@ export default async function GoalsPage() {
           </Link>
         </div>
 
-        {goals.length === 0 ? (
+        {active.length === 0 && waiting.length === 0 ? (
           <div style={{textAlign:'center',padding:'48px 24px',color:'var(--ink3)',fontSize:14}}>
             Nu ai obiective active.{' '}
-            <Link href="/goals/new" style={{color:'var(--l0l)'}}>Creează primul →</Link>
+            <Link href="/onboarding" style={{color:'var(--l0l)'}}>Creează primul →</Link>
           </div>
-        ) : goals.map(g => (
-          <Link key={g.id} href={`/goals/${g.id}`} className="goal-card">
+        ) : active.map((g, i) => (
+          <div key={g.id} className="goal-card">
             <div className="goal-top">
-              <span className="goal-dot" style={{background:g.color||'var(--l5)'}}/>
+              <span className="goal-dot" style={{background: GOAL_COLORS[i % GOAL_COLORS.length]}}/>
               <div style={{flex:1}}>
                 <div className="goal-name">{g.name}</div>
-                <div className="goal-meta">Etapa {g.current_sprint}/{g.total_sprints} · {g.sprint_days_left} zile rămase</div>
+                <div className="goal-meta">{g.description || 'Fără descriere'}</div>
               </div>
-              <span className="goal-pct" style={{color:g.color||'var(--l5l)'}}>{g.progress_pct}%</span>
-            </div>
-            <div className="goal-bar"><div style={{width:`${g.progress_pct}%`,background:g.color||'var(--l5)'}}/></div>
-            <div style={{display:'flex',justifyContent:'space-between',marginTop:8}}>
-              <span className="tag" style={{color:g.color||'var(--l5l)',background:`rgba(13,148,136,.12)`,border:`1px solid rgba(13,148,136,.22)`}}>
-                {g.status==='active'?'Activ':'Pauză'}
-              </span>
-              <span style={{fontFamily:'var(--ff-m)',fontSize:10,color:'var(--ink4)'}}>
-                Scor: {g.overall_score}%
+              <span className="goal-pct" style={{color: GOAL_COLORS[i % GOAL_COLORS.length]}}>
+                {g.status}
               </span>
             </div>
-          </Link>
+          </div>
         ))}
 
         {waiting.length > 0 && <>
@@ -92,6 +74,21 @@ export default async function GoalsPage() {
                 <div style={{flex:1}}>
                   <div className="goal-name">{g.name}</div>
                   <div className="goal-meta">Așteaptă un slot activ</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>}
+
+        {other.length > 0 && <>
+          <div className="sec-lbl">Altele</div>
+          {other.map(g => (
+            <div key={g.id} className="goal-card" style={{opacity:.5}}>
+              <div className="goal-top">
+                <span className="goal-dot" style={{background:'var(--ink4)'}}/>
+                <div style={{flex:1}}>
+                  <div className="goal-name">{g.name}</div>
+                  <div className="goal-meta">{g.status}</div>
                 </div>
               </div>
             </div>

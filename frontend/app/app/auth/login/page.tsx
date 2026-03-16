@@ -13,7 +13,7 @@ export default function LoginPage() {
   async function submit(e: FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/v1/auth/login`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/api/v1/auth/login`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email, password }),
       })
@@ -47,7 +47,7 @@ export default function LoginPage() {
             {loading ? <span className="spinner"/> : 'Intră în cont'}
           </button>
         </form>
-        <p className="auth-footer">Nu ai cont? <Link href="/register" className="auth-link">Creează unul gratuit</Link></p>
+        <p className="auth-footer">Nu ai cont? <Link href="/auth/register" className="auth-link">Creează unul gratuit</Link></p>
       </div>
     </div>
   )

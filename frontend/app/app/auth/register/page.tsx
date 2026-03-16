@@ -16,7 +16,7 @@ export default function RegisterPage() {
     if (password.length < 8) { setError('Parola trebuie să aibă minim 8 caractere'); return }
     setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/v1/auth/register`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/api/v1/auth/register`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ name, email, password }),
       })
@@ -55,7 +55,7 @@ export default function RegisterPage() {
             {loading ? <span className="spinner"/> : 'Creează contul gratuit'}
           </button>
         </form>
-        <p className="auth-footer">Ai deja cont? <Link href="/login" className="auth-link">Intră</Link></p>
+        <p className="auth-footer">Ai deja cont? <Link href="/auth/login" className="auth-link">Intră</Link></p>
       </div>
     </div>
   )

@@ -1,14 +1,17 @@
 # ═══════════════════════════════════════════════════════════
-# NuviaX Landing (frontend/landing) - Production Dockerfile
-# Next.js 14 cu output: 'standalone'
-# FĂRĂ fallback - build-ul eșuează dacă există erori
+# NuviaX Landing - Production Dockerfile v8.1
+# Generare automată via deploy/Deploy-NuviaX-v8.1.ps1
 # ═══════════════════════════════════════════════════════════
 
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY frontend/landing/package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN if [ -f package-lock.json ]; then \
+      npm ci --legacy-peer-deps; \
+    else \
+      npm install --legacy-peer-deps --production=false; \
+    fi
 
 FROM node:20-alpine AS builder
 WORKDIR /app

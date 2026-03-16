@@ -80,7 +80,7 @@ export default async function DashboardPage() {
             <div className="stat-l">progres sprint</div>
           </div>
           <div className="stat">
-            <div className="stat-ico" style={{background:'var(--l5g)'}}>
+            <div className="stat-ico" style={{background:'rgba(167,139,250,0.12)'}}>
               <svg viewBox="0 0 24 24" style={{stroke:'var(--l5l)'}}><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             </div>
             <div className="stat-v" style={{color:'var(--l5l)'}}>{sprintDaysLeft}</div>

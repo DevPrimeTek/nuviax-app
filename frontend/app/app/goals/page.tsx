@@ -30,7 +30,7 @@ export default async function GoalsPage() {
   
   let data: GoalsData = { goals: [], waiting: [] }
   try { 
-    data = await goalsApi.list(token) as GoalsData
+    data = await goalsApi.list(token)
   } catch { 
     redirect('/auth/login') 
   }

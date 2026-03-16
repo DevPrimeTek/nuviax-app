@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import '../../packages/styles/globals.css'   // shared design system
+import '../styles/globals.css'
 import './app.css'                            // app-specific styles
 
 export const metadata: Metadata = {

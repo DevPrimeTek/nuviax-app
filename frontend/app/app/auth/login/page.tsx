@@ -20,7 +20,7 @@ export default function LoginPage() {
       if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error||'Date incorecte') }
       const { access_token, refresh_token } = await res.json()
       await fetch('/api/auth/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ access_token, refresh_token }) })
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     } catch(err: unknown) { setError(err instanceof Error ? err.message : 'Eroare') }
     finally { setLoading(false) }
   }

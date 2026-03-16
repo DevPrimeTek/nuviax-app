@@ -10,18 +10,18 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rute publice (nu necesită autentificare)
-  const publicPaths = ['/login', '/register', '/auth']
+  const publicPaths = ['/auth']
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
 
   // Dacă utilizatorul nu este autentificat și încearcă să acceseze o rută protejată
   if (!token && !isPublicPath && pathname !== '/') {
-    const loginUrl = new URL('/login', request.url)
+    const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Dacă utilizatorul este autentificat și încearcă să acceseze /login sau /register
-  if (token && (pathname === '/login' || pathname === '/register')) {
+  // Dacă utilizatorul este autentificat și încearcă să acceseze /auth/login sau /auth/register
+  if (token && (pathname === '/auth/login' || pathname === '/auth/register')) {
     return NextResponse.redirect(new URL('/today', request.url))
   }
 

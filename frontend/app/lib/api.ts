@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.nuviax.app'
+const BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.nuviax.app') + '/api'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
@@ -69,10 +69,10 @@ export interface RecapData {
 
 /* ── Endpoints ── */
 export const dashApi   = { get: (t:string) => req<DashboardData>('/v1/dashboard',{},t) }
-export const todayApi  = { get: (t:string) => req<TodayData>('/v1/tasks/today',{},t),
-  complete: (t:string,id:string) => req(`/v1/tasks/${id}/complete`,{method:'POST'},t),
+export const todayApi  = { get: (t:string) => req<TodayData>('/v1/today',{},t),
+  complete: (t:string,id:string) => req(`/v1/today/complete/${id}`,{method:'POST'},t),
   addPersonal: (t:string,text:string,min:number) =>
-    req<Task>('/v1/tasks/personal',{method:'POST',body:JSON.stringify({text,estimated_min:min})},t),
+    req<Task>('/v1/today/personal',{method:'POST',body:JSON.stringify({text,estimated_min:min})},t),
 }
 export const goalsApi  = {
   list: (t:string) => req<{goals:Goal[];waiting:Goal[]}>('/v1/goals',{},t),

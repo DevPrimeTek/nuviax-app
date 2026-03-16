@@ -39,3 +39,8 @@ coverage.html
 # Temporary
 tmp/
 temp/
+
+# ── Deploy folder (exclude complet) ──
+deploy/
+deploy/*
+!deploy/.gitkeep

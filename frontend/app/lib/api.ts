@@ -89,7 +89,7 @@ export interface Goal {
 export const dashApi   = { get: (t:string) => req<DashboardData>('/v1/dashboard',{},t) }
 
 export const goalsApi  = {
-  list:   (t:string) => req<Goal[]>('/v1/goals',{},t),
+  list:   (t:string) => req<{goals:Goal[];waiting:Goal[]}>('/v1/goals',{},t),
   get:    (t:string, id:string) => req<Goal>(`/v1/goals/${id}`,{},t),
   create: (t:string, data:Record<string,unknown>) =>
     req<Goal>('/v1/goals',{method:'POST',body:JSON.stringify(data)},t),

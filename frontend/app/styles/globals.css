@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   NuviaX App - Global Styles
-   Generare automată via deploy/Deploy-NuviaX-v8.2.ps1
-   ═══════════════════════════════════════════════════════════ */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -20,24 +15,18 @@
   --l0: #0d9488;
   --l0l: #14b8a6;
   --l0g: rgba(13,148,136,0.1);
+  --l2: #2563eb;
+  --l2l: #3b82f6;
+  --l3: #f59e0b;
+  --l4: #dc2626;
+  --l4l: #ef4444;
+  --l5: #8b5cf6;
+  --l5l: #a78bfa;
+  --ff-d: 'Bricolage Grotesque', sans-serif;
+  --ff-b: 'DM Sans', sans-serif;
+  --ff-m: 'JetBrains Mono', monospace;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: var(--bg);
-  color: var(--ink);
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
+* { box-sizing: border-box; padding: 0; margin: 0; }
+html, body { max-width: 100vw; overflow-x: hidden; font-family: var(--ff-b); background: var(--bg); color: var(--ink); }
+a { color: inherit; text-decoration: none; }

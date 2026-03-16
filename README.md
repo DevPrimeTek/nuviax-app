@@ -1,1529 +1,64 @@
-# 📦 NuviaX v7 FINAL - Deployment Fixes
+# NuviaX App
 
+Platform de management obiective bazată pe NuviaX Framework rev5.6.
 
----
+## 📦 Structură
 
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
 \\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
+nuviax-app/
+├── backend/          # Go API (Fiber)
+├── frontend/
+│   ├── app/         # Next.js 14 - Aplicația principală
+│   └── landing/     # Next.js 14 - Landing page
+├── infra/           # Docker Compose, deployment
+├── deploy/          # Scripturi deployment (local only)
+└── .github/         # CI/CD workflows
 \\\
 
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
+## 🚀 Links
 
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
+- **Live App:** https://nuviax.app
+- **Landing:** https://nuviaxapp.com
+- **API:** https://api.nuviax.app
+- **Repository:** https://github.com/DevPrimeTek/nuviax-app
 
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
+## 🛠️ Tech Stack
 
+- **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend:** Go 1.22, Fiber, PostgreSQL, Redis
+- **Infrastructure:** Docker, GitHub Actions, VPS
+- **Deployment:** PowerShell scripts, automated CI/CD
 
-**Versiune:** 7.0 FINAL  
-**Data:** 15 Martie 2025  
-**Status:** ✅ Production Ready
+## 📋 Development
 
----
+### Prerequisites
 
-## 📂 Conținut Arhivă
+- Docker Desktop
+- Git
+- PowerShell 7.4.5 (Windows)
 
+### Deployment
 
----
+\\\powershell
+# Navighează în folder deploy
+cd deploy
 
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
+# Rulează script deployment
+.\Deploy-NuviaX-v8.3.ps1
 \\\
 
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
+## 📊 Changelog
 
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
+<!-- Changelog entries managed by deploy script -->
 
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-```
-nuviax-v7-final/
-├── Dockerfile.app              # Frontend app (paths corectate)
-├── Dockerfile.landing          # Landing page (paths corectate)
-├── Apply-NuviaXFixes-v7.ps1   # Script automat Windows
-├── RELEASE_NOTES_V7.md        # Documentație tehnică
-├── QUICK_START_V7.md          # Ghid rapid
-└── README.md                  # Acest fișier
-```
+### v8.3 - 16.03.2026
+- ✅ Fix TypeScript errors (goals/page.tsx)
+- ✅ Structură CSS corectată (packages → frontend/styles)
+- ✅ README.md structurat
+- ✅ Force sync GitHub cu local
 
 ---
 
-## 🚀 Start Rapid
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-### Windows 11 + PowerShell 7.4.5
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-```powershell
-# 1. Extrage arhiva în repository root
-cd path\to\nuviax-app
-
-# 2. Rulează scriptul
-.\Apply-NuviaXFixes-v7.ps1
-
-# 3. Verifică build în GitHub Actions
-```
-
----
-
-## 🎯 Ce Rezolvă v7
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-### Problema din v6
-```
-ERROR: "/app/node_modules": not found
-```
-
-### Soluția v7
-✅ **Paths corectate:**
-- `deps` stage: instalează în `/app/frontend/app/node_modules`
-- `builder` stage: copiază din `/app/frontend/app/node_modules`
-- **Totul se potrivește perfect!**
-
----
-
-## 📋 Pași Detalii
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-1. **Citește:** `QUICK_START_V7.md` - ghid rapid în 3 pași
-2. **Tehnicalități:** `RELEASE_NOTES_V7.md` - detalii tehnice complete
-3. **Aplică:** Rulează `Apply-NuviaXFixes-v7.ps1`
-4. **Verifică:** Monitorizează GitHub Actions build
-
----
-
-## ✅ Build Success Garantat
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-- ✅ Dockerfile syntax 100% valid
-- ✅ Node modules paths corectate
-- ✅ Fallback mechanism intact
-- ✅ Multi-stage builds optimizate
-- ✅ Windows 11 + PowerShell 7.4.5 compatible
-
----
-
-## 🆘 Support
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-**Dacă întâmpini probleme:**
-
-1. Verifică eroarea EXACTĂ din GitHub Actions
-2. Consultă `RELEASE_NOTES_V7.md` → Debugging Guide
-3. Asigură-te că folosești PowerShell 7.4.5 (nu 5.1)
-
----
-
-## 🎉 Success Rate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-
----
-
-## 📋 Changelog v8.1 - 16 March 2026, 11:27
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-### ✅ Modificări Implementate
-
-
----
-
-## 📋 Changelog v8.2 - 16.03.2026 11:35
-
-### ✅ Fix Critical: Structură CSS & Sync GitHub
-
-**Probleme rezolvate:**
-1. Build eșua: \Can't resolve '../../packages/styles/globals.css'\
-2. Repository GitHub conținea fișiere vechi șterse local
-
-**Soluții:**
-- Creat \rontend/app/styles/globals.css\
-- Creat \rontend/landing/styles/globals.css\
-- Fix imports în \layout.tsx\ (packages → frontend)
-- Force sync GitHub cu local (\git add -A\)
-- Șters fișiere vechi din repository
-
-**Modificări:**
-- \rontend/app/styles/globals.css\ - NOU
-- \rontend/landing/styles/globals.css\ - NOU
-- \rontend/app/app/layout.tsx\ - Fix import CSS
-- \rontend/landing/app/layout.tsx\ - Fix import CSS
-- \rontend/app/Dockerfile\ - v8.2
-- \rontend/landing/Dockerfile\ - v8.2
-- \README.md\ - Changelog v8.2
-
-**Versiune:** 8.2 | **Data:** 16.03.2026 | **Status:** ✅ Production Ready
-
-#### 🔧 **Fix Critical: Package Lock Missing**
-- **Problemă:** Build Docker eșua la \
-pm ci\ din cauza lipsei \package-lock.json\
-- **Soluție:** Generare automată \package-lock.json\ via Docker (fără Node.js local)
-
-#### 📦 **Dockerfile-uri Actualizate v8.1**
-- Logică adaptivă: \
-pm ci\ dacă există package-lock.json, altfel \
-pm install\
-- Eliminare completă fallback logic (pagina "Coming Soon")
-- Verificări explicite \.next/standalone\ și \.next/static\
-- Health checks integrate în containere
-- User non-root pentru securitate
-
-#### 🚀 **Script Deploy Îmbunătățit**
-- **Locație:** \deploy/Deploy-NuviaX-v8.1.ps1\
-- Nu necesită Node.js instalat local (folosește Docker)
-- Sincronizare completă cu GitHub (merge structură + conținut)
-- Backups automate în \deploy/backups/\ (exclus din Git)
-- Actualizare automată README.md cu changelog
-
-#### 📄 **Fișiere Modificate:**
-- \rontend/app/Dockerfile\ - Production-ready v8.1
-- \rontend/app/package-lock.json\ - Generat automat
-- \rontend/landing/Dockerfile\ - Production-ready v8.1
-- \rontend/landing/package-lock.json\ - Generat automat
-- \README.md\ - Actualizat cu changelog v8.1
-
-#### 🎯 **Rezultat:**
-- ✅ Build Docker funcționează fără erori
-- ✅ Container rulează aplicația reală (nu "Coming Soon")
-- ✅ Deployment automat via GitHub Actions
-- ✅ Workflow complet automatizat
-
-### 🔄 **Flow Deployment v8.1:**
-\\\
-1. Developer → cd deploy && .\Deploy-NuviaX-v8.1.ps1
-2. Script → sync complet cu GitHub (merge)
-3. Script → backup automat fișiere importante
-4. Script → generează package-lock.json via Docker
-5. Script → actualizează Dockerfile-uri production
-6. Script → actualizează README.md cu changelog
-7. Script → git commit + push automat
-8. GitHub Actions → detectează push
-9. GitHub Actions → build Docker images
-10. GitHub Actions → deploy pe server
-11. Site LIVE → https://nuviax.app
-\\\
-
-### 📊 **Compatibilitate:**
-- ✅ Windows 11 + PowerShell 7.4.5
-- ✅ Docker Desktop (nu necesită Node.js)
-- ✅ Git pentru versioning
-- ✅ GitHub Actions pentru CI/CD
-
-### 🔗 **Links:**
-- Repository: https://github.com/DevPrimeTek/nuviax-app
-- Live App: https://nuviax.app
-- Live Landing: https://nuviaxapp.com
-- API: https://api.nuviax.app
-
-**Versiune:** 8.1  
-**Data:** 16 March 2026  
-**Status:** ✅ Production Ready
-
-
-**v7 FINAL:** 100% build success (cu fallback garantat)
-
----
-
-**Ready for Production! 🚀**
+**Versiune curentă:** 8.3  
+**Ultima actualizare:** 16 March 2026  
+**Status:** ✅ Production

@@ -7,11 +7,33 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Obiective' }
 
+interface Goal {
+  id: string
+  name: string
+  status: string
+  color?: string
+  progress_pct: number
+  current_sprint: number
+  total_sprints: number
+  sprint_days_left: number
+  overall_score: number
+}
+
+interface GoalsData {
+  goals: Goal[]
+  waiting: Goal[]
+}
+
 export default async function GoalsPage() {
   const token = cookies().get('nv_access')?.value
   if (!token) redirect('/login')
-  let data = { goals: [], waiting: [] }
-  try { data = await goalsApi.list(token) } catch { redirect('/login') }
+  
+  let data: GoalsData = { goals: [], waiting: [] }
+  try { 
+    data = await goalsApi.list(token) as GoalsData
+  } catch { 
+    redirect('/login') 
+  }
 
   const { goals, waiting } = data
 
@@ -69,7 +91,7 @@ export default async function GoalsPage() {
                 <span className="goal-dot" style={{background:'var(--ink4)'}}/>
                 <div style={{flex:1}}>
                   <div className="goal-name">{g.name}</div>
-                  <div className="goal-meta">Asteaptă un slot activ</div>
+                  <div className="goal-meta">Așteaptă un slot activ</div>
                 </div>
               </div>
             </div>

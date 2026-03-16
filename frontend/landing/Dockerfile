@@ -1,8 +1,3 @@
-# ═══════════════════════════════════════════════════════════
-# NuviaX Landing - Production Dockerfile v8.2
-# Deploy: deploy/Deploy-NuviaX-v8.2.ps1
-# ═══════════════════════════════════════════════════════════
-
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
@@ -31,5 +26,4 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 USER nextjs
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD node -e "require('http').get('http://localhost:3001', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 CMD ["node", "server.js"]

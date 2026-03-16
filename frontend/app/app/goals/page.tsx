@@ -26,13 +26,13 @@ interface GoalsData {
 
 export default async function GoalsPage() {
   const token = cookies().get('nv_access')?.value
-  if (!token) redirect('/login')
+  if (!token) redirect('/auth/login')
   
   let data: GoalsData = { goals: [], waiting: [] }
   try { 
     data = await goalsApi.list(token) as GoalsData
   } catch { 
-    redirect('/login') 
+    redirect('/auth/login') 
   }
 
   const { goals, waiting } = data

@@ -16,7 +16,8 @@ export default async function GoalsPage() {
 
   let allGoals: Goal[] = []
   try {
-    allGoals = await goalsApi.list(token)
+    const data = await goalsApi.list(token)
+    allGoals = [...(data.goals ?? []), ...(data.waiting ?? [])]
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) redirect('/auth/login')
   }

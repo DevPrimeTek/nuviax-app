@@ -132,6 +132,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: https://api.nuviax.app
+      API_URL: http://nuviax_api:8080
       # Nginx proxy
       VIRTUAL_HOST: nuviax.app,www.nuviax.app
       VIRTUAL_PORT: "3000"

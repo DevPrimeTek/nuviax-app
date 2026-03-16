@@ -1,10 +1,8 @@
 'use client'
 import { useState, FormEvent } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -13,16 +11,18 @@ export default function LoginPage() {
   async function submit(e: FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL||'https://api.nuviax.app'}/api/v1/auth/login`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error||'Date incorecte') }
-      const { access_token, refresh_token } = await res.json()
-      await fetch('/api/auth/set', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ access_token, refresh_token }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Date incorecte')
       window.location.href = '/dashboard'
-    } catch(err: unknown) { setError(err instanceof Error ? err.message : 'Eroare') }
-    finally { setLoading(false) }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Eroare')
+      setLoading(false)
+    }
   }
 
   return (

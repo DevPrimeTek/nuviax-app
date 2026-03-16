@@ -41,7 +41,7 @@ export default function AppShell({ children, userName='Alexandru' }: { children:
   }
   async function logout() {
     await fetch('/api/auth/logout', { method:'POST' })
-    router.push('/auth/login')
+    window.location.href = '/auth/login'
   }
 
   const initials = userName.charAt(0).toUpperCase()

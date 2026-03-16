@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
-import { dashApi } from '@/lib/api'
+import { dashApi, ApiError } from '@/lib/api'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Acasă' }
@@ -18,7 +18,13 @@ export default async function DashboardPage() {
   if (!token) redirect('/auth/login')
 
   let d: Awaited<ReturnType<typeof dashApi.get>>
-  try { d = await dashApi.get(token) } catch { redirect('/auth/login') }
+  try {
+    d = await dashApi.get(token)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect('/auth/login')
+    // For non-auth errors, redirect to onboarding as fallback
+    redirect('/onboarding')
+  }
 
   // Redirecționează utilizatorii noi la onboarding
   const hasGoals = (d.active_goals?.length ?? 0) > 0 || (d.waiting_goals?.length ?? 0) > 0

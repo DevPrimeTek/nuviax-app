@@ -312,7 +312,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        <button className="auth-btn" style={{marginTop:8}} onClick={() => router.push('/dashboard')}>
+        <button className="auth-btn" style={{marginTop:8}} onClick={() => { window.location.href = '/dashboard' }}>
           Intră în aplicație →
         </button>
       </div>

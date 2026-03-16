@@ -13,20 +13,19 @@ export default function SettingsPage() {
   const [theme, setThemeS]= useState<'dark'|'light'>('dark')
   const [notif, setNotif] = useState(true)
   const [review, setReview] = useState(true)
-  const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.nuviax.app'
-
   useEffect(() => {
     setLangS((localStorage.getItem('nv_lang') as Lang)||'ro')
     setThemeS((localStorage.getItem('nv_theme') as 'dark'|'light')||'dark')
-    fetch(`${API}/api/v1/settings`, { credentials:'include' })
-      .then(r => { if(!r.ok) throw new Error(); return r.json() })
-      .then(d => { setName(d.name||''); setEmail(d.email||''); const l=d.locale||d.Locale; if(l) setLangS(l) })
-      .catch(() => router.push('/auth/login'))
+    setName(localStorage.getItem('nv_profile_name') || '')
+    fetch('/api/proxy/settings')
+      .then(r => { if(!r.ok) throw new Error(r.status.toString()); return r.json() })
+      .then(d => { const l=d.locale||d.Locale; if(l) setLangS(l) })
+      .catch((err) => { if(err.message==='401') router.push('/auth/login') })
   }, [])
 
   function setLang(l: Lang) {
     setLangS(l); localStorage.setItem('nv_lang', l)
-    fetch(`${API}/api/v1/settings`, { method:'PATCH', credentials:'include',
+    fetch('/api/proxy/settings', { method:'PATCH',
       headers:{'Content-Type':'application/json'}, body:JSON.stringify({locale:l}) }).catch(()=>{})
   }
   function setTheme(t: 'dark'|'light') {

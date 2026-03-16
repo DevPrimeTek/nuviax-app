@@ -68,7 +68,7 @@ export default function AppShell({ children, userName='Alexandru' }: { children:
               : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             }
           </button>
-          <Link href="/settings" className="user-chip">
+          <Link href="/profile" className="user-chip">
             <div className="user-av">{initials}</div>
             <span className="user-name">{userName.split(' ')[0]}</span>
           </Link>

@@ -22,7 +22,7 @@ export function middleware(request: NextRequest) {
 
   // Dacă utilizatorul este autentificat și încearcă să acceseze /auth/login sau /auth/register
   if (token && (pathname === '/auth/login' || pathname === '/auth/register')) {
-    return NextResponse.redirect(new URL('/today', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return NextResponse.next()

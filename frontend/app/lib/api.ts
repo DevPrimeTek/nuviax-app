@@ -32,61 +32,71 @@ export const authApi = {
     req('/v1/auth/logout', {method:'POST'}, token),
 }
 
-/* ── Types ── */
-export interface Goal {
-  id: string; name: string; category: string
-  target_value: number; current_value: number; unit: string
-  status: 'active'|'waiting'|'completed'|'paused'
-  current_sprint: number; total_sprints: number
-  sprint_days_left: number; overall_score: number
-  progress_pct: number; color: string
-}
-
-export interface Task {
-  id: string; goal_id: string; text: string
-  type: 'main'|'optional'|'personal'
-  estimated_min: number; done: boolean; date: string
+/* ── Backend types (structura reală) ── */
+export interface GoalSummary {
+  id: string
+  name: string
+  status: 'ACTIVE'|'WAITING'|'PAUSED'|'COMPLETED'|'ARCHIVED'
+  progress_score: number   // 0-1
+  grade: string
+  days_left: number
+  sprint_number: number
+  total_sprints: number
+  start_date: string
+  end_date: string
 }
 
 export interface DashboardData {
-  greeting: string; date_label: string; streak: number
-  sprint_name: string; sprint_days_left: number; sprint_pct: number
-  tasks_done: number; tasks_total: number; milestone_pct: number
-  mrr_current: number; active_goals: Goal[]; today_tasks: Task[]
+  user: { id: string; full_name: string; locale: string }
+  active_goals: GoalSummary[]
+  waiting_goals: GoalSummary[]
+  today_tasks_count: number
+}
+
+export interface DailyTask {
+  id: string
+  goal_id: string
+  text: string
+  type: 'MAIN'|'PERSONAL'
+  completed: boolean
+  sort_order: number
+  task_date: string
 }
 
 export interface TodayData {
-  goal_name: string; sprint_label: string
-  milestone: string; milestone_pct: number
-  tasks_done: number; tasks_total: number; tasks: Task[]
+  date: string
+  goal_name: string
+  day_number: number
+  main_tasks: DailyTask[]
+  personal_tasks: DailyTask[]
+  done_count: number
+  total_count: number
+  streak_days: number
+  checkpoint?: { name: string; progress_pct: number; status: string }
 }
 
-export interface RecapData {
-  sprint_name: string; score: number; grade: string
-  days_active: number; days_total: number; streak: number
-  mrr_delta: number; next_sprint_name: string
+export interface Goal {
+  id: string
+  name: string
+  description?: string
+  status: 'ACTIVE'|'WAITING'|'PAUSED'|'COMPLETED'|'ARCHIVED'
+  start_date: string
+  end_date: string
+  created_at: string
 }
 
-/* ── Endpoints ── */
+/* ── Endpoints (server-side - cu token) ── */
 export const dashApi   = { get: (t:string) => req<DashboardData>('/v1/dashboard',{},t) }
-export const todayApi  = { get: (t:string) => req<TodayData>('/v1/today',{},t),
-  complete: (t:string,id:string) => req(`/v1/today/complete/${id}`,{method:'POST'},t),
-  addPersonal: (t:string,text:string,min:number) =>
-    req<Task>('/v1/today/personal',{method:'POST',body:JSON.stringify({text,estimated_min:min})},t),
-}
+
 export const goalsApi  = {
-  list: (t:string) => req<{goals:Goal[];waiting:Goal[]}>('/v1/goals',{},t),
-  get:  (t:string,id:string) => req<Goal>(`/v1/goals/${id}`,{},t),
-  create: (t:string,data:Record<string,unknown>) =>
+  list:   (t:string) => req<Goal[]>('/v1/goals',{},t),
+  get:    (t:string, id:string) => req<Goal>(`/v1/goals/${id}`,{},t),
+  create: (t:string, data:Record<string,unknown>) =>
     req<Goal>('/v1/goals',{method:'POST',body:JSON.stringify(data)},t),
 }
-export const recapApi  = {
-  get:    (t:string,gid:string) => req<RecapData>(`/v1/goals/${gid}/recap`,{},t),
-  submit: (t:string,gid:string,answers:Record<string,unknown>) =>
-    req(`/v1/goals/${gid}/recap`,{method:'POST',body:JSON.stringify(answers)},t),
-}
-export const userApi   = {
-  me:          (t:string) => req<{id:string;name:string;email:string;lang:string}>('/v1/user/me',{},t),
-  updatePrefs: (t:string,p:Record<string,unknown>) =>
-    req('/v1/user/prefs',{method:'PATCH',body:JSON.stringify(p)},t),
+
+export const settingsApi = {
+  get:    (t:string) => req<{user_id:string;locale:string;notifications_on:boolean;sprint_reflection:boolean}>('/v1/settings',{},t),
+  update: (t:string, data:{locale?:string}) =>
+    req('/v1/settings',{method:'PATCH',body:JSON.stringify(data)},t),
 }

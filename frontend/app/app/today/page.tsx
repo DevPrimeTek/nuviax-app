@@ -18,15 +18,15 @@ export default function TodayPage() {
   const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.nuviax.app'
 
   useEffect(() => {
-    fetch(`${API}/v1/tasks/today`, { credentials:'include' })
+    fetch(`${API}/api/v1/today`, { credentials:'include' })
       .then(r => { if(!r.ok) throw new Error(); return r.json() })
       .then(d => { setData(d); setTasks(d.tasks||[]) })
-      .catch(() => router.push('/login'))
+      .catch(() => router.push('/auth/login'))
   }, [])
 
   async function toggleTask(id: string) {
     setTasks(ts => ts.map(t => t.id===id ? {...t, done:!t.done} : t))
-    await fetch(`${API}/v1/tasks/${id}/complete`, { method:'POST', credentials:'include' }).catch(()=>{})
+    await fetch(`${API}/api/v1/today/complete/${id}`, { method:'POST', credentials:'include' }).catch(()=>{})
   }
 
   const done = tasks.filter(t=>t.done).length

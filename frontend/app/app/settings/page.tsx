@@ -18,16 +18,16 @@ export default function SettingsPage() {
   useEffect(() => {
     setLangS((localStorage.getItem('nv_lang') as Lang)||'ro')
     setThemeS((localStorage.getItem('nv_theme') as 'dark'|'light')||'dark')
-    fetch(`${API}/v1/user/me`, { credentials:'include' })
+    fetch(`${API}/api/v1/settings`, { credentials:'include' })
       .then(r => { if(!r.ok) throw new Error(); return r.json() })
-      .then(d => { setName(d.name); setEmail(d.email); if(d.lang) setLangS(d.lang) })
-      .catch(() => router.push('/login'))
+      .then(d => { setName(d.name||''); setEmail(d.email||''); const l=d.locale||d.Locale; if(l) setLangS(l) })
+      .catch(() => router.push('/auth/login'))
   }, [])
 
   function setLang(l: Lang) {
     setLangS(l); localStorage.setItem('nv_lang', l)
-    fetch(`${API}/v1/user/prefs`, { method:'PATCH', credentials:'include',
-      headers:{'Content-Type':'application/json'}, body:JSON.stringify({lang:l}) }).catch(()=>{})
+    fetch(`${API}/api/v1/settings`, { method:'PATCH', credentials:'include',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({locale:l}) }).catch(()=>{})
   }
   function setTheme(t: 'dark'|'light') {
     setThemeS(t); document.documentElement.dataset.theme = t
@@ -35,7 +35,7 @@ export default function SettingsPage() {
   }
   async function logout() {
     await fetch('/api/auth/logout', { method:'POST' })
-    router.push('/login')
+    router.push('/auth/login')
   }
 
   const themeSubLabel = theme==='dark' ? 'Întunecat activ' : 'Deschis activ'

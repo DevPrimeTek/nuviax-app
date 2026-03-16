@@ -9,10 +9,10 @@ export const metadata: Metadata = { title: 'Acasă' }
 
 export default async function DashboardPage() {
   const token = cookies().get('nv_access')?.value
-  if (!token) redirect('/login')
+  if (!token) redirect('/auth/login')
 
   let d
-  try { d = await dashApi.get(token) } catch { redirect('/login') }
+  try { d = await dashApi.get(token) } catch { redirect('/auth/login') }
 
   return (
     <AppShell>

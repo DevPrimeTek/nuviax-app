@@ -6,6 +6,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -103,6 +104,95 @@ func (e *Engine) GenerateProgressVisualization(ctx context.Context, goalID uuid.
 		"goal_id":    goalID,
 		"trajectory": trajectory,
 	}, nil
+}
+
+// MarkEvolutionSprint checks whether a completed sprint shows measurable evolution
+// compared to the previous one and, if so, inserts an evolution_sprints record (C37).
+// Returns nil only when evolution was detected and recorded.
+func (e *Engine) MarkEvolutionSprint(ctx context.Context, sprintID, goalID uuid.UUID) error {
+	score, _, err := e.ComputeSprintScore(ctx, sprintID)
+	if err != nil {
+		return fmt.Errorf("compute sprint score: %w", err)
+	}
+
+	// Compare against the most recent previously completed sprint
+	var prevScore float64
+	_ = e.db.QueryRow(ctx, `
+		SELECT COALESCE(sr.score_value, 0)
+		FROM sprints s
+		JOIN sprint_results sr ON sr.sprint_id = s.id
+		WHERE s.go_id = $1
+		  AND s.status = 'COMPLETED'
+		  AND s.id != $2
+		ORDER BY s.sprint_number DESC
+		LIMIT 1
+	`, goalID, sprintID).Scan(&prevScore)
+
+	delta := score - prevScore
+	if delta < 0.05 {
+		return fmt.Errorf("evolution delta %.3f below threshold", delta)
+	}
+
+	consistency := e.computeConsistencyForGoal(ctx, goalID)
+
+	_, err = e.db.Exec(ctx, `
+		INSERT INTO evolution_sprints
+			(id, sprint_id, go_id, evolution_score, delta_performance,
+			 consistency_weight, acceleration_factor, detected_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 1.0, NOW())
+		ON CONFLICT (sprint_id) DO NOTHING
+	`, sprintID, goalID, score, delta, consistency)
+	if err != nil {
+		return fmt.Errorf("insert evolution_sprint: %w", err)
+	}
+	return nil
+}
+
+// GenerateCompletionCeremony creates a completion_ceremonies record (C38)
+// for a sprint that has just finished. Tier is determined from sprint score
+// and whether the sprint also qualified as an evolution sprint.
+func (e *Engine) GenerateCompletionCeremony(ctx context.Context, sprintID, goalID uuid.UUID, isEvolution bool) error {
+	score, _, err := e.ComputeSprintScore(ctx, sprintID)
+	if err != nil {
+		return fmt.Errorf("compute sprint score: %w", err)
+	}
+
+	tier := "BRONZE"
+	switch {
+	case isEvolution && score >= 0.9:
+		tier = "PLATINUM"
+	case score >= 0.9:
+		tier = "GOLD"
+	case score >= 0.75:
+		tier = "SILVER"
+	}
+
+	_, err = e.db.Exec(ctx, `
+		INSERT INTO completion_ceremonies
+			(id, sprint_id, go_id, ceremony_tier, ceremony_data, viewed, generated_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, '{"auto_generated":true}'::jsonb, false, NOW())
+		ON CONFLICT (sprint_id) DO NOTHING
+	`, sprintID, goalID, tier)
+	if err != nil {
+		return fmt.Errorf("insert completion_ceremony: %w", err)
+	}
+	return nil
+}
+
+// computeConsistencyForGoal returns overall consistency across all sprints for a goal
+func (e *Engine) computeConsistencyForGoal(ctx context.Context, goalID uuid.UUID) float64 {
+	var activeDays, totalDays int
+	e.db.QueryRow(ctx, `
+		SELECT
+			COUNT(DISTINCT task_date) FILTER (WHERE completed = TRUE),
+			COUNT(DISTINCT task_date)
+		FROM daily_tasks
+		WHERE go_id = $1 AND task_type = 'MAIN'
+	`, goalID).Scan(&activeDays, &totalDays)
+	if totalDays == 0 {
+		return 0
+	}
+	return float64(activeDays) / float64(totalDays)
 }
 
 // C37 — computeProgressVsExpected: progresul real față de traiectoria liniară așteptată

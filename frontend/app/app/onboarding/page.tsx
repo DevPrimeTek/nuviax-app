@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Step = 'welcome' | 'input' | 'analyzing' | 'done'
+type Step = 'welcome' | 'input' | 'verify' | 'analyzing' | 'done'
 
 const ANALYSIS_STEPS = [
   'Identificare pattern comportamental...',
@@ -23,6 +23,11 @@ export default function OnboardingPage() {
   const [currentGoIndex, setCurrentGoIndex] = useState(0)
   const [analysisStep, setAnalysisStep] = useState(0)
   const [createdGoals, setCreatedGoals] = useState<{id:string;name:string;status:string}[]>([])
+
+  // Stare pentru pasul de verificare GO
+  const [verifyQuestion, setVerifyQuestion] = useState('')
+  const [verifyHint, setVerifyHint] = useState('')
+  const [verifyAnswer, setVerifyAnswer] = useState('')
 
   useEffect(() => {
     fetch('/api/proxy/settings')
@@ -49,14 +54,40 @@ export default function OnboardingPage() {
     }
   }
 
-  function handleAnalyze() {
+  async function handleAnalyze() {
     const filled = goInputs.filter(g => g.trim())
     if (!filled.length) return
+
+    // Analizează primul GO pentru a verifica dacă necesită clarificare
+    try {
+      const res = await fetch('/api/proxy/goals/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: filled[0] }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.needs_clarification) {
+          setVerifyQuestion(data.question)
+          setVerifyHint(data.hint)
+          setStep('verify')
+          return
+        }
+      }
+    } catch {}
+
+    // GO-ul este clar, trecem direct la analiză
     setStep('analyzing')
     runAnalysis(filled)
   }
 
-  async function runAnalysis(goals: string[]) {
+  async function runAnalysis(goals: string[], clarification?: string) {
+    // Dacă există o clarificare, rafinăm primul GO
+    const refinedGoals = [...goals]
+    if (clarification?.trim() && refinedGoals[0]) {
+      refinedGoals[0] = `${refinedGoals[0]}. ${clarification.trim()}`
+    }
+
     // Animatie progresiva
     for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
       await new Promise(r => setTimeout(r, i === ANALYSIS_STEPS.length - 1 ? 600 : 700))
@@ -71,8 +102,8 @@ export default function OnboardingPage() {
     const endStr = end.toISOString().split('T')[0]
 
     const created: {id:string;name:string;status:string}[] = []
-    for (let i = 0; i < goals.length; i++) {
-      const text = goals[i].trim()
+    for (let i = 0; i < refinedGoals.length; i++) {
+      const text = refinedGoals[i].trim()
       const name = text.length > 80 ? text.slice(0, 80) + '...' : text
       try {
         const res = await fetch('/api/proxy/goals', {
@@ -209,6 +240,71 @@ export default function OnboardingPage() {
     )
   }
 
+  // Pas de verificare/clarificare GO (parser semantic)
+  if (step === 'verify') return (
+    <div className="auth-page">
+      <div className="auth-card" style={{maxWidth:520}}>
+        <div className="auth-logo">NUVia<span>X</span></div>
+        <div style={{fontSize:12,color:'var(--l0l)',fontFamily:'var(--ff-m)',fontWeight:600,marginBottom:8,letterSpacing:'0.05em'}}>
+          ANALIZĂ GO · Parser Semantic
+        </div>
+        <div style={{fontSize:20,fontWeight:700,fontFamily:'var(--ff-h)',marginBottom:12}}>
+          O întrebare rapidă
+        </div>
+        <p style={{color:'var(--ink3)',fontSize:14,lineHeight:1.6,marginBottom:20}}>
+          {verifyQuestion}
+        </p>
+
+        <textarea
+          value={verifyAnswer}
+          onChange={e => setVerifyAnswer(e.target.value)}
+          placeholder={verifyHint}
+          rows={4}
+          style={{
+            width:'100%', padding:'12px 14px', borderRadius:10,
+            border:'1.5px solid var(--line)', background:'var(--bg2)',
+            color:'var(--ink)', fontFamily:'var(--ff-b)', fontSize:14,
+            resize:'vertical', outline:'none', lineHeight:1.6,
+            boxSizing:'border-box',
+          }}
+          onFocus={e => e.target.style.borderColor='var(--l0)'}
+          onBlur={e => e.target.style.borderColor='var(--line)'}
+        />
+
+        <div style={{fontSize:12,color:'var(--ink4)',marginTop:8,marginBottom:16}}>
+          Răspunsul tău va rafina GO-ul pentru un plan mai precis.
+        </div>
+
+        <div style={{display:'flex',gap:10}}>
+          <button
+            onClick={() => {
+              setStep('analyzing')
+              runAnalysis(goInputs.filter(g => g.trim()))
+            }}
+            style={{
+              flex:1, padding:'11px 0', borderRadius:8,
+              border:'1.5px solid var(--line)', background:'transparent',
+              color:'var(--ink3)', fontFamily:'var(--ff-b)', fontSize:14, cursor:'pointer',
+            }}
+          >
+            Sari peste
+          </button>
+          <button
+            onClick={() => {
+              setStep('analyzing')
+              runAnalysis(goInputs.filter(g => g.trim()), verifyAnswer)
+            }}
+            disabled={!verifyAnswer.trim()}
+            className="auth-btn"
+            style={{flex:2, opacity: verifyAnswer.trim() ? 1 : 0.5}}
+          >
+            Continuă →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
   if (step === 'analyzing') return (
     <div className="auth-page">
       <div className="auth-card" style={{maxWidth:440,textAlign:'center'}}>
@@ -301,7 +397,7 @@ export default function OnboardingPage() {
               {g.name.length > 80 ? g.name.slice(0,80)+'...' : g.name}
             </div>
             <div style={{fontSize:12,color:'var(--ink4)',marginTop:4}}>
-              Sprint 1 · 90 zile
+              Sprint 1 · 30 zile
             </div>
           </div>
         ))}

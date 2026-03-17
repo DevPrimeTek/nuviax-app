@@ -397,13 +397,29 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		return serverError(c, err)
 	}
 
-	// Dacă e activ, creează Sprint 1 automat
+	// Dacă e activ, creează Sprint 1 + checkpoint-uri + sarcini pentru azi
 	if status == models.GoalActive {
 		sprintEnd := startDate.AddDate(0, 0, 30)
 		if sprintEnd.After(endDate) {
 			sprintEnd = endDate
 		}
-		db.CreateSprint(c.Context(), h.db, goal.ID, 1, startDate, sprintEnd)
+		sprint, _ := db.CreateSprint(c.Context(), h.db, goal.ID, 1, startDate, sprintEnd)
+
+		if sprint != nil {
+			// Creează 3 checkpoint-uri implicite pentru Sprint 1
+			checkpointNames := []string{
+				"Etapa 1: Fundament",
+				"Etapa 2: Progres",
+				"Etapa 3: Consolidare",
+			}
+			for i, name := range checkpointNames {
+				db.CreateCheckpoint(c.Context(), h.db, sprint.ID, name, nil, i+1)
+			}
+
+			// Generează sarcinile pentru azi imediat (nu mai așteaptă scheduler-ul de la miezul nopții)
+			today := time.Now().UTC().Truncate(24 * time.Hour)
+			h.engine.GenerateDailyTasks(c.Context(), userID, today)
+		}
 	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
@@ -532,12 +548,23 @@ func (h *Handlers) ActivateGoal(c *fiber.Ctx) error {
 		return serverError(c, err)
 	}
 
-	// Creează Sprint 1
+	// Creează Sprint 1 cu checkpoint-uri și generează sarcini pentru azi
 	sprintEnd := goal.StartDate.AddDate(0, 0, 30)
 	if sprintEnd.After(goal.EndDate) {
 		sprintEnd = goal.EndDate
 	}
-	db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd)
+	if sprint, err := db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd); err == nil && sprint != nil {
+		checkpointNames := []string{
+			"Etapa 1: Fundament",
+			"Etapa 2: Progres",
+			"Etapa 3: Consolidare",
+		}
+		for i, name := range checkpointNames {
+			db.CreateCheckpoint(c.Context(), h.db, sprint.ID, name, nil, i+1)
+		}
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		h.engine.GenerateDailyTasks(c.Context(), userID, today)
+	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
 	return c.JSON(fiber.Map{"message": "Obiectivul a fost activat. Sprint 1 creat automat.", "warning": reason})
@@ -955,6 +982,96 @@ func (h *Handlers) ExportData(c *fiber.Ctx) error {
 		"goals":      goals,
 		"exported_at": time.Now().UTC(),
 		"format":     "json/v1",
+	})
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GO ANALYZER — Semantic parser pentru verificarea obiectivelor
+// ═══════════════════════════════════════════════════════════════
+
+type analyzeGOReq struct {
+	Text string `json:"text"`
+}
+
+// AnalyzeGO verifică dacă textul unui GO este suficient de specific,
+// măsurabil și delimitat în timp. Returnează o întrebare de clarificare
+// dacă obiectivul este vag — fără AI, bazat pe reguli lingvistice.
+func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
+	var req analyzeGOReq
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "Date invalide.")
+	}
+
+	text := strings.ToLower(strings.TrimSpace(req.Text))
+	if text == "" {
+		return badRequest(c, "Textul GO-ului este gol.")
+	}
+
+	// Termeni vagi — nu descriu un rezultat concret
+	vagueTerms := []string{
+		"frumos", "frumoasa", "frumoasă", "bun", "bună", "mai bine", "mai bun", "mai bună",
+		"fericit", "fericita", "fericită", "sănătos", "sanatoasa", "mai sănătos",
+		"succes", "bogat", "bogata", "liber", "libera", "liberă",
+		"mai deștept", "mai destept", "mai inteligent", "mai puternic",
+		"mai productiv", "mai organizat", "mai disciplinat", "mai motivat",
+	}
+
+	// Indicatori de măsurabilitate
+	measurablePatterns := []string{
+		"ron", "eur", "usd", "$", "€", "%", "procent",
+		"kg", "km", "ore", "ore/zi", "minute",
+		"clienti", "clienți", "utilizatori", "vanzari", "vânzări",
+		"abonati", "abonați", "leaduri", "proiecte", "contracte",
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+	}
+
+	// Referinte temporale
+	timePatterns := []string{
+		"până", "pana", "până în", "pana in",
+		"în ", "in ", "la sfârșitul", "la sfarsitul",
+		"luni", "ani", "săptămâni", "saptamani",
+		"ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
+		"iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
+		"2025", "2026", "2027", "q1", "q2", "q3", "q4",
+		"trimestru", "semestru",
+	}
+
+	isVague := false
+	hasMeasurable := false
+	hasTime := false
+
+	for _, term := range vagueTerms {
+		if strings.Contains(text, term) {
+			isVague = true
+			break
+		}
+	}
+	for _, p := range measurablePatterns {
+		if strings.Contains(text, p) {
+			hasMeasurable = true
+			break
+		}
+	}
+	for _, p := range timePatterns {
+		if strings.Contains(text, p) {
+			hasTime = true
+			break
+		}
+	}
+
+	needsClarification := isVague || !hasMeasurable || !hasTime
+
+	question := ""
+	hint := ""
+	if needsClarification {
+		question = "Pentru a-ți crea cel mai bun plan personalizat, ajută-mă să înțeleg mai bine: ce rezultat concret și măsurabil vrei să obții, și până când?"
+		hint = "Ex: Vreau să slăbesc 10 kg până în septembrie 2026 / Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026 / Vreau să economisesc 5.000 EUR până la sfârșitul anului"
+	}
+
+	return c.JSON(fiber.Map{
+		"needs_clarification": needsClarification,
+		"question":            question,
+		"hint":                hint,
 	})
 }
 

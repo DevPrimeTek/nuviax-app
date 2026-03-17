@@ -129,19 +129,44 @@ export default function TodayPage() {
 
         {/* Energy */}
         <div className="card" style={{marginTop:4}}>
-          <div className="card-lbl" style={{marginBottom:11}}>Cum te simți azi?</div>
-          <div style={{display:'flex',gap:8}}>
+          <div className="card-lbl" style={{marginBottom:4}}>Cum te simți azi?</div>
+          <div style={{fontSize:12,color:'var(--ink3)',marginBottom:11}}>Nivelul tău de energie față de obiectiv</div>
+          <div style={{display:'flex',gap:7}}>
             {([
-              {k:'low' as const, l:'Obosit'},
-              {k:'mid' as const, l:'Normal'},
-              {k:'hi'  as const, l:'Energic'},
+              {k:'low' as const, l:'Obosit', cls:'sel-low', icon:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>},
+              {k:'mid' as const, l:'Normal', cls:'sel-mid', icon:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>},
+              {k:'hi'  as const, l:'Energic', cls:'sel-hi', icon:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>},
             ] as const).map(e=>(
-              <button key={e.k} onClick={()=>setEnergy(e.k)}
-                className={`e-btn${energy===e.k?' sel':''}`}>
+              <button key={e.k} onClick={()=>{
+                setEnergy(e.k)
+                fetch('/api/proxy/today/energy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:e.k})}).catch(()=>{})
+              }}
+                className={`e-btn${energy===e.k?' '+e.cls:''}`}>
+                <div className="e-btn-icon">{e.icon}</div>
                 {e.l}
               </button>
             ))}
           </div>
+          {energy && (
+            <div style={{marginTop:11,padding:'12px 14px',borderRadius:12,background:'var(--bg3)',border:'1px solid var(--line)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                <div style={{width:20,height:20,borderRadius:6,background:'var(--bg4)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--l5l)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                </div>
+                <span style={{fontSize:12,color:'var(--ink3)'}}>
+                  {energy==='low'?'Activitățile de mâine: intensitate redusă':energy==='hi'?'Activitățile de mâine: intensitate ridicată':'Activitățile de mâine: intensitate normală'}
+                </span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:20,height:20,borderRadius:6,background:'var(--bg4)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--l5l)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <span style={{fontSize:12,color:'var(--ink3)'}}>
+                  {energy==='low'?'Progresul monitorizat în ritm redus':energy==='hi'?'Progresul monitorizat activ':'Progresul monitorizat în ritm normal'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

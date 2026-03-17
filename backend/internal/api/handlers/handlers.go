@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -18,6 +20,8 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/models"
 	"github.com/devprimetek/nuviax-app/pkg/crypto"
 )
+
+var reNumberReal = regexp.MustCompile(`\d{2,}|\d+[.,]\d+`)
 
 type Handlers struct {
 	db      *pgxpool.Pool
@@ -273,12 +277,18 @@ func (h *Handlers) GetDashboard(c *fiber.Ctx) error {
 	for _, g := range goals {
 		score, grade, _ := h.engine.ComputeGoalScore(c.Context(), g.ID, userID)
 		progressPct := h.engine.ComputeProgressPct(c.Context(), g.ID)
+		// Calculează zilele rămase din SPRINT curent (nu din goal total)
 		daysLeft := int(time.Until(g.EndDate).Hours() / 24)
 
 		// Sprint info
 		sprintNum, totalSprints := 0, 0
 		if sp, err := db.GetCurrentSprint(c.Context(), h.db, g.ID); err == nil {
 			sprintNum = sp.SprintNumber
+			// Zile rămase = până la sfârșitul sprint-ului curent (nu al goal-ului)
+			sprintDays := int(time.Until(sp.EndDate).Hours() / 24)
+			if sprintDays >= 0 {
+				daysLeft = sprintDays
+			}
 			sprintHistory, _ := db.GetSprintHistory(c.Context(), h.db, g.ID)
 			totalSprints = len(sprintHistory)
 		}
@@ -406,11 +416,12 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		sprint, _ := db.CreateSprint(c.Context(), h.db, goal.ID, 1, startDate, sprintEnd)
 
 		if sprint != nil {
-			// Creează 3 checkpoint-uri implicite pentru Sprint 1
+			// Creează 3 checkpoint-uri contextuale pentru Sprint 1
+			goalShort := truncateGoalName(goal.Name, 28)
 			checkpointNames := []string{
-				"Etapa 1: Fundament",
-				"Etapa 2: Progres",
-				"Etapa 3: Consolidare",
+				"Fundament: " + goalShort,
+				"Progres: " + goalShort,
+				"Consolidare: " + goalShort,
 			}
 			for i, name := range checkpointNames {
 				db.CreateCheckpoint(c.Context(), h.db, sprint.ID, name, nil, i+1)
@@ -554,10 +565,11 @@ func (h *Handlers) ActivateGoal(c *fiber.Ctx) error {
 		sprintEnd = goal.EndDate
 	}
 	if sprint, err := db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd); err == nil && sprint != nil {
+		goalShort := truncateGoalName(goal.Name, 28)
 		checkpointNames := []string{
-			"Etapa 1: Fundament",
-			"Etapa 2: Progres",
-			"Etapa 3: Consolidare",
+			"Fundament: " + goalShort,
+			"Progres: " + goalShort,
+			"Consolidare: " + goalShort,
 		}
 		for i, name := range checkpointNames {
 			db.CreateCheckpoint(c.Context(), h.db, sprint.ID, name, nil, i+1)
@@ -1012,17 +1024,18 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 		"frumos", "frumoasa", "frumoasă", "bun", "bună", "mai bine", "mai bun", "mai bună",
 		"fericit", "fericita", "fericită", "sănătos", "sanatoasa", "mai sănătos",
 		"succes", "bogat", "bogata", "liber", "libera", "liberă",
-		"mai deștept", "mai destept", "mai inteligent", "mai puternic",
-		"mai productiv", "mai organizat", "mai disciplinat", "mai motivat",
+		"mai deștept", "mai destept", "deștept", "destept",
+		"mai inteligent", "inteligent", "smart", "cool",
+		"mai puternic", "mai productiv", "mai organizat", "mai disciplinat", "mai motivat",
+		"mai bine", "mai ok", "mai fericit",
 	}
 
-	// Indicatori de măsurabilitate
-	measurablePatterns := []string{
+	// Indicatori de măsurabilitate — necesită număr real (min 2 cifre) sau unitate
+	measurableKeywords := []string{
 		"ron", "eur", "usd", "$", "€", "%", "procent",
 		"kg", "km", "ore", "ore/zi", "minute",
 		"clienti", "clienți", "utilizatori", "vanzari", "vânzări",
 		"abonati", "abonați", "leaduri", "proiecte", "contracte",
-		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	}
 
 	// Referinte temporale
@@ -1046,11 +1059,16 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 			break
 		}
 	}
-	for _, p := range measurablePatterns {
-		if strings.Contains(text, p) {
+	// Verifică cuvinte cheie de măsurabilitate
+	for _, kw := range measurableKeywords {
+		if strings.Contains(text, kw) {
 			hasMeasurable = true
 			break
 		}
+	}
+	// Verifică numere reale (min 2 cifre consecutive sau număr zecimal)
+	if !hasMeasurable && reNumberReal.MatchString(text) {
+		hasMeasurable = true
 	}
 	for _, p := range timePatterns {
 		if strings.Contains(text, p) {
@@ -1078,6 +1096,20 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
+
+// truncateGoalName returnează primele n caractere din goal name (fără a tăia cuvinte)
+func truncateGoalName(name string, maxRunes int) string {
+	if utf8.RuneCountInString(name) <= maxRunes {
+		return name
+	}
+	runes := []rune(name)
+	truncated := string(runes[:maxRunes])
+	// Evită tăierea în mijlocul unui cuvânt
+	if idx := strings.LastIndex(truncated, " "); idx > maxRunes/2 {
+		truncated = truncated[:idx]
+	}
+	return strings.TrimSpace(truncated) + "..."
+}
 
 func (h *Handlers) createTokenPair(c *fiber.Ctx, user *models.User, email string) (*models.AuthTokens, error) {
 	accessToken, err := h.auth.GenerateAccessToken(user.ID, email)

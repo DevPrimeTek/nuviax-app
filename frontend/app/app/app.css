@@ -240,14 +240,26 @@
 
 /* ── Energy buttons ── */
 .e-btn {
-  flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
-  padding:10px 8px; border-radius:11px; cursor:pointer; transition:all .18s;
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:10px 6px; border-radius:11px; cursor:pointer; transition:all .2s;
   border:1.5px solid var(--line); background:var(--bg3);
-  color:var(--ink3); font-family:var(--ff-b); font-size:11px; font-weight:500;
+  color:var(--ink3); font-family:var(--ff-b); font-size:12.5px; font-weight:600;
 }
+.e-btn-icon { width:28px; height:28px; border-radius:8px; background:var(--bg4); display:flex; align-items:center; justify-content:center; transition:background .2s }
+.e-btn-icon svg { width:16px; height:16px; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; stroke:var(--ink3); transition:stroke .2s }
 .e-btn:hover { border-color:var(--line2); color:var(--ink2) }
-.e-btn.sel   { border-color:var(--l2); background:var(--l2g); color:var(--l2l) }
-.e-btn svg   { width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round }
+/* Low / tired → pink */
+.e-btn.sel-low { border-color:var(--l4); background:var(--l4g); color:var(--l4l) }
+.e-btn.sel-low .e-btn-icon { background:rgba(219,39,119,.2) }
+.e-btn.sel-low .e-btn-icon svg { stroke:var(--l4l) }
+/* Mid / normal → amber */
+.e-btn.sel-mid { border-color:var(--l3); background:var(--l3g); color:var(--l3l) }
+.e-btn.sel-mid .e-btn-icon { background:rgba(217,119,6,.2) }
+.e-btn.sel-mid .e-btn-icon svg { stroke:var(--l3l) }
+/* Hi / energic → teal */
+.e-btn.sel-hi  { border-color:var(--l5); background:var(--l5g); color:var(--l5l) }
+.e-btn.sel-hi  .e-btn-icon { background:rgba(13,148,136,.2) }
+.e-btn.sel-hi  .e-btn-icon svg { stroke:var(--l5l) }
 
 /* ── Bar chart ── */
 .sh-bars { display:flex; align-items:flex-end; gap:5px; height:64px }
@@ -278,9 +290,9 @@
 .auth-input { padding:11px 14px; border-radius:11px; border:1.5px solid var(--line2); background:var(--bg3); color:var(--ink); font-family:var(--ff-b); font-size:14px; outline:none; transition:border-color .18s }
 .auth-input::placeholder { color:var(--ink4) }
 .auth-input:focus { border-color:var(--l0) }
-.auth-btn   { margin-top:4px; padding:13px; border-radius:12px; border:none; background:var(--l0); color:white; font-family:var(--ff-b); font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; min-height:46px }
-.auth-btn:hover:not(:disabled){ background:var(--l0l) }
-.auth-btn:disabled { opacity:.6; cursor:default }
+.auth-btn   { margin-top:4px; padding:16px; border-radius:var(--radius-btn,14px); border:none; background:linear-gradient(135deg,var(--l0),var(--l5)); color:white; font-family:var(--ff-d); font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; min-height:50px; box-shadow:0 4px 20px rgba(124,58,237,.3); letter-spacing:-.01em }
+.auth-btn:hover:not(:disabled){ opacity:.92; transform:translateY(-1.5px); box-shadow:0 6px 24px rgba(124,58,237,.4) }
+.auth-btn:disabled { opacity:.5; cursor:default; transform:none; box-shadow:none }
 .auth-footer { text-align:center; font-size:13px; color:var(--ink3) }
 .auth-link   { color:var(--l0l); text-decoration:none; font-weight:500 }
 .auth-link:hover { text-decoration:underline }

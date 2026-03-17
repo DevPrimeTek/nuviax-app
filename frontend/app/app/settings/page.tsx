@@ -14,12 +14,18 @@ export default function SettingsPage() {
   const [notif, setNotif] = useState(true)
   const [review, setReview] = useState(true)
   useEffect(() => {
-    setLangS((localStorage.getItem('nv_lang') as Lang)||'ro')
-    setThemeS((localStorage.getItem('nv_theme') as 'dark'|'light')||'dark')
-    setName(localStorage.getItem('nv_profile_name') || '')
+    const savedTheme = (localStorage.getItem('nv_theme') as 'dark'|'light') || 'dark'
+    setThemeS(savedTheme)
     fetch('/api/proxy/settings')
       .then(r => { if(!r.ok) throw new Error(r.status.toString()); return r.json() })
-      .then(d => { const l=d.locale||d.Locale; if(l) setLangS(l) })
+      .then(d => {
+        const l = d.locale || d.Locale
+        if (l) { setLangS(l); localStorage.setItem('nv_lang', l) }
+        if (d.full_name || d.user_name) setName(d.full_name || d.user_name || '')
+        if (d.email) setEmail(d.email)
+        if (d.notifications_enabled !== undefined) setNotif(d.notifications_enabled)
+        if (d.theme) { setThemeS(d.theme); localStorage.setItem('nv_theme', d.theme) }
+      })
       .catch((err) => { if(err.message==='401') window.location.href = '/auth/login' })
   }, [])
 
@@ -29,8 +35,16 @@ export default function SettingsPage() {
       headers:{'Content-Type':'application/json'}, body:JSON.stringify({locale:l}) }).catch(()=>{})
   }
   function setTheme(t: 'dark'|'light') {
-    setThemeS(t); document.documentElement.dataset.theme = t
+    setThemeS(t)
+    document.documentElement.dataset.theme = t
     localStorage.setItem('nv_theme', t)
+    fetch('/api/proxy/settings', { method:'PATCH',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({theme:t}) }).catch(()=>{})
+  }
+  function toggleNotif(val: boolean) {
+    setNotif(val)
+    fetch('/api/proxy/settings', { method:'PATCH',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({notifications_enabled:val}) }).catch(()=>{})
   }
   async function logout() {
     await fetch('/api/auth/logout', { method:'POST' })
@@ -64,7 +78,7 @@ export default function SettingsPage() {
               <div className="sg-icon-wrap"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
               <div style={{flex:1}}><div className="sg-name">Notificări</div><div className="sg-sub">Activitățile zilnice la 8:00</div></div>
               <div className="sg-right">
-                <div className={`toggle${notif?' on':''}`} onClick={()=>setNotif(!notif)}/>
+                <div className={`toggle${notif?' on':''}`} onClick={()=>toggleNotif(!notif)}/>
               </div>
             </div>
             {/* Temă */}

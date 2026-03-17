@@ -58,25 +58,39 @@ export default function OnboardingPage() {
     const filled = goInputs.filter(g => g.trim())
     if (!filled.length) return
 
-    // Analizează primul GO pentru a verifica dacă necesită clarificare
-    try {
-      const res = await fetch('/api/proxy/goals/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: filled[0] }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.needs_clarification) {
-          setVerifyQuestion(data.question)
-          setVerifyHint(data.hint)
+    // Analizează TOATE GO-urile — primul care necesită clarificare declanșează pasul verify
+    for (let i = 0; i < filled.length; i++) {
+      try {
+        const res = await fetch('/api/proxy/goals/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: filled[i] }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.needs_clarification) {
+            setVerifyQuestion(data.question)
+            setVerifyHint(data.hint)
+            setStep('verify')
+            return
+          }
+        } else {
+          // Dacă API-ul returnează eroare, cerem clarificare ca măsură de siguranță
+          setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
+          setVerifyHint('Ex: Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026')
           setStep('verify')
           return
         }
+      } catch {
+        // Eroare de rețea — cerem clarificare
+        setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
+        setVerifyHint('Ex: Vreau să slăbesc 10 kg până în septembrie 2026')
+        setStep('verify')
+        return
       }
-    } catch {}
+    }
 
-    // GO-ul este clar, trecem direct la analiză
+    // Toate GO-urile sunt clare
     setStep('analyzing')
     runAnalysis(filled)
   }
@@ -114,12 +128,12 @@ export default function OnboardingPage() {
             description: text,
             start_date: startStr,
             end_date: endStr,
-            waiting_list: i > 0,
+            waiting_list: false,
           }),
         })
         if (res.ok) {
           const goal = await res.json()
-          created.push({ id: goal.id, name: goal.name, status: i === 0 ? 'ACTIVE' : 'WAITING' })
+          created.push({ id: goal.id, name: goal.name, status: 'ACTIVE' })
         }
       } catch {}
     }
@@ -206,13 +220,22 @@ export default function OnboardingPage() {
                 onClick={handleAddGo}
                 disabled={!canAddMore}
                 style={{
-                  flex:1, padding:'11px 0', borderRadius:8,
-                  border:'1.5px solid var(--line)', background:'transparent',
-                  color: canAddMore ? 'var(--ink)' : 'var(--ink4)',
-                  fontFamily:'var(--ff-b)', fontSize:14, cursor: canAddMore ? 'pointer' : 'default',
+                  flex:1, padding:'14px 12px', borderRadius:14,
+                  border:'none',
+                  background: canAddMore ? 'var(--l0)' : 'var(--bg3)',
+                  color: canAddMore ? 'white' : 'var(--ink4)',
+                  fontFamily:'var(--ff-d)', fontSize:14, fontWeight:700,
+                  cursor: canAddMore ? 'pointer' : 'default',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  minHeight:50,
+                  boxShadow: canAddMore ? '0 4px 16px rgba(124,58,237,.3)' : 'none',
+                  transition:'all .2s',
                 }}
               >
-                + Adaugă GO {currentGoIndex + 2}
+                <div style={{width:20,height:20,borderRadius:'50%',border:`1.5px solid ${canAddMore?'rgba(255,255,255,.5)':'var(--line2)'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                Adaugă Obiectiv
               </button>
             )}
             <button
@@ -221,7 +244,7 @@ export default function OnboardingPage() {
               className="auth-btn"
               style={{flex:2, opacity: canAnalyze ? 1 : 0.5}}
             >
-              Analizează GO-urile →
+              Validarea Obiectivelor →
             </button>
           </div>
 
@@ -389,8 +412,8 @@ export default function OnboardingPage() {
           }}>
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
               <div style={{width:8,height:8,borderRadius:'50%',background:GOAL_COLORS[i],flexShrink:0}}/>
-              <span style={{fontSize:11,fontFamily:'var(--ff-m)',color:i===0?'var(--l0l)':'var(--ink4)',fontWeight:600}}>
-                GO {i+1} · {i === 0 ? 'ACTIV' : 'ÎN AȘTEPTARE'}
+              <span style={{fontSize:11,fontFamily:'var(--ff-m)',color:'var(--l0l)',fontWeight:600}}>
+                GO {i+1} · ACTIV
               </span>
             </div>
             <div style={{fontSize:14,fontWeight:600,color:'var(--ink)',lineHeight:1.4}}>

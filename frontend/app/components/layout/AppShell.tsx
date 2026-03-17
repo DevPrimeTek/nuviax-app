@@ -30,8 +30,23 @@ export default function AppShell({ children, userName='Alexandru' }: { children:
   const [theme, setTheme] = useState<'dark'|'light'>('dark')
 
   useEffect(() => {
-    setLang((localStorage.getItem('nv_lang') as Lang) || 'ro')
-    setTheme((localStorage.getItem('nv_theme') as 'dark'|'light') || 'dark')
+    const savedLang = (localStorage.getItem('nv_lang') as Lang) || 'ro'
+    const savedTheme = (localStorage.getItem('nv_theme') as 'dark'|'light') || 'dark'
+    setLang(savedLang)
+    setTheme(savedTheme)
+    // Sincronizează cu backend pentru a asigura coerența
+    fetch('/api/proxy/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          const serverLang = d.locale || d.Locale
+          if (serverLang && serverLang !== savedLang) {
+            setLang(serverLang as Lang)
+            localStorage.setItem('nv_lang', serverLang)
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   function toggleTheme() {

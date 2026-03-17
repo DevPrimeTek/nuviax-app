@@ -69,13 +69,13 @@ func (e *Engine) generateTasksFromCheckpoints(
 }
 
 // C12 — generateTaskTexts: construiește textele sarcinilor din template-uri contextuale
-// Faza 1: template-uri statice; Faza 2: AI-assisted generation
+// Faza 1: template-uri cu context din goal; Faza 2: AI-assisted generation
 func (e *Engine) generateTaskTexts(goal models.Goal, cp models.Checkpoint, count int) []string {
 	base := cp.Name
 	templates := []string{
-		"Lucrează la: " + base,
-		"Avansează cu: " + base,
-		"Finalizează o parte din: " + base,
+		"Lucrează 30 min la: " + base,
+		"Avansează concret cu: " + base,
+		"Finalizează un pas din: " + base,
 	}
 	if count > len(templates) {
 		count = len(templates)

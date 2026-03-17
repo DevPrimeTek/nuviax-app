@@ -3,28 +3,36 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0a0a0a;
-  --bg2: #0f0f0f;
-  --bg3: #151515;
-  --ink: #ffffff;
-  --ink2: #e5e5e5;
-  --ink3: #a3a3a3;
-  --ink4: #737373;
-  --line: #262626;
-  --line2: #404040;
-  --l0: #0d9488;
-  --l0l: #14b8a6;
-  --l0g: rgba(13,148,136,0.1);
-  --l2: #2563eb;
-  --l2l: #3b82f6;
-  --l3: #f59e0b;
-  --l4: #dc2626;
-  --l4l: #ef4444;
-  --l5: #8b5cf6;
-  --l5l: #a78bfa;
+  /* Primary: Purple */
+  --l0: #7C3AED; --l0l: #C4B5FD; --l0g: rgba(124,58,237,.13); --l0b: rgba(124,58,237,.22);
+  /* Blue */
+  --l2: #2563EB; --l2l: #3b82f6; --l2g: rgba(37,99,235,.11);
+  /* Amber */
+  --l3: #D97706; --l3l: #FCD34D; --l3g: rgba(217,119,6,.11);
+  /* Pink/Magenta */
+  --l4: #DB2777; --l4l: #F9A8D4; --l4g: rgba(219,39,119,.11);
+  /* Teal (secondary) */
+  --l5: #0D9488; --l5l: #5EEAD4; --l5g: rgba(13,148,136,.12);
+  /* Amber accent (streak, gold) */
+  --u: #D97706; --ul: #FCD34D; --ug: rgba(217,119,6,.1);
+  /* Dark navy backgrounds (dark theme default) */
+  --bg: #07071C; --bg2: #0D0D26; --bg3: #12122E; --bg4: #181840;
+  --line: #1E1E48; --line2: #2A2A60;
+  --ink: #F4F4FF; --ink2: #C8C8F0; --ink3: #8080B8; --ink4: #484878;
+  --shadow: rgba(0,0,0,.5);
   --ff-d: 'Bricolage Grotesque', sans-serif;
   --ff-b: 'DM Sans', sans-serif;
   --ff-m: 'JetBrains Mono', monospace;
+  --radius-card: 18px;
+  --radius-btn: 14px;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg: #F8F7FF; --bg2: #FFFFFF; --bg3: #F0EEF9; --bg4: #E8E5F5;
+  --line: #E0DCF5; --line2: #CCC8EE;
+  --ink: #1A1A3E; --ink2: #3D3D6E; --ink3: #7070A0; --ink4: #A0A0C0;
+  --shadow: rgba(100,80,200,.12);
 }
 
 * { box-sizing: border-box; padding: 0; margin: 0; }

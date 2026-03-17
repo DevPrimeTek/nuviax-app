@@ -548,12 +548,23 @@ func (h *Handlers) ActivateGoal(c *fiber.Ctx) error {
 		return serverError(c, err)
 	}
 
-	// Creează Sprint 1
+	// Creează Sprint 1 cu checkpoint-uri și generează sarcini pentru azi
 	sprintEnd := goal.StartDate.AddDate(0, 0, 30)
 	if sprintEnd.After(goal.EndDate) {
 		sprintEnd = goal.EndDate
 	}
-	db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd)
+	if sprint, err := db.CreateSprint(c.Context(), h.db, goalID, 1, goal.StartDate, sprintEnd); err == nil && sprint != nil {
+		checkpointNames := []string{
+			"Etapa 1: Fundament",
+			"Etapa 2: Progres",
+			"Etapa 3: Consolidare",
+		}
+		for i, name := range checkpointNames {
+			db.CreateCheckpoint(c.Context(), h.db, sprint.ID, name, nil, i+1)
+		}
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		h.engine.GenerateDailyTasks(c.Context(), userID, today)
+	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
 	return c.JSON(fiber.Map{"message": "Obiectivul a fost activat. Sprint 1 creat automat.", "warning": reason})

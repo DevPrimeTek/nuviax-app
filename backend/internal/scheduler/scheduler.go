@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,23 +12,24 @@ import (
 
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
-	"github.com/devprimetek/nuviax-app/internal/models"
+	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/pkg/logger"
 )
 
-// Scheduler runs 5 background jobs that power the framework engine
+// Scheduler runs background jobs powered by the NUViaX Framework Engine
 type Scheduler struct {
-	cron  *cron.Cron
-	db    *pgxpool.Pool
-	redis *redis.Client
+	cron   *cron.Cron
+	db     *pgxpool.Pool
+	redis  *redis.Client
+	engine *engine.Engine
 }
 
-func New(pool *pgxpool.Pool, rdb *redis.Client) *Scheduler {
+func New(pool *pgxpool.Pool, rdb *redis.Client, eng *engine.Engine) *Scheduler {
 	c := cron.New(
 		cron.WithLocation(time.UTC),
 		cron.WithLogger(cron.DefaultLogger),
 	)
-	return &Scheduler{cron: c, db: pool, redis: rdb}
+	return &Scheduler{cron: c, db: pool, redis: rdb, engine: eng}
 }
 
 func (s *Scheduler) Start() {
@@ -59,7 +59,7 @@ func (s *Scheduler) Stop() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// JOB 1 — Generare activități zilnice
+// JOB 1 — Generare activități zilnice (00:00 UTC)
 // Rulează la 00:00 UTC — generează sarcinile de azi
 // pentru toți userii cu obiective active
 // ═══════════════════════════════════════════════════════════════
@@ -70,7 +70,6 @@ func (s *Scheduler) jobGenerateDailyTasks() {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	logger.Info("Job: GenerateDailyTasks", zap.Time("date", today))
 
-	// Obține toți userii activi (au cel puțin un obiectiv ACTIVE)
 	rows, err := s.db.Query(ctx, `
 		SELECT DISTINCT user_id
 		FROM global_objectives
@@ -103,55 +102,16 @@ func (s *Scheduler) jobGenerateDailyTasks() {
 			continue
 		}
 
-		// Generează pentru fiecare obiectiv activ al userului
-		goals, err := db.GetGoalsByUser(ctx, s.db, userID)
+		// Delegă generarea sarcinilor engine-ului
+		tasks, err := s.engine.GenerateDailyTasks(ctx, userID, today)
 		if err != nil {
+			logger.Warn("Job: GenerateDailyTasks engine error",
+				zap.Error(err), zap.String("user", userID.String()))
 			failed++
 			continue
 		}
 
-		for _, goal := range goals {
-			if goal.Status != models.GoalActive {
-				continue
-			}
-
-			// Verifică dacă e pauză activă
-			adjs, _ := db.GetActiveAdjustments(ctx, s.db, goal.ID)
-			if isOnPause(adjs, today) {
-				logger.Info("Job: user on pause, skipping task gen",
-					zap.String("user", userID.String()),
-					zap.String("goal", goal.ID.String()))
-				continue
-			}
-
-			sprint, err := db.GetCurrentSprint(ctx, s.db, goal.ID)
-			if err != nil {
-				continue
-			}
-
-			intensity := computeIntensityFromAdjs(adjs)
-			taskCount := taskCountFromIntensity(intensity)
-
-			checkpoints, _ := db.GetSprintCheckpoints(ctx, s.db, sprint.ID)
-			activeCP := findActiveCheckpoint(checkpoints)
-			if activeCP == nil {
-				continue
-			}
-
-			texts := generateTaskTexts(goal, *activeCP, taskCount)
-			for i, text := range texts {
-				_, err := db.CreateTask(ctx, s.db,
-					sprint.ID, goal.ID, userID, today,
-					text, models.TaskMain, i)
-				if err != nil {
-					logger.Warn("Job: create task failed",
-						zap.Error(err), zap.String("user", userID.String()))
-				}
-			}
-			generated++
-		}
-
-		// Invalide cache
+		generated += len(tasks)
 		cache.InvalidateTodayTasks(ctx, s.redis, userID.String(), today.Format("2006-01-02"))
 		cache.InvalidateDashboard(ctx, s.redis, userID.String())
 	}
@@ -191,8 +151,12 @@ func (s *Scheduler) jobComputeDailyScore() {
 	}
 
 	for _, g := range goals {
-		score := computeGoalScore(ctx, s.db, g.id)
-		grade := gradeFromScore(score)
+		score, grade, err := s.engine.ComputeGoalScore(ctx, g.id, g.userID)
+		if err != nil {
+			logger.Warn("Job: ComputeGoalScore error",
+				zap.Error(err), zap.String("goal", g.id.String()))
+			continue
+		}
 		db.UpsertGoalScore(ctx, s.db, g.id, score, grade)
 	}
 
@@ -210,7 +174,6 @@ func (s *Scheduler) jobCheckDailyProgress() {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	logger.Info("Job: CheckDailyProgress", zap.Time("date", today))
 
-	// Găsește userii care nu au completat nicio sarcină azi
 	rows, err := s.db.Query(ctx, `
 		SELECT DISTINCT dt.user_id
 		FROM daily_tasks dt
@@ -233,8 +196,6 @@ func (s *Scheduler) jobCheckDailyProgress() {
 	for rows.Next() {
 		var userID uuid.UUID
 		rows.Scan(&userID)
-		// Invalidează cache-ul pentru ziua următoare
-		// Sarcinile de mâine vor fi regenerate la 00:00
 		cache.InvalidateDashboard(ctx, s.redis, userID.String())
 		missed++
 	}
@@ -257,7 +218,6 @@ func (s *Scheduler) jobCheckDailyProgress() {
 		logger.Warn("CheckDailyProgress: update checkpoints", zap.Error(err))
 	}
 
-	// Marchează ca COMPLETED checkpoints care au toate task-urile bifate
 	s.autoCompleteCheckpoints(ctx)
 
 	logger.Info("Job: CheckDailyProgress done", zap.Int("missed_users", missed))
@@ -273,9 +233,8 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	logger.Info("Job: CloseExpiredSprints", zap.Time("date", today))
 
-	// Găsește etapele care s-au terminat ieri
 	rows, err := s.db.Query(ctx, `
-		SELECT s.id, s.go_id, s.sprint_number, g.end_date
+		SELECT s.id, s.go_id, s.sprint_number, g.end_date, g.user_id
 		FROM sprints s
 		JOIN global_objectives g ON g.id = s.go_id
 		WHERE s.status = 'ACTIVE'
@@ -288,28 +247,30 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 	defer rows.Close()
 
 	type expiredSprint struct {
-		id, goalID    uuid.UUID
-		number        int
-		goalEndDate   time.Time
+		id, goalID uuid.UUID
+		userID     uuid.UUID
+		number     int
+		goalEndDate time.Time
 	}
 	var expired []expiredSprint
 	for rows.Next() {
 		var sp expiredSprint
-		rows.Scan(&sp.id, &sp.goalID, &sp.number, &sp.goalEndDate)
+		rows.Scan(&sp.id, &sp.goalID, &sp.number, &sp.goalEndDate, &sp.userID)
 		expired = append(expired, sp)
 	}
 
 	closed, nextCreated := 0, 0
 
 	for _, sp := range expired {
-		// Calculează scorul final
-		score := computeGoalScore(ctx, s.db, sp.goalID)
-		grade := gradeFromScore(score)
+		// Scorul sprint-ului via engine (opac)
+		score, grade, err := s.engine.ComputeSprintScore(ctx, sp.id)
+		if err != nil {
+			score, grade = 0, "D"
+		}
 		db.SaveSprintResult(ctx, s.db, sp.id, score, grade)
 		db.CloseSprint(ctx, s.db, sp.id)
 		closed++
 
-		// Creează etapa următoare dacă obiectivul mai are timp
 		nextStart := today
 		nextEnd := today.AddDate(0, 0, 30)
 		if nextEnd.After(sp.goalEndDate) {
@@ -320,19 +281,14 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 			db.CreateSprint(ctx, s.db, sp.goalID, sp.number+1, nextStart, nextEnd)
 			nextCreated++
 		} else {
-			// Obiectivul s-a terminat
 			s.db.Exec(ctx,
 				`UPDATE global_objectives SET status='COMPLETED', updated_at=NOW() WHERE id=$1`,
 				sp.goalID)
-			// Verifică dacă există obiective în waiting list de activat
 			s.activateWaitingGoal(ctx, sp.goalID)
 		}
 
-		// Invalidează cache
-		var userID uuid.UUID
-		s.db.QueryRow(ctx, `SELECT user_id FROM global_objectives WHERE id=$1`, sp.goalID).Scan(&userID)
-		if userID != uuid.Nil {
-			cache.InvalidateDashboard(ctx, s.redis, userID.String())
+		if sp.userID != uuid.Nil {
+			cache.InvalidateDashboard(ctx, s.redis, sp.userID.String())
 		}
 	}
 
@@ -342,7 +298,7 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// JOB 5 — Recalibrare relevanță (la 90 zile)
+// JOB 5 — Recalibrare relevanță (la 90 zile, 02:00 UTC)
 // Actualizează relevanța obiectivelor bazat pe comportament
 // ═══════════════════════════════════════════════════════════════
 func (s *Scheduler) jobRecalibrateRelevance() {
@@ -362,10 +318,9 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 	// Curăță audit log mai vechi de 180 zile
 	s.db.Exec(ctx, `DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '180 days'`)
 
-	// Actualizează metadata obiective (opac)
-	// Calculează un scor de "sănătate" bazat pe ultimele 90 zile
+	// Calculează scorul de sănătate pe 90 zile (opac)
 	rows, err := s.db.Query(ctx, `
-		SELECT go_id, 
+		SELECT go_id,
 			   COUNT(*) FILTER (WHERE completed) AS done,
 			   COUNT(*) AS total
 		FROM daily_tasks
@@ -382,7 +337,6 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 			rows.Scan(&goalID, &done, &total)
 			if total > 0 {
 				healthScore := float64(done) / float64(total)
-				// Stochează ca metrică opacă
 				s.db.Exec(ctx, `
 					INSERT INTO go_metrics (go_id, metric_key, metric_value)
 					VALUES ($1, 'health_90d', $2)
@@ -399,117 +353,7 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 // HELPERS (package-private)
 // ═══════════════════════════════════════════════════════════════
 
-func isOnPause(adjs []models.ContextAdjustment, today time.Time) bool {
-	for _, a := range adjs {
-		if a.AdjType == models.AdjPause {
-			if !today.Before(a.StartDate) {
-				if a.EndDate == nil || !today.After(*a.EndDate) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func computeIntensityFromAdjs(adjs []models.ContextAdjustment) float64 {
-	base := 1.0
-	for _, a := range adjs {
-		switch a.AdjType {
-		case models.AdjEnergyLow:
-			base = 0.6
-		case models.AdjEnergyHigh:
-			base = 1.2
-		}
-	}
-	return base
-}
-
-func taskCountFromIntensity(intensity float64) int {
-	if intensity >= 1.2 {
-		return 3
-	} else if intensity >= 1.0 {
-		return 2
-	}
-	return 1
-}
-
-func findActiveCheckpoint(cps []models.Checkpoint) *models.Checkpoint {
-	for i := range cps {
-		if cps[i].Status == models.CheckpointInProgress ||
-			cps[i].Status == models.CheckpointUpcoming {
-			return &cps[i]
-		}
-	}
-	return nil
-}
-
-func generateTaskTexts(goal models.Goal, cp models.Checkpoint, count int) []string {
-	base := cp.Name
-	all := []string{
-		"Lucrează la: " + base,
-		"Avansează cu: " + base,
-		"Finalizează o parte din: " + base,
-	}
-	if count > len(all) {
-		count = len(all)
-	}
-	return all[:count]
-}
-
-func computeGoalScore(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID) float64 {
-	var total, completed int
-	pool.QueryRow(ctx, `
-		SELECT COUNT(*), COUNT(*) FILTER (WHERE dt.completed = TRUE)
-		FROM daily_tasks dt
-		JOIN sprints s ON s.id = dt.sprint_id
-		WHERE s.go_id = $1 AND dt.task_type = 'MAIN'
-		  AND dt.task_date <= CURRENT_DATE
-	`, goalID).Scan(&total, &completed)
-
-	if total == 0 {
-		return 0
-	}
-
-	completionRate := float64(completed) / float64(total)
-
-	// Consistență — distribuție zilnică
-	var activeDays, totalDays int
-	pool.QueryRow(ctx, `
-		SELECT
-			COUNT(DISTINCT task_date) FILTER (WHERE completed = TRUE),
-			COUNT(DISTINCT task_date)
-		FROM daily_tasks
-		WHERE go_id = $1 AND task_type = 'MAIN' AND task_date <= CURRENT_DATE
-	`, goalID).Scan(&activeDays, &totalDays)
-
-	consistency := 0.0
-	if totalDays > 0 {
-		consistency = float64(activeDays) / float64(totalDays)
-	}
-
-	// Scor compozit (opac)
-	score := completionRate*0.65 + consistency*0.35
-	return math.Min(math.Max(score, 0), 1)
-}
-
-func gradeFromScore(score float64) string {
-	switch {
-	case score >= 0.90:
-		return "A+"
-	case score >= 0.80:
-		return "A"
-	case score >= 0.70:
-		return "B"
-	case score >= 0.60:
-		return "C"
-	default:
-		return "D"
-	}
-}
-
 func (s *Scheduler) autoCompleteCheckpoints(ctx context.Context) {
-	// Dacă 80%+ din sarcinile unui checkpoint sunt bifate → marchează COMPLETED
 	s.db.Exec(ctx, `
 		UPDATE checkpoints cp
 		SET status = 'COMPLETED', completed_at = NOW()
@@ -525,7 +369,6 @@ func (s *Scheduler) autoCompleteCheckpoints(ctx context.Context) {
 }
 
 func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uuid.UUID) {
-	// Obține user-ul obiectivului completat
 	var userID uuid.UUID
 	if err := s.db.QueryRow(ctx,
 		`SELECT user_id FROM global_objectives WHERE id=$1`, completedGoalID,
@@ -533,7 +376,6 @@ func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uui
 		return
 	}
 
-	// Verifică dacă are slot liber (< 3 active)
 	var activeCount int
 	s.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM global_objectives WHERE user_id=$1 AND status='ACTIVE'`,
@@ -543,7 +385,6 @@ func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uui
 		return
 	}
 
-	// Activează primul obiectiv din waiting list (cel mai vechi)
 	var waitingID uuid.UUID
 	err := s.db.QueryRow(ctx, `
 		SELECT id FROM global_objectives
@@ -561,7 +402,6 @@ func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uui
 		WHERE id=$2
 	`, today, waitingID)
 
-	// Creează Sprint 1 pentru noul obiectiv
 	var goalEndDate time.Time
 	s.db.QueryRow(ctx, `SELECT end_date FROM global_objectives WHERE id=$1`, waitingID).Scan(&goalEndDate)
 	sprintEnd := today.AddDate(0, 0, 30)

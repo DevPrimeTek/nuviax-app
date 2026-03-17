@@ -108,11 +108,13 @@ func (e *Engine) GenerateProgressVisualization(ctx context.Context, goalID uuid.
 
 // MarkEvolutionSprint checks whether a completed sprint shows measurable evolution
 // compared to the previous one and, if so, inserts an evolution_sprints record (C37).
-// Returns nil only when evolution was detected and recorded.
-func (e *Engine) MarkEvolutionSprint(ctx context.Context, sprintID, goalID uuid.UUID) error {
+// Returns (true, nil) when evolution was detected and recorded.
+// Returns (false, nil) when delta is below threshold — NOT an error condition.
+// Returns (false, err) only on actual DB or computation errors.
+func (e *Engine) MarkEvolutionSprint(ctx context.Context, sprintID, goalID uuid.UUID) (bool, error) {
 	score, _, err := e.ComputeSprintScore(ctx, sprintID)
 	if err != nil {
-		return fmt.Errorf("compute sprint score: %w", err)
+		return false, fmt.Errorf("compute sprint score: %w", err)
 	}
 
 	// Compare against the most recent previously completed sprint
@@ -130,7 +132,8 @@ func (e *Engine) MarkEvolutionSprint(ctx context.Context, sprintID, goalID uuid.
 
 	delta := score - prevScore
 	if delta < 0.05 {
-		return fmt.Errorf("evolution delta %.3f below threshold", delta)
+		// Sub prag — nu e eroare, pur și simplu nu e evolution sprint
+		return false, nil
 	}
 
 	consistency := e.computeConsistencyForGoal(ctx, goalID)
@@ -143,9 +146,9 @@ func (e *Engine) MarkEvolutionSprint(ctx context.Context, sprintID, goalID uuid.
 		ON CONFLICT (sprint_id) DO NOTHING
 	`, sprintID, goalID, score, delta, consistency)
 	if err != nil {
-		return fmt.Errorf("insert evolution_sprint: %w", err)
+		return false, fmt.Errorf("insert evolution_sprint: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 // GenerateCompletionCeremony creates a completion_ceremonies record (C38)
@@ -197,7 +200,7 @@ func (e *Engine) computeConsistencyForGoal(ctx context.Context, goalID uuid.UUID
 
 // C37 — computeProgressVsExpected: progresul real față de traiectoria liniară așteptată
 // Ratio > 1 = înaintea planului, < 1 = în urmă
-func (e *Engine) computeProgressVsExpected(goal *models.Goal, sprint *models.Sprint) float64 {
+func (e *Engine) computeProgressVsExpected(ctx context.Context, goal *models.Goal, sprint *models.Sprint) float64 {
 	now := time.Now().UTC()
 	totalDuration := goal.EndDate.Sub(goal.StartDate).Hours()
 	elapsed := now.Sub(goal.StartDate).Hours()
@@ -207,7 +210,7 @@ func (e *Engine) computeProgressVsExpected(goal *models.Goal, sprint *models.Spr
 	expectedPct := elapsed / totalDuration
 
 	var completedCP, totalCP int
-	e.db.QueryRow(context.Background(), `
+	e.db.QueryRow(ctx, `
 		SELECT
 			COUNT(*) FILTER (WHERE status = 'COMPLETED'),
 			COUNT(*)
@@ -220,6 +223,7 @@ func (e *Engine) computeProgressVsExpected(goal *models.Goal, sprint *models.Spr
 	}
 
 	actualPct := float64(completedCP) / float64(totalCP)
+	// ratio > 1 = înaintea planului, < 1 = în urmă; clampăm la [0, 1] pentru scor opac
 	ratio := actualPct / math.Max(expectedPct, 0.01)
-	return clamp(ratio, 0, 1.2) / 1.2
+	return clamp(ratio, 0, 1)
 }

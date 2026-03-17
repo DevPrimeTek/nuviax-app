@@ -30,9 +30,10 @@ export default function SRMWarning({ goalId }: { goalId: string }) {
 
   const handleConfirm = async () => {
     if (srm.srm_level !== 'L3') return
-    await fetch(`/api/proxy/srm/confirm-l3/${goalId}`, { method: 'POST' })
-    setSrm(null)
-    window.location.reload()
+    const res = await fetch(`/api/proxy/srm/confirm-l3/${goalId}`, { method: 'POST' }).catch(() => null)
+    if (res?.ok) {
+      setSrm(null)
+    }
   }
 
   return (

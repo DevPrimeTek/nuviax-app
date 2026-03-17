@@ -395,7 +395,7 @@ func (s *Scheduler) jobDetectEvolutionSprints() {
 		if err := rows.Scan(&sprintID, &goalID); err != nil {
 			continue
 		}
-		if err := s.engine.MarkEvolutionSprint(ctx, sprintID, goalID); err == nil {
+		if isEvolution, err := s.engine.MarkEvolutionSprint(ctx, sprintID, goalID); err == nil && isEvolution {
 			evolutionCount++
 		}
 	}

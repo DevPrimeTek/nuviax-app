@@ -6,6 +6,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -17,6 +18,9 @@ import (
 // Un scor bun = sarcini completate uniform, nu totul la final
 func (e *Engine) computeConsistency(ctx context.Context, sprint *models.Sprint) float64 {
 	var activeDays, totalDays int
+	// Folosim parametru explicit pentru data curentă în loc de CURRENT_DATE
+	// pentru a evita mismatch-ul de timezone între DB (server local) și Go (UTC)
+	now := time.Now().UTC().Truncate(24 * time.Hour)
 	e.db.QueryRow(ctx, `
 		SELECT
 			COUNT(DISTINCT task_date) FILTER (WHERE completed = TRUE),
@@ -24,8 +28,8 @@ func (e *Engine) computeConsistency(ctx context.Context, sprint *models.Sprint) 
 		FROM daily_tasks
 		WHERE sprint_id = $1
 		  AND task_type = 'MAIN'
-		  AND task_date <= CURRENT_DATE
-	`, sprint.ID).Scan(&activeDays, &totalDays)
+		  AND task_date <= $2
+	`, sprint.ID, now).Scan(&activeDays, &totalDays)
 
 	if totalDays == 0 {
 		return 0

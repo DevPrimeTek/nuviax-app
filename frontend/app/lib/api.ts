@@ -10,14 +10,20 @@ async function req<T>(path: string, init: RequestInit = {}, token?: string): Pro
     ...(init.headers as Record<string,string>),
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
-  const r = await fetch(`${BASE}${path}`, { ...init, headers })
-  if (!r.ok) {
-    let msg = r.statusText
-    try { const j = await r.json(); msg = j.error || j.message || msg } catch {}
-    throw new ApiError(r.status, msg)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
+  try {
+    const r = await fetch(`${BASE}${path}`, { ...init, headers, signal: controller.signal })
+    if (!r.ok) {
+      let msg = r.statusText
+      try { const j = await r.json(); msg = j.error || j.message || msg } catch {}
+      throw new ApiError(r.status, msg)
+    }
+    if (r.status === 204) return {} as T
+    return r.json()
+  } finally {
+    clearTimeout(timeoutId)
   }
-  if (r.status === 204) return {} as T
-  return r.json()
 }
 
 /* ── Auth ── */

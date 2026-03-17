@@ -13,7 +13,7 @@ export default function DashboardClientLayer() {
         const first = data?.ceremonies?.[0]
         if (first) setCeremony(first as CeremonyData)
       })
-      .catch(() => {})
+      .catch((err) => { console.error('[DashboardClientLayer] ceremonies fetch failed:', err) })
   }, [])
 
   return (

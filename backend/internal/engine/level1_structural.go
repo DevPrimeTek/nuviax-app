@@ -15,15 +15,24 @@ import (
 )
 
 // C9 — computeIntensity: determină intensitatea zilei bazată pe context
+// Cu ajustări multiple, AdjEnergyLow are prioritate maximă (siguranță) față de AdjEnergyHigh.
 func (e *Engine) computeIntensity(adjs []models.ContextAdjustment) float64 {
 	base := 1.0
+	hasLow := false
+	hasHigh := false
 	for _, a := range adjs {
 		switch a.AdjType {
 		case models.AdjEnergyLow:
-			base = 0.6
+			hasLow = true
 		case models.AdjEnergyHigh:
-			base = 1.2
+			hasHigh = true
 		}
+	}
+	// AdjEnergyLow are prioritate — dacă utilizatorul e obosit, reducem intensitatea
+	if hasLow {
+		base = 0.6
+	} else if hasHigh {
+		base = 1.2
 	}
 	return base
 }

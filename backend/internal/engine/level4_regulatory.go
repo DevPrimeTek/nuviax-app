@@ -16,9 +16,18 @@ import (
 // C32 — validateActivation: verifică dacă un obiectiv poate fi activat
 // Returnează: (poate fi activat, mesaj dacă nu poate / avertisment dacă da)
 func (e *Engine) validateActivation(ctx context.Context, userID uuid.UUID, newGoal *models.Goal) (bool, string) {
+	// Regula 0: Validare date — StartDate trebuie să fie înainte de EndDate
+	if !newGoal.StartDate.Before(newGoal.EndDate) {
+		return false, "Data de start trebuie să fie înainte de data de final."
+	}
+
 	// Regula 1: Max 3 obiective active simultan
 	activeCount, err := db.CountActiveGoals(ctx, e.db, userID)
-	if err != nil || activeCount >= 3 {
+	if err != nil {
+		// Eroare DB — nu blocăm activarea, dar logăm problema
+		return false, "Eroare internă la verificarea obiectivelor active. Încearcă din nou."
+	}
+	if activeCount >= 3 {
 		return false, "Poți lucra la maxim 3 obiective în același timp."
 	}
 

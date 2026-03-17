@@ -40,7 +40,11 @@ export default function CeremonyModal({
   if (!ceremony) return null
 
   const markViewed = async () => {
-    await fetch(`/api/proxy/ceremonies/${ceremony.id}/view`, { method: 'POST' })
+    try {
+      await fetch(`/api/proxy/ceremonies/${ceremony.id}/view`, { method: 'POST' })
+    } catch {
+      // Ignorăm erorile de rețea — ceremonia se închide oricum
+    }
     onClose()
   }
 

@@ -20,7 +20,7 @@ export default async function GoalDetailPage({ params }: { params: { id: string 
     redirect('/app/goals')
   }
 
-  const pct = Math.round((goal as any).progress_score ?? 0) * 100
+  const pct = Math.round(((goal as any).progress_score ?? 0) * 100)
   const statusLabel: Record<string, string> = {
     ACTIVE: 'Activ', WAITING: 'În așteptare', PAUSED: 'Pauză',
     COMPLETED: 'Finalizat', ARCHIVED: 'Arhivat',

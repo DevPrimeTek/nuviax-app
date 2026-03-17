@@ -10,14 +10,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// C19 — computeCompletionRate: rata sarcinilor MAIN completate în sprint
-func (e *Engine) computeCompletionRate(ctx context.Context, sprintID uuid.UUID) float64 {
-	var total, completed int
+// querySprintTaskRatio este helper intern — interogare unică pentru total/completed sarcini MAIN
+func (e *Engine) querySprintTaskRatio(ctx context.Context, sprintID uuid.UUID) (total, completed int) {
 	e.db.QueryRow(ctx, `
 		SELECT COUNT(*), COUNT(*) FILTER (WHERE completed = TRUE)
 		FROM daily_tasks
 		WHERE sprint_id = $1 AND task_type = 'MAIN'
 	`, sprintID).Scan(&total, &completed)
+	return
+}
+
+// C19 — computeCompletionRate: rata sarcinilor MAIN completate în sprint
+func (e *Engine) computeCompletionRate(ctx context.Context, sprintID uuid.UUID) float64 {
+	total, completed := e.querySprintTaskRatio(ctx, sprintID)
 	if total == 0 {
 		return 0
 	}
@@ -26,12 +31,7 @@ func (e *Engine) computeCompletionRate(ctx context.Context, sprintID uuid.UUID) 
 
 // C20 — computeSprintInternal: scorul brut al unui sprint (0-1)
 func (e *Engine) computeSprintInternal(ctx context.Context, sprintID uuid.UUID) float64 {
-	var total, completed int
-	e.db.QueryRow(ctx, `
-		SELECT COUNT(*), COUNT(*) FILTER (WHERE completed = TRUE)
-		FROM daily_tasks
-		WHERE sprint_id = $1 AND task_type = 'MAIN'
-	`, sprintID).Scan(&total, &completed)
+	total, completed := e.querySprintTaskRatio(ctx, sprintID)
 	if total == 0 {
 		return 0
 	}

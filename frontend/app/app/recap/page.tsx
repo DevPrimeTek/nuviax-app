@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AppShell from '@/components/layout/AppShell'
 
 interface RecapData {
@@ -9,33 +10,42 @@ interface RecapData {
 }
 
 export default function RecapPage() {
+  const router = useRouter()
   const [data, setData] = useState<RecapData|null>(null)
   const [q1, setQ1] = useState('')
   const [q2, setQ2] = useState('')
   const [energy, setEnergy] = useState(8)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string|null>(null)
   const [noRecap, setNoRecap] = useState(false)
 
   useEffect(() => {
     fetch('/api/proxy/recap/current')
       .then(r => {
-        if (r.status === 401) { window.location.href = '/auth/login'; throw new Error('401') }
+        if (r.status === 401) { router.push('/auth/login'); throw new Error('401') }
         if (!r.ok) throw new Error(r.status.toString())
         return r.json()
       })
       .then(setData)
       .catch(() => setNoRecap(true))
-  }, [])
+  }, [router])
 
   async function startNext() {
     if (!data) return
     setSubmitting(true)
-    await fetch(`/api/proxy/goals/${data.goal_id}/recap`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q1, q2, energy }),
-    }).catch(() => {})
-    window.location.href = '/dashboard'
+    setSubmitError(null)
+    try {
+      const res = await fetch(`/api/proxy/goals/${data.goal_id}/recap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q1, q2, energy }),
+      })
+      if (!res.ok) throw new Error(`${res.status}`)
+      router.push('/dashboard')
+    } catch {
+      setSubmitError('Eroare la salvarea recapitulării. Încearcă din nou.')
+      setSubmitting(false)
+    }
   }
 
   if (noRecap) return (
@@ -119,6 +129,12 @@ export default function RecapPage() {
           </div>
         </div>
 
+        {submitError && (
+          <div style={{color:'var(--l4l)',fontSize:13,marginBottom:8,padding:'8px 12px',
+            background:'rgba(239,68,68,0.08)',borderRadius:8,border:'1px solid rgba(239,68,68,0.2)'}}>
+            {submitError}
+          </div>
+        )}
         <button className="auth-btn" onClick={startNext} disabled={submitting}>
           {submitting ? <span className="spinner" style={{margin:'0 auto'}}/> : `Pornește ${data.next_sprint_name} →`}
         </button>

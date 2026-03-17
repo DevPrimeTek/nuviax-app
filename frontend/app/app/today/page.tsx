@@ -23,8 +23,10 @@ export default function TodayPage() {
   }, [])
 
   async function toggleTask(id: string) {
-    setTasks(ts => ts.map(t => t.id===id ? {...t, completed:!t.completed} : t))
-    await fetch(`/api/proxy/today/complete/${id}`, { method:'POST' }).catch(()=>{})
+    const res = await fetch(`/api/proxy/today/complete/${id}`, { method:'POST' }).catch(()=>null)
+    if (res?.ok) {
+      setTasks(ts => ts.map(t => t.id===id ? {...t, completed:!t.completed} : t))
+    }
   }
 
   const done = tasks.filter(t=>t.completed).length

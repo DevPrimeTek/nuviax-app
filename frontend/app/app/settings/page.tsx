@@ -51,6 +51,11 @@ export default function SettingsPage() {
     window.location.href = '/auth/login'
   }
 
+  function toggleReview(val: boolean) {
+    setReview(val)
+    fetch('/api/proxy/settings', { method:'PATCH',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({sprint_reflection:val}) }).catch(()=>{})
+  }
   const themeSubLabel = theme==='dark' ? 'Întunecat activ' : 'Deschis activ'
   const langLabel = {ro:'Română',en:'English',ru:'Русский'}[lang]
 
@@ -127,7 +132,7 @@ export default function SettingsPage() {
             <div className="sg-item">
               <div className="sg-icon-wrap"><svg viewBox="0 0 24 24"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
               <div style={{flex:1}}><div className="sg-name">Recapitulare de etapă</div><div className="sg-sub">Câteva întrebări la finalul etapei</div></div>
-              <div className="sg-right"><div className={`toggle${review?' on':''}`} onClick={()=>setReview(!review)}/></div>
+              <div className="sg-right"><div className={`toggle${review?' on':''}`} onClick={()=>toggleReview(!review)}/></div>
             </div>
             <div className="sg-item">
               <div className="sg-icon-wrap"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>

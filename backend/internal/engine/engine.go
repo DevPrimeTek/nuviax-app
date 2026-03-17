@@ -158,7 +158,7 @@ func (e *Engine) computeInternalMetrics(ctx context.Context, goal *models.Goal, 
 
 	m.completionRate = e.computeCompletionRate(ctx, sprint.ID)      // Level 2
 	m.consistencyComp = e.computeConsistency(ctx, sprint)            // Level 3
-	m.progressComp = e.computeProgressVsExpected(goal, sprint)       // Level 5
+	m.progressComp = e.computeProgressVsExpected(ctx, goal, sprint)   // Level 5
 	m.contextPenalty, m.energyBonus = e.computeContextFactors(       // Level 3
 		ctx, goal.ID)
 

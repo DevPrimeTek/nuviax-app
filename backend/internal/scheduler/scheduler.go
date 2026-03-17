@@ -48,8 +48,25 @@ func (s *Scheduler) Start() {
 	// Job 5 — Recalibrare relevanță (la 90 de zile, 02:00 UTC)
 	s.cron.AddFunc("0 2 */90 * *", s.jobRecalibrateRelevance)
 
+	// ── Level 4 & 5 jobs ──────────────────────────────────────
+
+	// Job 6 — Detecție evoluție sprint (01:00 UTC zilnic)
+	s.cron.AddFunc("0 1 * * *", s.jobDetectEvolutionSprints)
+
+	// Job 7 — Generare ceremonies (01:05 UTC zilnic)
+	s.cron.AddFunc("5 1 * * *", s.jobGenerateCeremonies)
+
+	// Job 8 — Progres reactivare obiective (00:05 UTC zilnic)
+	s.cron.AddFunc("5 0 * * *", s.jobProgressReactivation)
+
+	// Job 9 — Verificare timeout SRM (orar)
+	s.cron.AddFunc("0 * * * *", s.jobCheckSRMTimeouts)
+
+	// Job 10 — Refresh progress overview (orar)
+	s.cron.AddFunc("0 * * * *", s.jobRefreshProgressOverview)
+
 	s.cron.Start()
-	logger.Info("Scheduler started", zap.Int("jobs", 5))
+	logger.Info("All jobs scheduled", zap.Int("total_jobs", len(s.cron.Entries())))
 }
 
 func (s *Scheduler) Stop() {
@@ -347,6 +364,226 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 		logger.Info("Job: RecalibrateRelevance done",
 			zap.Int("recalibrated", recalibrated))
 	}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 6 — Detect Evolution Sprints (01:00 UTC zilnic)
+// Verifică sprints completate ieri și detectează evoluție (C37)
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobDetectEvolutionSprints() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+	logger.Info("Job: DetectEvolutionSprints", zap.Time("date", yesterday))
+
+	rows, err := s.db.Query(ctx, `
+		SELECT s.id, s.go_id
+		FROM sprints s
+		WHERE s.status = 'COMPLETED'
+		  AND DATE(s.updated_at) = $1
+	`, yesterday)
+	if err != nil {
+		logger.Error("DetectEvolutionSprints: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	evolutionCount := 0
+	for rows.Next() {
+		var sprintID, goalID uuid.UUID
+		if err := rows.Scan(&sprintID, &goalID); err != nil {
+			continue
+		}
+		if err := s.engine.MarkEvolutionSprint(ctx, sprintID, goalID); err == nil {
+			evolutionCount++
+		}
+	}
+
+	logger.Info("Job: DetectEvolutionSprints done",
+		zap.Int("evolution_sprints", evolutionCount))
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 7 — Generate Ceremonies (01:05 UTC zilnic)
+// Generează ceremonies pentru sprints completate ieri (C38)
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobGenerateCeremonies() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+	logger.Info("Job: GenerateCeremonies", zap.Time("date", yesterday))
+
+	rows, err := s.db.Query(ctx, `
+		SELECT s.id, s.go_id,
+		       EXISTS(SELECT 1 FROM evolution_sprints WHERE sprint_id = s.id) AS is_evolution
+		FROM sprints s
+		WHERE s.status = 'COMPLETED'
+		  AND DATE(s.updated_at) = $1
+		  AND NOT EXISTS (
+			  SELECT 1 FROM completion_ceremonies
+			  WHERE sprint_id = s.id
+		  )
+	`, yesterday)
+	if err != nil {
+		logger.Error("GenerateCeremonies: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	ceremonyCount := 0
+	for rows.Next() {
+		var sprintID, goalID uuid.UUID
+		var isEvolution bool
+		if err := rows.Scan(&sprintID, &goalID, &isEvolution); err != nil {
+			continue
+		}
+		if err := s.engine.GenerateCompletionCeremony(ctx, sprintID, goalID, isEvolution); err == nil {
+			ceremonyCount++
+		}
+	}
+
+	logger.Info("Job: GenerateCeremonies done",
+		zap.Int("ceremonies_generated", ceremonyCount))
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 8 — Progress Reactivation (00:05 UTC zilnic)
+// Avansează intensitatea pentru goals în reactivation (C36)
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobProgressReactivation() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	logger.Info("Job: ProgressReactivation")
+
+	rows, err := s.db.Query(ctx, `
+		SELECT go_id, current_day, current_intensity
+		FROM reactivation_protocols
+		WHERE completed_at IS NULL
+	`)
+	if err != nil {
+		logger.Error("ProgressReactivation: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	type reactivationRow struct {
+		goalID           uuid.UUID
+		currentDay       int
+		currentIntensity float64
+	}
+	var active []reactivationRow
+	for rows.Next() {
+		var r reactivationRow
+		if err := rows.Scan(&r.goalID, &r.currentDay, &r.currentIntensity); err == nil {
+			active = append(active, r)
+		}
+	}
+
+	progressed, completed := 0, 0
+	for _, r := range active {
+		newDay := r.currentDay + 1
+		newIntensity := 0.2 + float64(newDay)*0.1
+
+		if newIntensity >= 1.0 {
+			_, err := s.db.Exec(ctx, `
+				UPDATE reactivation_protocols
+				SET completed_at = NOW(), current_intensity = 1.0, updated_at = NOW()
+				WHERE go_id = $1 AND completed_at IS NULL
+			`, r.goalID)
+			if err == nil {
+				completed++
+			}
+		} else {
+			_, err := s.db.Exec(ctx, `
+				UPDATE reactivation_protocols
+				SET current_day = $1, current_intensity = $2, updated_at = NOW()
+				WHERE go_id = $3 AND completed_at IS NULL
+			`, newDay, newIntensity, r.goalID)
+			if err == nil {
+				progressed++
+			}
+		}
+	}
+
+	logger.Info("Job: ProgressReactivation done",
+		zap.Int("progressed", progressed),
+		zap.Int("completed", completed))
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 9 — Check SRM Timeouts (orar)
+// Verifică SRM L3 neconfirmat mai mult de N ore (C33)
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobCheckSRMTimeouts() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	logger.Info("Job: CheckSRMTimeouts")
+
+	rows, err := s.db.Query(ctx, `
+		SELECT go_id,
+		       EXTRACT(EPOCH FROM (NOW() - triggered_at)) / 3600 AS hours_since
+		FROM srm_events
+		WHERE srm_level = 'L3'
+		  AND revoked_at IS NULL
+	`)
+	if err != nil {
+		logger.Error("CheckSRMTimeouts: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	timeoutCount := 0
+	for rows.Next() {
+		var goalID uuid.UUID
+		var hoursSince float64
+		if err := rows.Scan(&goalID, &hoursSince); err != nil {
+			continue
+		}
+
+		var fallback string
+		switch {
+		case hoursSince >= 168: // 7 days
+			fallback = "PAUSE"
+		case hoursSince >= 72:
+			fallback = "L1"
+		case hoursSince >= 24:
+			fallback = "L2"
+		default:
+			continue
+		}
+
+		logger.Info("SRM L3 timeout — applying fallback",
+			zap.String("goal_id", goalID.String()),
+			zap.String("fallback", fallback),
+			zap.Float64("hours_since", hoursSince))
+		// TODO: engine.ApplySRMFallback(ctx, goalID, fallback)
+		timeoutCount++
+	}
+
+	logger.Info("Job: CheckSRMTimeouts done",
+		zap.Int("timeouts_processed", timeoutCount))
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 10 — Refresh Progress Overview (orar)
+// Refresh materialized view pentru analytics (C40)
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobRefreshProgressOverview() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	logger.Info("Job: RefreshProgressOverview")
+
+	if _, err := s.db.Exec(ctx, "SELECT refresh_progress_overview()"); err != nil {
+		logger.Error("RefreshProgressOverview: failed", zap.Error(err))
+		return
+	}
+
+	logger.Info("Job: RefreshProgressOverview done")
 }
 
 // ═══════════════════════════════════════════════════════════════

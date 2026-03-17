@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/components/layout/AppShell'
+import DashboardClientLayer from '@/components/DashboardClientLayer'
+import SRMWarning from '@/components/SRMWarning'
 import { dashApi, ApiError } from '@/lib/api'
 import type { Metadata } from 'next'
 
@@ -100,7 +102,9 @@ export default async function DashboardPage() {
           const pct = Math.round((g.progress_score ?? 0) * 100)
           const color = GOAL_COLORS[i % GOAL_COLORS.length]
           return (
-            <Link key={g.id} href={`/goals/${g.id}`} className="goal-card">
+            <div key={g.id}>
+              <SRMWarning goalId={g.id} />
+            <Link href={`/goals/${g.id}`} className="goal-card">
               <div className="goal-top">
                 <span className="goal-dot" style={{background: color}}/>
                 <div style={{flex:1}}>
@@ -113,6 +117,7 @@ export default async function DashboardPage() {
               </div>
               <div className="goal-bar"><div style={{width:`${pct}%`, background: color}}/></div>
             </Link>
+            </div>
           )
         })}
 
@@ -143,6 +148,7 @@ export default async function DashboardPage() {
           </div>
         </Link>
       </div>
+      <DashboardClientLayer />
     </AppShell>
   )
 }

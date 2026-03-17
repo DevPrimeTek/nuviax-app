@@ -13,6 +13,7 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/api"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/internal/scheduler"
 	"github.com/devprimetek/nuviax-app/pkg/logger"
 )
@@ -52,8 +53,11 @@ func main() {
 	}
 	defer rdb.Close()
 
+	// ── Engine ─────────────────────────────────────────────────
+	eng := engine.New(pool, rdb)
+
 	// ── Background Scheduler (5 jobs) ─────────────────────────
-	sched := scheduler.New(pool, rdb)
+	sched := scheduler.New(pool, rdb, eng)
 	sched.Start()
 	defer sched.Stop()
 

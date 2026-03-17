@@ -131,6 +131,24 @@ func NewServer(cfg Config) *fiber.App {
 	p.Delete("/settings/sessions/:id", h.RevokeSession)
 	p.Get("/settings/export",        h.ExportData)
 
+	// ── Level 4 & 5 endpoints ──────────────────────────────────
+	// Ceremonies (Level 5 — C38)
+	// NOTE: static segment /unviewed must be registered before /:goalId
+	p.Get("/ceremonies/unviewed",      h.GetUnviewedCeremonies)
+	p.Get("/ceremonies/:goalId",       h.GetLatestCeremony)
+	p.Post("/ceremonies/:id/view",     h.MarkCeremonyViewed)
+
+	// Achievements (Level 5 — C39)
+	p.Get("/achievements",             h.GetUserAchievements)
+	p.Get("/achievements/progress",    h.GetAchievementProgress)
+
+	// SRM — Strategic Reset Mode (Level 4 — C33-C36)
+	p.Get("/srm/status/:goalId",       h.GetSRMStatus)
+	p.Post("/srm/confirm-l3/:goalId",  h.ConfirmSRML3)
+
+	// Progress visualization (Level 5 — C40)
+	p.Get("/goals/:id/visualize",      h.GetProgressVisualization)
+
 	return app
 }
 

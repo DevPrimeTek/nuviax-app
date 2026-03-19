@@ -29,10 +29,10 @@ func CreateUser(ctx context.Context, pool *pgxpool.Pool,
 			(email_encrypted, email_hash, password_hash, salt, full_name, locale)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id, email_encrypted, email_hash, password_hash, salt,
-		          full_name, locale, mfa_enabled, is_active, created_at, updated_at
+		          full_name, locale, mfa_enabled, is_active, is_admin, created_at, updated_at
 	`, emailEncrypted, emailHash, passwordHash, salt, fullName, locale).Scan(
 		&u.ID, &u.EmailEncrypted, &u.EmailHash, &u.PasswordHash, &u.Salt,
-		&u.FullName, &u.Locale, &u.MFAEnabled, &u.IsActive,
+		&u.FullName, &u.Locale, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	return u, err
@@ -42,11 +42,11 @@ func GetUserByEmailHash(ctx context.Context, pool *pgxpool.Pool, hash string) (*
 	u := &models.User{}
 	err := pool.QueryRow(ctx, `
 		SELECT id, email_encrypted, email_hash, password_hash, salt,
-		       full_name, locale, mfa_secret, mfa_enabled, is_active, created_at, updated_at
+		       full_name, locale, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
 		FROM users WHERE email_hash = $1 AND is_active = TRUE
 	`, hash).Scan(
 		&u.ID, &u.EmailEncrypted, &u.EmailHash, &u.PasswordHash, &u.Salt,
-		&u.FullName, &u.Locale, &u.MFASecret, &u.MFAEnabled, &u.IsActive,
+		&u.FullName, &u.Locale, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -59,11 +59,11 @@ func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id uuid.UUID) (*models
 	u := &models.User{}
 	err := pool.QueryRow(ctx, `
 		SELECT id, email_encrypted, email_hash, password_hash, salt,
-		       full_name, locale, mfa_secret, mfa_enabled, is_active, created_at, updated_at
+		       full_name, locale, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
 		FROM users WHERE id = $1 AND is_active = TRUE
 	`, id).Scan(
 		&u.ID, &u.EmailEncrypted, &u.EmailHash, &u.PasswordHash, &u.Salt,
-		&u.FullName, &u.Locale, &u.MFASecret, &u.MFAEnabled, &u.IsActive,
+		&u.FullName, &u.Locale, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -483,13 +483,25 @@ func CreateContextAdjustment(ctx context.Context, pool *pgxpool.Pool,
 	goalID, userID uuid.UUID, adjType models.AdjType,
 	startDate time.Time, endDate *time.Time, note *string,
 ) (*models.ContextAdjustment, error) {
+	return CreateRetroactivePause(ctx, pool, goalID, userID, adjType, startDate, endDate, note, false)
+}
+
+// CreateRetroactivePause — GAP #14 fix: supports pause registration with
+// a retroactive start date (up to 48h in the past).
+// When retroactive=true, the retroactive column is set so the engine
+// knows NOT to penalize the missed days.
+func CreateRetroactivePause(ctx context.Context, pool *pgxpool.Pool,
+	goalID, userID uuid.UUID, adjType models.AdjType,
+	startDate time.Time, endDate *time.Time, note *string,
+	retroactive bool,
+) (*models.ContextAdjustment, error) {
 	ca := &models.ContextAdjustment{}
 	err := pool.QueryRow(ctx, `
 		INSERT INTO context_adjustments
-			(go_id, user_id, adj_type, start_date, end_date, note)
-		VALUES ($1,$2,$3,$4,$5,$6)
+			(go_id, user_id, adj_type, start_date, end_date, note, retroactive)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
 		RETURNING id, go_id, user_id, adj_type, start_date, end_date, note, created_at
-	`, goalID, userID, adjType, startDate, endDate, note).Scan(
+	`, goalID, userID, adjType, startDate, endDate, note, retroactive).Scan(
 		&ca.ID, &ca.GoalID, &ca.UserID, &ca.AdjType,
 		&ca.StartDate, &ca.EndDate, &ca.Note, &ca.CreatedAt,
 	)
@@ -551,6 +563,121 @@ func WriteAudit(ctx context.Context, pool *pgxpool.Pool,
 			VALUES ($1,$2,$3,$4)
 		`, userID, action, ipHash, uaHash)
 	}()
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN QUERIES
+// ═══════════════════════════════════════════════════════════════
+
+// GetPlatformStats returns aggregated platform statistics for the admin panel.
+func GetPlatformStats(ctx context.Context, pool *pgxpool.Pool) (*models.PlatformStats, error) {
+	s := &models.PlatformStats{}
+	err := pool.QueryRow(ctx, `
+		SELECT
+			total_users, admin_users, new_users_7d, new_users_30d,
+			active_goals, completed_goals, paused_goals, total_goals,
+			active_sprints, completed_sprints,
+			tasks_today, tasks_completed_today,
+			srm_events_30d, srm_l3_events_30d,
+			regression_events_30d,
+			ceremonies_30d, badges_awarded_30d,
+			computed_at
+		FROM v_admin_platform_stats
+	`).Scan(
+		&s.TotalUsers, &s.AdminUsers, &s.NewUsers7d, &s.NewUsers30d,
+		&s.ActiveGoals, &s.CompletedGoals, &s.PausedGoals, &s.TotalGoals,
+		&s.ActiveSprints, &s.CompletedSprints,
+		&s.TasksToday, &s.TasksCompletedToday,
+		&s.SRMEvents30d, &s.SRML3Events30d,
+		&s.RegressionEvents30d,
+		&s.Ceremonies30d, &s.BadgesAwarded30d,
+		&s.ComputedAt,
+	)
+	return s, err
+}
+
+// GetAdminUserList returns all users with computed stats for the admin panel.
+func GetAdminUserList(ctx context.Context, pool *pgxpool.Pool) ([]models.AdminUserRecord, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			id, full_name, locale, is_active, is_admin, mfa_enabled,
+			created_at, updated_at,
+			active_goals, completed_goals, total_goals, completed_sprints,
+			tasks_last_30d, last_active_at, active_sessions
+		FROM v_admin_user_list
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.AdminUserRecord
+	for rows.Next() {
+		u := models.AdminUserRecord{}
+		if err := rows.Scan(
+			&u.ID, &u.FullName, &u.Locale, &u.IsActive, &u.IsAdmin, &u.MFAEnabled,
+			&u.CreatedAt, &u.UpdatedAt,
+			&u.ActiveGoals, &u.CompletedGoals, &u.TotalGoals, &u.CompletedSprints,
+			&u.TasksLast30d, &u.LastActiveAt, &u.ActiveSessions,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// GetAuditLog returns the most recent audit entries for the admin panel.
+func GetAuditLog(ctx context.Context, pool *pgxpool.Pool, limit int) ([]map[string]interface{}, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT a.id, a.user_id, u.full_name, a.action, a.created_at
+		FROM audit_log a
+		LEFT JOIN users u ON u.id = a.user_id
+		ORDER BY a.created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []map[string]interface{}
+	for rows.Next() {
+		var id uuid.UUID
+		var userID *uuid.UUID
+		var fullName *string
+		var action string
+		var createdAt time.Time
+		if err := rows.Scan(&id, &userID, &fullName, &action, &createdAt); err != nil {
+			continue
+		}
+		entries = append(entries, map[string]interface{}{
+			"id":         id,
+			"user_id":    userID,
+			"full_name":  fullName,
+			"action":     action,
+			"created_at": createdAt,
+		})
+	}
+	return entries, rows.Err()
+}
+
+// SetUserActiveStatus activates or deactivates a user (admin only).
+func SetUserActiveStatus(ctx context.Context, pool *pgxpool.Pool, targetUserID uuid.UUID, active bool) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE users SET is_active=$1, updated_at=NOW() WHERE id=$2 AND is_admin=FALSE`,
+		active, targetUserID)
+	return err
+}
+
+// PromoteToAdmin grants admin privileges to a user (admin only).
+func PromoteToAdmin(ctx context.Context, pool *pgxpool.Pool, targetUserID uuid.UUID) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE users SET is_admin=TRUE, updated_at=NOW() WHERE id=$1`, targetUserID)
+	return err
 }
 
 // ═══════════════════════════════════════════════════════════════

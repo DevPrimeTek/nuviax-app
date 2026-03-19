@@ -200,6 +200,12 @@ func (e *Engine) computeConsistencyForGoal(ctx context.Context, goalID uuid.UUID
 
 // C37 — computeProgressVsExpected: progresul real față de traiectoria liniară așteptată
 // Ratio > 1 = înaintea planului, < 1 = în urmă
+//
+// GAP #20 FIX — Stabilization Mode Freeze:
+// When SRM Level 3 is active (Stabilization Mode), the expected trajectory is frozen
+// at the value it had when L3 was triggered. Without this fix, expectedPct keeps
+// advancing while the user is in stabilization, creating a "drift loop paradox" where
+// the drift score worsens even when the user correctly follows the protocol.
 func (e *Engine) computeProgressVsExpected(ctx context.Context, goal *models.Goal, sprint *models.Sprint) float64 {
 	now := time.Now().UTC()
 	totalDuration := goal.EndDate.Sub(goal.StartDate).Hours()
@@ -207,7 +213,22 @@ func (e *Engine) computeProgressVsExpected(ctx context.Context, goal *models.Goa
 	if totalDuration <= 0 {
 		return 0
 	}
-	expectedPct := elapsed / totalDuration
+
+	// GAP #20 — Check if sprint has a frozen expected_pct (Stabilization Mode active)
+	var isFrozen bool
+	var frozenPct *float64
+	e.db.QueryRow(ctx, `
+		SELECT expected_pct_frozen, frozen_expected_pct
+		FROM sprints WHERE id = $1
+	`, sprint.ID).Scan(&isFrozen, &frozenPct)
+
+	var expectedPct float64
+	if isFrozen && frozenPct != nil {
+		// Use the frozen value — do not advance during Stabilization Mode
+		expectedPct = *frozenPct
+	} else {
+		expectedPct = elapsed / totalDuration
+	}
 
 	var completedCP, totalCP int
 	e.db.QueryRow(ctx, `
@@ -226,4 +247,50 @@ func (e *Engine) computeProgressVsExpected(ctx context.Context, goal *models.Goa
 	// ratio > 1 = înaintea planului, < 1 = în urmă; clampăm la [0, 1] pentru scor opac
 	ratio := actualPct / math.Max(expectedPct, 0.01)
 	return clamp(ratio, 0, 1)
+}
+
+// FreezeExpectedTrajectory freezes the expected_pct on the sprint when SRM L3
+// (Stabilization Mode) is activated, preventing the drift loop paradox (GAP #20).
+// Call this when SRM L3 is confirmed by the user.
+func (e *Engine) FreezeExpectedTrajectory(ctx context.Context, sprintID uuid.UUID) error {
+	// Compute current expected_pct before freezing
+	var startDate, endDate time.Time
+	err := e.db.QueryRow(ctx, `
+		SELECT s.start_date, g.end_date
+		FROM sprints s
+		JOIN global_objectives g ON g.id = s.go_id
+		WHERE s.id = $1
+	`, sprintID).Scan(&startDate, &endDate)
+	if err != nil {
+		return fmt.Errorf("freeze trajectory: load dates: %w", err)
+	}
+
+	now := time.Now().UTC()
+	total := endDate.Sub(startDate).Hours()
+	elapsed := now.Sub(startDate).Hours()
+	currentExpected := 0.0
+	if total > 0 {
+		currentExpected = math.Min(elapsed/total, 1.0)
+	}
+
+	_, err = e.db.Exec(ctx, `
+		UPDATE sprints
+		SET expected_pct_frozen = TRUE,
+		    frozen_expected_pct = $2
+		WHERE id = $1 AND expected_pct_frozen = FALSE
+	`, sprintID, currentExpected)
+	return err
+}
+
+// UnfreezeExpectedTrajectory resumes normal trajectory tracking when Stabilization
+// Mode ends (reactivation protocol complete). This allows expectedPct to catch up
+// from the frozen value rather than jumping to the current real time position.
+func (e *Engine) UnfreezeExpectedTrajectory(ctx context.Context, sprintID uuid.UUID) error {
+	_, err := e.db.Exec(ctx, `
+		UPDATE sprints
+		SET expected_pct_frozen = FALSE,
+		    frozen_expected_pct = NULL
+		WHERE id = $1
+	`, sprintID)
+	return err
 }

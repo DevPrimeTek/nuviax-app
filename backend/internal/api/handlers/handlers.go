@@ -836,9 +836,13 @@ func (h *Handlers) CloseSprint(c *fiber.Ctx) error {
 // ═══════════════════════════════════════════════════════════════
 
 type pauseReq struct {
-	GoalID    string `json:"goal_id" validate:"required,uuid"`
-	Days      int    `json:"days" validate:"required,min=1,max=30"`
-	Note      string `json:"note" validate:"omitempty,max=200"`
+	GoalID      string `json:"goal_id" validate:"required,uuid"`
+	Days        int    `json:"days" validate:"required,min=1,max=30"`
+	Note        string `json:"note" validate:"omitempty,max=200"`
+	// GAP #14 — Retroactive pause support (max 48h back).
+	// When the user was ill and couldn't log the pause in time,
+	// they can retroactively register a pause that started up to 48 hours ago.
+	RetroactiveStartDate *string `json:"retroactive_start_date"` // "2006-01-02" format, optional
 }
 
 func (h *Handlers) SetPause(c *fiber.Ctx) error {
@@ -853,25 +857,54 @@ func (h *Handlers) SetPause(c *fiber.Ctx) error {
 		return badRequest(c, "ID obiectiv invalid.")
 	}
 
-	startDate := time.Now().UTC().Truncate(24 * time.Hour)
+	now := time.Now().UTC().Truncate(24 * time.Hour)
+	startDate := now
+	retroactive := false
+
+	// GAP #14 — Retroactive pause: allow start date up to 48h in the past
+	if req.RetroactiveStartDate != nil && *req.RetroactiveStartDate != "" {
+		parsed, parseErr := time.Parse("2006-01-02", *req.RetroactiveStartDate)
+		if parseErr != nil {
+			return badRequest(c, "Format dată invalidă. Folosiți formatul YYYY-MM-DD.")
+		}
+		parsed = parsed.UTC().Truncate(24 * time.Hour)
+		maxRetroactive := now.Add(-48 * time.Hour)
+		if parsed.Before(maxRetroactive) {
+			return badRequest(c, "Pauza retroactivă nu poate fi setată pentru mai mult de 48 de ore în urmă.")
+		}
+		if parsed.After(now) {
+			return badRequest(c, "Data de start a pauzei retroactive nu poate fi în viitor.")
+		}
+		startDate = parsed
+		retroactive = true
+	}
+
 	endDate := startDate.AddDate(0, 0, req.Days)
 
 	var note *string
 	if req.Note != "" {
-		note = &req.Note
+		n := req.Note
+		note = &n
 	}
 
-	adj, err := db.CreateContextAdjustment(c.Context(), h.db,
-		goalID, userID, models.AdjPause, startDate, &endDate, note)
+	adj, err := db.CreateRetroactivePause(c.Context(), h.db,
+		goalID, userID, models.AdjPause, startDate, &endDate, note, retroactive)
 	if err != nil {
 		return serverError(c, err)
 	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
+
+	msg := "Pauză activată. Progresul așteptat este suspendat."
+	if retroactive {
+		msg = "Pauză retroactivă înregistrată. Progresul din această perioadă nu va fi penalizat."
+	}
+
 	return c.Status(201).JSON(fiber.Map{
-		"message":    "Pauză activată. Progresul așteptat este suspendat.",
-		"start_date": adj.StartDate,
-		"end_date":   adj.EndDate,
+		"message":     msg,
+		"start_date":  adj.StartDate,
+		"end_date":    adj.EndDate,
+		"retroactive": retroactive,
 	})
 }
 

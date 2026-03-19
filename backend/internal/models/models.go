@@ -18,8 +18,50 @@ type User struct {
 	MFASecret      *string    `db:"mfa_secret"      json:"-"`
 	MFAEnabled     bool       `db:"mfa_enabled"     json:"mfa_enabled"`
 	IsActive       bool       `db:"is_active"       json:"is_active"`
+	IsAdmin        bool       `db:"is_admin"        json:"is_admin"`
 	CreatedAt      time.Time  `db:"created_at"      json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at"      json:"updated_at"`
+}
+
+// ── Admin Stats ───────────────────────────────────────────────────────────────
+
+type PlatformStats struct {
+	TotalUsers          int       `json:"total_users"`
+	AdminUsers          int       `json:"admin_users"`
+	NewUsers7d          int       `json:"new_users_7d"`
+	NewUsers30d         int       `json:"new_users_30d"`
+	ActiveGoals         int       `json:"active_goals"`
+	CompletedGoals      int       `json:"completed_goals"`
+	PausedGoals         int       `json:"paused_goals"`
+	TotalGoals          int       `json:"total_goals"`
+	ActiveSprints       int       `json:"active_sprints"`
+	CompletedSprints    int       `json:"completed_sprints"`
+	TasksToday          int       `json:"tasks_today"`
+	TasksCompletedToday int       `json:"tasks_completed_today"`
+	SRMEvents30d        int       `json:"srm_events_30d"`
+	SRML3Events30d      int       `json:"srm_l3_events_30d"`
+	RegressionEvents30d int       `json:"regression_events_30d"`
+	Ceremonies30d       int       `json:"ceremonies_30d"`
+	BadgesAwarded30d    int       `json:"badges_awarded_30d"`
+	ComputedAt          time.Time `json:"computed_at"`
+}
+
+type AdminUserRecord struct {
+	ID               uuid.UUID  `json:"id"`
+	FullName         *string    `json:"full_name"`
+	Locale           string     `json:"locale"`
+	IsActive         bool       `json:"is_active"`
+	IsAdmin          bool       `json:"is_admin"`
+	MFAEnabled       bool       `json:"mfa_enabled"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	ActiveGoals      int        `json:"active_goals"`
+	CompletedGoals   int        `json:"completed_goals"`
+	TotalGoals       int        `json:"total_goals"`
+	CompletedSprints int        `json:"completed_sprints"`
+	TasksLast30d     int        `json:"tasks_last_30d"`
+	LastActiveAt     *time.Time `json:"last_active_at"`
+	ActiveSessions   int        `json:"active_sessions"`
 }
 
 // ── Session ───────────────────────────────────────────────────────────────────

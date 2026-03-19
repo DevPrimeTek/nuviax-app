@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"math"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/models"
 )
 
 // ── GetSRMStatus — GET /api/v1/srm/status/:goalId ────────────────
@@ -36,10 +40,14 @@ func (h *Handlers) GetSRMStatus(c *fiber.Ctx) error {
 		srmLevel = "NONE"
 	}
 
+	// GAP #8/#13 — Include ALI current vs projected breakdown to eliminate ambiguity
+	aliInfo := h.computeALIBreakdown(c, userID, goalID)
+
 	return c.JSON(fiber.Map{
 		"goal_id":   goalID,
 		"srm_level": srmLevel,
 		"message":   srmMessage(srmLevel),
+		"ali":       aliInfo,
 	})
 }
 
@@ -52,15 +60,47 @@ func (h *Handlers) ConfirmSRML3(c *fiber.Ctx) error {
 	}
 
 	// Verifică dreptul de acces
-	if _, err := db.GetGoalByID(c.Context(), h.db, goalID, userID); err != nil {
+	goal, err := db.GetGoalByID(c.Context(), h.db, goalID, userID)
+	if err != nil {
 		return notFound(c)
 	}
 
-	// TODO: engine.ConfirmSRML3(ctx, goalID) — triggers C34 Suspension + C35 Stabilization
+	// Get current sprint to freeze its expected trajectory (GAP #20)
+	sprint, sprintErr := db.GetCurrentSprint(c.Context(), h.db, goalID)
+
+	// Suspend the goal (SRM L3 → status PAUSED)
+	if _, err := h.db.Exec(c.Context(), `
+		UPDATE global_objectives SET status = 'PAUSED', updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+	`, goalID, userID); err != nil {
+		return serverError(c, err)
+	}
+
+	// Record the SRM L3 event
+	h.db.Exec(c.Context(), `
+		INSERT INTO srm_events (id, go_id, srm_level, trigger_reason, triggered_at)
+		VALUES (gen_random_uuid(), $1, 'L3', 'user_confirmed_stabilization', NOW())
+	`, goalID)
+
+	// GAP #20 — Freeze expected trajectory to prevent drift loop paradox
+	frozenPct := 0.0
+	if sprintErr == nil && sprint != nil {
+		h.engine.FreezeExpectedTrajectory(c.Context(), sprint.ID)
+
+		// Compute the frozen value for the response
+		total := goal.EndDate.Sub(goal.StartDate).Hours()
+		elapsed := time.Now().UTC().Sub(goal.StartDate).Hours()
+		if total > 0 {
+			frozenPct = math.Min(elapsed/total, 1.0)
+		}
+	}
 
 	return c.JSON(fiber.Map{
-		"goal_id": goalID,
-		"message": "SRM Level 3 confirmat. Modul de stabilizare activat.",
+		"goal_id":          goalID,
+		"new_status":       models.GoalPaused,
+		"frozen_expected":  frozenPct,
+		"message":          "SRM Level 3 confirmat. Modul de stabilizare activat. Obiectivul este suspendat temporar.",
+		"next_step":        "Reactivarea automată va fi propusă după 7 zile de stabilitate.",
 	})
 }
 
@@ -75,5 +115,101 @@ func srmMessage(level string) string {
 		return "Resetare strategică necesară. Confirmă pentru a activa modul de stabilizare."
 	default:
 		return "Totul merge bine!"
+	}
+}
+
+// GAP #8/#13 — computeALIBreakdown returns both current and projected ALI values.
+// ALI_current = actual ambition load based on tasks completed so far.
+// ALI_projected = projected load if the current pace continues to sprint end.
+// This eliminates the ambiguity between "what has been done" vs "what will happen".
+// Ambition Buffer zone: ALI_projected between 1.0 and 1.15 triggers Velocity Control.
+func (h *Handlers) computeALIBreakdown(c *fiber.Ctx, userID, targetGoalID uuid.UUID) fiber.Map {
+	// Get all active goals for the user to compute total load
+	goals, err := db.GetGoalsByUser(c.Context(), h.db, userID)
+	if err != nil {
+		return fiber.Map{"error": "could not compute ALI"}
+	}
+
+	type goalALI struct {
+		GoalID       uuid.UUID `json:"goal_id"`
+		ALICurrent   float64   `json:"ali_current"`
+		ALIProjected float64   `json:"ali_projected"`
+	}
+
+	var breakdown []goalALI
+	totalCurrent := 0.0
+	totalProjected := 0.0
+
+	for _, g := range goals {
+		if g.Status != models.GoalActive {
+			continue
+		}
+
+		sprint, err := db.GetCurrentSprint(c.Context(), h.db, g.ID)
+		if err != nil || sprint == nil {
+			continue
+		}
+
+		// ALI_current: tasks completed / tasks expected by now
+		var completedTasks, totalTasks int
+		h.db.QueryRow(c.Context(), `
+			SELECT
+				COUNT(*) FILTER (WHERE completed = TRUE),
+				COUNT(*)
+			FROM daily_tasks
+			WHERE sprint_id = $1 AND task_type = 'MAIN'
+		`, sprint.ID).Scan(&completedTasks, &totalTasks)
+
+		sprintDuration := sprint.EndDate.Sub(sprint.StartDate).Hours() / 24
+		elapsed := time.Now().UTC().Sub(sprint.StartDate).Hours() / 24
+		remaining := sprintDuration - elapsed
+
+		aliCurrent := 0.0
+		if totalTasks > 0 && elapsed > 0 {
+			dailyRate := float64(completedTasks) / math.Max(elapsed, 1)
+			expectedByNow := math.Round(elapsed) * (float64(totalTasks) / sprintDuration)
+			if expectedByNow > 0 {
+				aliCurrent = dailyRate / (float64(totalTasks) / sprintDuration)
+			}
+		}
+
+		// ALI_projected: if current pace continues to end of sprint
+		aliProjected := aliCurrent
+		if remaining > 0 && elapsed > 0 {
+			dailyRate := float64(completedTasks) / math.Max(elapsed, 1)
+			projectedTotal := float64(completedTasks) + dailyRate*remaining
+			expectedTotal := float64(totalTasks)
+			if expectedTotal > 0 {
+				aliProjected = projectedTotal / expectedTotal
+			}
+		}
+
+		breakdown = append(breakdown, goalALI{
+			GoalID:       g.ID,
+			ALICurrent:   math.Round(aliCurrent*1000) / 1000,
+			ALIProjected: math.Round(aliProjected*1000) / 1000,
+		})
+
+		totalCurrent += aliCurrent
+		totalProjected += aliProjected
+	}
+
+	activeGoalCount := float64(len(breakdown))
+	if activeGoalCount > 0 {
+		totalCurrent /= activeGoalCount
+		totalProjected /= activeGoalCount
+	}
+
+	inAmbitionBuffer := totalProjected > 1.0 && totalProjected <= 1.15
+	velocityControlOn := totalProjected > 1.15
+
+	return fiber.Map{
+		"ali_current":         math.Round(totalCurrent*1000) / 1000,
+		"ali_projected":       math.Round(totalProjected*1000) / 1000,
+		"in_ambition_buffer":  inAmbitionBuffer,
+		"velocity_control_on": velocityControlOn,
+		"goal_breakdown":      breakdown,
+		// GAP #13 disambiguation note in response
+		"note": "ali_current = progres realizat până acum. ali_projected = proiecție la finalul sprintului.",
 	}
 }

@@ -150,6 +150,21 @@ func NewServer(cfg Config) *fiber.App {
 	// Progress visualization (Level 5 — C40)
 	p.Get("/goals/:id/visualize",      h.GetProgressVisualization)
 
+	// ── Admin Panel ─────────────────────────────────────────────────
+	// All admin routes require JWT + is_admin = TRUE (AdminOnly middleware).
+	// Returns 404 to non-admins to avoid leaking the panel's existence.
+	adminMW := middleware.AdminOnly(cfg.DB)
+	adm := app.Group("/api/v1/admin", jwtMW, adminMW)
+
+	adm.Get("/stats",                  h.AdminGetStats)
+	adm.Get("/users",                  h.AdminGetUsers)
+	adm.Get("/audit",                  h.AdminGetAuditLog)
+	adm.Get("/health",                 h.AdminGetHealth)
+	adm.Post("/users/:id/deactivate",  h.AdminDeactivateUser)
+	adm.Post("/users/:id/activate",    h.AdminActivateUser)
+	adm.Post("/users/:id/promote",     h.AdminPromoteUser)
+	adm.Post("/db/reset",              h.AdminDevReset)
+
 	return app
 }
 

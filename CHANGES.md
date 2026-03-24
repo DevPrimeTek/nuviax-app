@@ -5,6 +5,34 @@ Convenție: **feat** (funcționalitate nouă), **fix** (bug), **refactor**, **do
 
 ---
 
+## [v10.2.0] — 2026-03-24
+
+### fix: 10 Bug Fixes (B-2 through B-11) + AI Integration
+
+**Bug Fixes:**
+- **B-3** — Sprint zile: `daysLeft` folosea `goal.EndDate` (89 zile) → acum folosește `sprint.EndDate` (30 zile)
+- **B-7** — Pagina Obiective: `GetGoals` returna array plat → acum returnează `{goals:[], waiting:[]}`
+- **B-8** — Pagina Recap: `GET /recap/current` + `POST /goals/:id/recap` implementate complet
+- **B-11** — CSS variabila `--ff-h` adăugată în `globals.css` (folosită în onboarding + profil)
+- **B-5** — Energia zilnică: endpoint corectat `/today/energy` → `/context/energy`; mapare nivel `mid→normal`, `hi→high`; `goal_id` auto-detectat server-side
+- **B-6** — Activități personale: adăugat input + buton "+" în `today/page.tsx` → `POST /today/personal`
+- **B-9** — Setări conectate: schimbare parolă (modal + `POST /settings/password`) + export date (JSON download)
+- **B-2** — Analiza GO: `AnalyzeGO` folosește Claude Haiku cu fallback pe analiza rule-based
+- **B-4** — Activități zilnice: `generateTaskTexts` folosește Claude Haiku cu fallback pe template-uri statice
+- **B-10** — Profil foto: avatar clickabil → upload `POST /settings/avatar`, stocare locală `/app/uploads/avatars/`
+
+### feat: Integrare Claude Haiku 4.5
+- `internal/ai/ai.go` — client HTTP direct (fără SDK), model `claude-haiku-4-5-20251001`
+- Metode: `GenerateTaskTexts` (activități zilnice contextualizate) + `AnalyzeGO` (clasificare SMART)
+- Graceful degradation: dacă `ANTHROPIC_API_KEY` lipsește → fallback automat pe reguli
+- Engine expune `AnalyzeGOText()` public pentru handlers
+
+### chore: Migration 008
+- `avatar_url VARCHAR(500)` adăugat pe `users`
+- Director upload: `/app/uploads/avatars/`
+
+---
+
 ## [v10.1.0] — 2026-03-24
 
 ### feat: Admin Panel complet

@@ -117,6 +117,10 @@ func NewServer(cfg Config) *fiber.App {
 	p.Post("/today/complete/:id", h.CompleteTask)
 	p.Post("/today/personal",     h.AddPersonalTask)
 
+	// Recap (B-8 fix)
+	p.Get("/recap/current",        h.GetCurrentRecap)
+	p.Post("/goals/:id/recap",     h.SaveGoalRecap)
+
 	p.Get("/sprints/current/:goalId", h.GetCurrentSprint)
 	p.Get("/sprints/:id/score",       h.GetSprintScore)
 	p.Post("/sprints/:id/reflection", h.SaveReflection)
@@ -126,11 +130,14 @@ func NewServer(cfg Config) *fiber.App {
 	p.Post("/context/energy",         h.SetEnergy)
 	p.Get("/context/current/:goalId", h.GetContext)
 
-	p.Get("/settings",               h.GetSettings)
-	p.Patch("/settings",             h.UpdateSettings)
-	p.Get("/settings/sessions",      h.GetSessions)
+	p.Get("/settings",                  h.GetSettings)
+	p.Patch("/settings",               h.UpdateSettings)
+	p.Post("/settings/password",       h.ChangePassword)
+	p.Post("/settings/avatar",         h.UploadAvatar)
+	p.Get("/settings/avatar/:filename", h.ServeAvatar)
+	p.Get("/settings/sessions",        h.GetSessions)
 	p.Delete("/settings/sessions/:id", h.RevokeSession)
-	p.Get("/settings/export",        h.ExportData)
+	p.Get("/settings/export",          h.ExportData)
 
 	// ── Level 4 & 5 endpoints ──────────────────────────────────
 	// Ceremonies (Level 5 — C38)

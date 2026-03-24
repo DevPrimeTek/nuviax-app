@@ -78,8 +78,19 @@ func (e *Engine) generateTasksFromCheckpoints(
 }
 
 // C12 — generateTaskTexts: construiește textele sarcinilor din template-uri contextuale
-// Faza 1: template-uri cu context din goal; Faza 2: AI-assisted generation
+// Dacă AI (Claude Haiku) este disponibil, generează sarcini contextualizate.
+// Fallback: template-uri statice (B-4 fix).
 func (e *Engine) generateTaskTexts(goal models.Goal, cp models.Checkpoint, count int) []string {
+	if e.ai != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		tasks, err := e.ai.GenerateTaskTexts(ctx, goal.Name, cp.Name, 1, count)
+		if err == nil && len(tasks) > 0 {
+			return tasks
+		}
+		// AI failed — fall through to static templates
+	}
+	// Static fallback templates
 	base := cp.Name
 	templates := []string{
 		"Lucrează 30 min la: " + base,

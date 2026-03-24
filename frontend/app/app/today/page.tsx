@@ -9,6 +9,9 @@ export default function TodayPage() {
   const [data, setData] = useState<TodayData|null>(null)
   const [tasks, setTasks] = useState<DailyTask[]>([])
   const [energy, setEnergy] = useState<'low'|'mid'|'hi'|null>(null)
+  // B-6: personal task add state
+  const [newTask, setNewTask] = useState('')
+  const [addingTask, setAddingTask] = useState(false)
 
   useEffect(() => {
     fetch('/api/proxy/today')
@@ -27,6 +30,26 @@ export default function TodayPage() {
     if (res?.ok) {
       setTasks(ts => ts.map(t => t.id===id ? {...t, completed:!t.completed} : t))
     }
+  }
+
+  // B-6: add personal task
+  async function addPersonalTask() {
+    const text = newTask.trim()
+    if (!text || addingTask) return
+    setAddingTask(true)
+    try {
+      const res = await fetch('/api/proxy/today/personal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      if (res.ok) {
+        const task = await res.json()
+        setTasks(ts => [...ts, task])
+        setNewTask('')
+      }
+    } catch { /* ignore */ }
+    setAddingTask(false)
   }
 
   const done = tasks.filter(t=>t.completed).length
@@ -98,23 +121,41 @@ export default function TodayPage() {
           </>
         )}
 
-        {pers.length > 0 && (
-          <>
-            <div className="sec-lbl">Activități personale</div>
-            {pers.map(t => (
-              <div key={t.id} className="task-row" style={{opacity:.7}} onClick={()=>toggleTask(t.id)}>
-                <div className={`chk${t.completed?' done':''}`} style={{borderColor:'rgba(37,99,235,.4)'}}>
-                  {t.completed && <svg viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>}
-                </div>
-                <div style={{flex:1}}>
-                  <div className={`task-text${t.completed?' task-done':''}`}>{t.text}</div>
-                  <div className="task-meta">
-                    <span className="tag tbadge-pers">Personal</span>
-                  </div>
-                </div>
+        {/* Personal tasks section — always shown so user can add tasks (B-6) */}
+        <div className="sec-lbl">Activități personale</div>
+        {pers.map(t => (
+          <div key={t.id} className="task-row" style={{opacity:.7}} onClick={()=>toggleTask(t.id)}>
+            <div className={`chk${t.completed?' done':''}`} style={{borderColor:'rgba(37,99,235,.4)'}}>
+              {t.completed && <svg viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>}
+            </div>
+            <div style={{flex:1}}>
+              <div className={`task-text${t.completed?' task-done':''}`}>{t.text}</div>
+              <div className="task-meta">
+                <span className="tag tbadge-pers">Personal</span>
               </div>
-            ))}
-          </>
+            </div>
+          </div>
+        ))}
+        {/* B-6: add personal task input (max 2 per day, enforced server-side) */}
+        {pers.length < 2 && (
+          <div style={{display:'flex',gap:8,alignItems:'center',padding:'8px 0'}}>
+            <input
+              value={newTask}
+              onChange={e=>setNewTask(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&addPersonalTask()}
+              placeholder="Adaugă activitate personală..."
+              maxLength={120}
+              style={{flex:1,background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:10,
+                padding:'9px 13px',color:'var(--ink)',fontSize:13,outline:'none',fontFamily:'var(--ff-b)'}}
+            />
+            <button
+              onClick={addPersonalTask}
+              disabled={!newTask.trim()||addingTask}
+              style={{background:'var(--l2)',color:'white',border:'none',borderRadius:10,
+                padding:'9px 14px',cursor:'pointer',fontSize:13,opacity:(!newTask.trim()||addingTask)?0.5:1}}>
+              {addingTask ? '...' : '+'}
+            </button>
+          </div>
         )}
 
         {!data && (
@@ -141,7 +182,8 @@ export default function TodayPage() {
             ] as const).map(e=>(
               <button key={e.k} onClick={()=>{
                 setEnergy(e.k)
-                fetch('/api/proxy/today/energy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:e.k})}).catch(()=>{})
+                // B-5 fix: correct endpoint + level mapping (mid→normal, hi→high handled server-side)
+                fetch('/api/proxy/context/energy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:e.k})}).catch(()=>{})
               }}
                 className={`e-btn${energy===e.k?' '+e.cls:''}`}>
                 <div className="e-btn-icon">{e.icon}</div>

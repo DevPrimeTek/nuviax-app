@@ -6,7 +6,7 @@
 
 ---
 
-## Stare Curentă: v10.1.0
+## Stare Curentă: v10.2.0
 
 | Categorie | Status |
 |-----------|--------|
@@ -14,67 +14,55 @@
 | Admin Panel (backend + frontend) | ✅ Complet |
 | Critical Gaps Stress Test (P0) | ✅ 5/5 rezolvate |
 | Medium Gaps Stress Test (P1) | ⏳ 0/12 rezolvate |
-| Bug-uri UI/UX critice (B-3,B-7,B-8) | ❌ Nerezolvate |
-| Bug-uri UI/UX majore (B-5,B-6,B-9,B-11) | ❌ Nerezolvate |
-| Integrare AI (Claude Haiku) | ❌ Neimplementat |
+| Bug-uri UI/UX critice (B-3,B-7,B-8) | ✅ Rezolvate |
+| Bug-uri UI/UX majore (B-5,B-6,B-9,B-11) | ✅ Rezolvate |
+| Bug-uri medii (B-2,B-4,B-10) | ✅ Rezolvate |
+| Integrare AI (Claude Haiku 4.5) | ✅ Implementat (cu graceful fallback) |
 | Integrare Email (Resend) | ❌ Neimplementat |
-| Tema Light CSS | ❌ Neimplementat |
+| Tema Light CSS | ✅ Implementat (variabile + bloc light) |
 | Traduceri EN/RU | ❌ Neimplementat |
 | Monetizare (Stripe) | 📅 Planificat târziu |
 
 ---
 
-## Sprint 1 — Bug Fixes Critice + AI + Email
-*Prioritate maximă — blochează utilizabilitatea*
+## Sprint 1 — Bug Fixes Critice + AI + Email ✅ PARȚIAL COMPLET
+*v10.2.0 — toate bug-urile rezolvate; email Resend rămâne*
 
-### 🔴 Bug-uri Critice (Blockers)
+### ✅ Bug-uri Critice (Rezolvate în v10.2.0)
 
-**B-7 — Pagina Obiective goală**
-- Fișier: `backend/internal/api/handlers/handlers.go:343` + `frontend/app/lib/api.ts:92`
-- Problema: backend returnează array `[{...}]`, frontend așteaptă `{goals:[], waiting:[]}`
-- Fix: modifică response-ul handler-ului SAU schimbă `api.ts` să accepte array plat
+**B-7 — Pagina Obiective goală** ✅
+- `GetGoals` acum returnează `{goals:[], waiting:[]}` în loc de array plat
 
-**B-8 — Pagina Recap returnează 404**
-- Fișier: `backend/internal/api/server.go`
-- Problema: `GET /api/v1/recap/current` nu există în routes
-- Fix: adaugă endpoint care returnează ultimul sprint completat + reflecție + scor
+**B-8 — Pagina Recap returnează 404** ✅
+- `GET /api/v1/recap/current` + `POST /api/v1/goals/:id/recap` implementate
 
-**B-3 — Sprint afișează 89 zile în loc de 30**
-- Fișier: `backend/internal/api/handlers/handlers.go:276`
-- Problema: `daysLeft = time.Until(goal.EndDate)` în loc de `time.Until(sprint.EndDate)`
-- Fix: o linie — schimbă sursa datei
+**B-3 — Sprint afișează 89 zile în loc de 30** ✅
+- `daysLeft` folosește `currentSprint.EndDate` când sprint activ există
 
-### 🟠 Bug-uri Majore
+### ✅ Bug-uri Majore (Rezolvate în v10.2.0)
 
-**B-5 — "Cum mă simt" nu salvează energia**
-- Fișier: `frontend/app/app/today/page.tsx:139`
-- Fix: adaugă `fetch('/api/proxy/context/energy', {method:'POST', body: ...})`
+**B-5 — "Cum mă simt" nu salvează energia** ✅
+- Endpoint corectat la `/context/energy`; nivel `mid→normal`, `hi→high`; `goal_id` auto-detectat
 
-**B-6 — Nu se pot adăuga sarcini personale**
-- Fișier: `frontend/app/app/today/page.tsx`
-- Fix: adaugă formular/buton → `POST /api/proxy/today/personal`
+**B-6 — Nu se pot adăuga sarcini personale** ✅
+- Input + buton "+" adăugat în `today/page.tsx` → `POST /today/personal`
 
-**B-11 — CSS variabile lipsă, tema Light inexistentă**
-- Fișier: `frontend/app/app/globals.css`
-- Fix: definește `--ul`, `--ug`, `--l2g`, `--ff-h` + bloc `[data-theme="light"] { ... }`
+**B-11 — CSS variabile lipsă** ✅
+- `--ff-h` adăugat; `[data-theme="light"]` există și e complet
 
-**B-9 — Settings parțial conectate**
-- Fișier: `frontend/app/app/settings/page.tsx`
-- Fix: conectează notificări, export date (`GET /settings/export`), schimbare parolă
+**B-9 — Settings parțial conectate** ✅
+- Export date (JSON download), schimbare parolă (modal complet)
 
-### 🟡 Bug-uri Medii
+### ✅ Bug-uri Medii (Rezolvate în v10.2.0)
 
-**B-4 — Activități zilnice generice (template static)**
-- Fișier: `backend/internal/engine/level1_structural.go:72`
-- Fix: integrare Claude Haiku pentru generare contextualizată
+**B-4 — Activități zilnice generice** ✅
+- Claude Haiku 4.5 cu fallback pe template-uri statice
 
-**B-2 — Analiza GO fără AI**
-- Fișier: `backend/internal/api/handlers/handlers.go` → `AnalyzeGO`
-- Fix: integrare Claude Haiku pentru semantic parsing + clasificare BM
+**B-2 — Analiza GO fără AI** ✅
+- Claude Haiku 4.5 cu fallback pe analiza rule-based
 
-**B-10 — Profil fără foto**
-- Fișier: `frontend/app/app/profile/page.tsx`
-- Fix: UI upload + endpoint backend + stocare (local sau S3)
+**B-10 — Profil fără foto** ✅
+- Avatar clickabil, upload local, previzualizare în timp real
 
 ### ✉️ Integrare Email (Resend.com)
 

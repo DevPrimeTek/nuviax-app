@@ -59,11 +59,11 @@ func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id uuid.UUID) (*models
 	u := &models.User{}
 	err := pool.QueryRow(ctx, `
 		SELECT id, email_encrypted, email_hash, password_hash, salt,
-		       full_name, locale, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
+		       full_name, locale, avatar_url, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
 		FROM users WHERE id = $1 AND is_active = TRUE
 	`, id).Scan(
 		&u.ID, &u.EmailEncrypted, &u.EmailHash, &u.PasswordHash, &u.Salt,
-		&u.FullName, &u.Locale, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
+		&u.FullName, &u.Locale, &u.AvatarURL, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -82,6 +82,18 @@ func UpdateUserMFA(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, se
 func UpdateUserLocale(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, locale string) error {
 	_, err := pool.Exec(ctx,
 		`UPDATE users SET locale=$1, updated_at=NOW() WHERE id=$2`, locale, userID)
+	return err
+}
+
+func UpdateUserPassword(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, newPasswordHash string) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2`, newPasswordHash, userID)
+	return err
+}
+
+func UpdateUserAvatar(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, avatarURL string) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE users SET avatar_url=$1, updated_at=NOW() WHERE id=$2`, avatarURL, userID)
 	return err
 }
 
@@ -532,6 +544,81 @@ func GetActiveAdjustments(ctx context.Context, pool *pgxpool.Pool, goalID uuid.U
 		adjs = append(adjs, ca)
 	}
 	return adjs, nil
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECAP (B-8 fix)
+// ═══════════════════════════════════════════════════════════════
+
+// SprintRecapData holds the data needed for the recap page.
+type SprintRecapData struct {
+	SprintID       uuid.UUID
+	GoalID         uuid.UUID
+	SprintName     string
+	GoalName       string
+	SprintNumber   int
+	Score          float64
+	Grade          string
+	DaysActive     int
+	DaysTotal      int
+	MRRDelta       int
+}
+
+// GetLastCompletedSprintRecap finds the most recently completed sprint for a user
+// across all their goals, and returns the data needed for the recap page.
+func GetLastCompletedSprintRecap(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (*SprintRecapData, error) {
+	r := &SprintRecapData{}
+	err := pool.QueryRow(ctx, `
+		SELECT
+			s.id, s.go_id, s.sprint_number,
+			g.name,
+			COALESCE(sr.score_value, 0),
+			COALESCE(sr.grade, 'C'),
+			CAST(EXTRACT(EPOCH FROM (s.end_date - s.start_date)) / 86400 AS INT),
+			(
+				SELECT COUNT(DISTINCT task_date)
+				FROM daily_tasks
+				WHERE sprint_id = s.id AND completed = TRUE
+			)
+		FROM sprints s
+		JOIN global_objectives g ON g.id = s.go_id
+		LEFT JOIN sprint_results sr ON sr.sprint_id = s.id
+		WHERE g.user_id = $1 AND s.status = 'COMPLETED'
+		ORDER BY s.end_date DESC
+		LIMIT 1
+	`, userID).Scan(
+		&r.SprintID, &r.GoalID, &r.SprintNumber,
+		&r.GoalName,
+		&r.Score, &r.Grade,
+		&r.DaysTotal, &r.DaysActive,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	r.SprintName = fmt.Sprintf("Etapa %d", r.SprintNumber)
+	return r, nil
+}
+
+// GetLastCompletedSprintForGoal finds the most recently completed sprint for a specific goal.
+func GetLastCompletedSprintForGoal(ctx context.Context, pool *pgxpool.Pool, goalID, userID uuid.UUID) (*models.Sprint, error) {
+	s := &models.Sprint{}
+	err := pool.QueryRow(ctx, `
+		SELECT s.id, s.go_id, s.sprint_number, s.start_date, s.end_date, s.status, s.created_at
+		FROM sprints s
+		JOIN global_objectives g ON g.id = s.go_id
+		WHERE s.go_id = $1 AND g.user_id = $2 AND s.status = 'COMPLETED'
+		ORDER BY s.sprint_number DESC
+		LIMIT 1
+	`, goalID, userID).Scan(
+		&s.ID, &s.GoalID, &s.SprintNumber, &s.StartDate, &s.EndDate, &s.Status, &s.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return s, err
 }
 
 // ═══════════════════════════════════════════════════════════════

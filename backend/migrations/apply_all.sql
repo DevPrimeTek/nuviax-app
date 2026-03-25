@@ -17,28 +17,36 @@
 \echo ''
 
 -- ── Migration 001: Base Schema (12 tables) ────────────────────
-\echo '[001/006] Applying base schema (Layer -1)...'
+\echo '[001/008] Applying base schema (Layer -1)...'
 \i 001_base_schema.sql
 
 -- ── Migration 002: Layer 0 + Level 1 (3 tables) ──────────────
-\echo '[002/006] Applying Layer 0 + Level 1 (Structural Authority)...'
+\echo '[002/008] Applying Layer 0 + Level 1 (Structural Authority)...'
 \i 002_layer0_level1.sql
 
 -- ── Migration 003: Level 2 (3 tables) ────────────────────────
-\echo '[003/006] Applying Level 2 (Execution Engine)...'
+\echo '[003/008] Applying Level 2 (Execution Engine)...'
 \i 003_level2_execution.sql
 
 -- ── Migration 004: Level 3 (3 tables) ────────────────────────
-\echo '[004/006] Applying Level 3 (Adaptive Intelligence)...'
+\echo '[004/008] Applying Level 3 (Adaptive Intelligence)...'
 \i 004_level3_adaptive.sql
 
 -- ── Migration 005: Level 4 (3 tables) ────────────────────────
-\echo '[005/006] Applying Level 4 (Regulatory Authority)...'
+\echo '[005/008] Applying Level 4 (Regulatory Authority)...'
 \i 005_level4_regulatory.sql
 
 -- ── Migration 006: Level 5 (4 tables) ────────────────────────
-\echo '[006/006] Applying Level 5 (Growth Orchestration)...'
+\echo '[006/008] Applying Level 5 (Growth Orchestration)...'
 \i 006_level5_growth.sql
+
+-- ── Migration 007: Admin + Stress Test Fixes ──────────────────
+\echo '[007/008] Applying Admin Panel + P0 stress test fixes...'
+\i 007_admin_fixes.sql
+
+-- ── Migration 008: Avatar ──────────────────────────────────────
+\echo '[008/008] Applying Avatar (B-10 fix)...'
+\i 008_avatar.sql
 
 \echo ''
 \echo '══════════════════════════════════════════════════════'
@@ -78,7 +86,7 @@ FROM information_schema.triggers
 WHERE trigger_schema = 'public';
 
 \echo ''
-\echo 'Expected: 28 tables, 26 views, 1 materialized view,'
+\echo 'Expected: 29+ tables, 26+ views, 1 materialized view,'
 \echo '          10 functions, 12 triggers'
 \echo ''
 

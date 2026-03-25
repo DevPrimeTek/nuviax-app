@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -350,7 +353,21 @@ func (h *Handlers) GetGoals(c *fiber.Ctx) error {
 	if err != nil {
 		return serverError(c, err)
 	}
-	return c.JSON(goals)
+	// B-7 fix: return structured response that frontend expects
+	active := []models.Goal{}
+	waiting := []models.Goal{}
+	for _, g := range goals {
+		switch g.Status {
+		case models.GoalWaiting:
+			waiting = append(waiting, g)
+		default:
+			active = append(active, g)
+		}
+	}
+	return c.JSON(fiber.Map{
+		"goals":   active,
+		"waiting": waiting,
+	})
 }
 
 type createGoalReq struct {
@@ -460,7 +477,11 @@ func (h *Handlers) GetGoal(c *fiber.Ctx) error {
 		checkpoints, _ = db.GetSprintCheckpoints(c.Context(), h.db, currentSprint.ID)
 	}
 
+	// B-3 fix: use sprint end date (30-day sprint) not goal end date (can be 90+ days)
 	daysLeft := int(time.Until(goal.EndDate).Hours() / 24)
+	if currentSprint != nil {
+		daysLeft = int(time.Until(currentSprint.EndDate).Hours() / 24)
+	}
 	progressPct := h.engine.ComputeProgressPct(c.Context(), goalID)
 
 	resp := models.GoalDetailResponse{
@@ -744,6 +765,66 @@ func (h *Handlers) AddPersonalTask(c *fiber.Ctx) error {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// RECAP (B-8 fix)
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/v1/recap/current — returns data for the most recently completed sprint.
+// The recap page uses this to display sprint summary + reflection questions.
+func (h *Handlers) GetCurrentRecap(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	recap, err := db.GetLastCompletedSprintRecap(c.Context(), h.db, userID)
+	if err != nil {
+		if err == db.ErrNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "Nu există nicio etapă finalizată."})
+		}
+		return serverError(c, err)
+	}
+
+	streak, _ := db.GetStreakDays(c.Context(), h.db, userID)
+	nextSprintName := fmt.Sprintf("Etapa %d", recap.SprintNumber+1)
+
+	return c.JSON(fiber.Map{
+		"sprint_name":    recap.SprintName,
+		"score":          int(recap.Score * 100),
+		"grade":          recap.Grade,
+		"days_active":    recap.DaysActive,
+		"days_total":     recap.DaysTotal,
+		"streak":         streak,
+		"mrr_delta":      recap.MRRDelta,
+		"next_sprint_name": nextSprintName,
+		"goal_id":        recap.GoalID,
+		"sprint_id":      recap.SprintID,
+	})
+}
+
+// POST /api/v1/goals/:id/recap — saves reflection for the last completed sprint.
+func (h *Handlers) SaveGoalRecap(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	goalID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return badRequest(c, "ID invalid.")
+	}
+
+	var req reflectionReq
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "Date invalide.")
+	}
+
+	sprint, err := db.GetLastCompletedSprintForGoal(c.Context(), h.db, goalID, userID)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Nu există nicio etapă finalizată pentru acest obiectiv."})
+	}
+
+	if err := db.SaveReflection(c.Context(), h.db, sprint.ID, userID, req.Q1Answer, req.Q2Answer, req.EnergyLevel); err != nil {
+		return serverError(c, err)
+	}
+
+	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
+	return c.JSON(fiber.Map{"message": "Recapitulare salvată."})
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SPRINTS
 // ═══════════════════════════════════════════════════════════════
 
@@ -909,8 +990,10 @@ func (h *Handlers) SetPause(c *fiber.Ctx) error {
 }
 
 type energyReq struct {
-	GoalID string `json:"goal_id" validate:"required,uuid"`
-	Level  string `json:"level" validate:"required,oneof=low normal high"`
+	// B-5 fix: goal_id is optional — if omitted, the first active goal is used.
+	GoalID string `json:"goal_id"`
+	// Level accepts "low", "mid"/"normal", "hi"/"high" (frontend and backend variants).
+	Level  string `json:"level" validate:"required"`
 }
 
 func (h *Handlers) SetEnergy(c *fiber.Ctx) error {
@@ -920,13 +1003,38 @@ func (h *Handlers) SetEnergy(c *fiber.Ctx) error {
 		return badRequest(c, "Date invalide.")
 	}
 
-	goalID, err := uuid.Parse(req.GoalID)
-	if err != nil {
-		return badRequest(c, "ID obiectiv invalid.")
+	// B-5 fix: normalise frontend level names to backend expected values
+	normalised := req.Level
+	switch req.Level {
+	case "mid":
+		normalised = "normal"
+	case "hi":
+		normalised = "high"
+	}
+
+	// B-5 fix: auto-detect active goal when goal_id not provided
+	var goalID uuid.UUID
+	if req.GoalID != "" {
+		var err error
+		goalID, err = uuid.Parse(req.GoalID)
+		if err != nil {
+			return badRequest(c, "ID obiectiv invalid.")
+		}
+	} else {
+		goals, _ := db.GetGoalsByUser(c.Context(), h.db, userID)
+		for _, g := range goals {
+			if g.Status == models.GoalActive {
+				goalID = g.ID
+				break
+			}
+		}
+		if goalID == uuid.Nil {
+			return c.Status(422).JSON(fiber.Map{"error": "Nu ai niciun obiectiv activ."})
+		}
 	}
 
 	adjType := models.AdjType("")
-	switch req.Level {
+	switch normalised {
 	case "low":
 		adjType = models.AdjEnergyLow
 	case "high":
@@ -977,7 +1085,8 @@ func (h *Handlers) GetSettings(c *fiber.Ctx) error {
 	return c.JSON(models.UserSettings{
 		UserID:            userID,
 		Locale:            user.Locale,
-		NotificationsOn:   true,  // TODO: din tabel settings
+		AvatarURL:         user.AvatarURL,
+		NotificationsOn:   true,
 		ReminderHour:      8,
 		SprintReflection:  true,
 		ShowProgressChart: true,
@@ -1023,11 +1132,99 @@ func (h *Handlers) ExportData(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	goals, _ := db.GetGoalsByUser(c.Context(), h.db, userID)
 	return c.JSON(fiber.Map{
-		"user_id":    userID,
-		"goals":      goals,
+		"user_id":     userID,
+		"goals":       goals,
 		"exported_at": time.Now().UTC(),
-		"format":     "json/v1",
+		"format":      "json/v1",
 	})
+}
+
+// POST /api/v1/settings/avatar — upload profile photo (B-10 fix)
+// Accepts multipart/form-data with field "avatar" (JPEG/PNG, max 2 MB).
+// Stores file at /app/uploads/avatars/{userID}.{ext}
+func (h *Handlers) UploadAvatar(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		return badRequest(c, "Fișierul avatar este necesar.")
+	}
+
+	// Limit 2 MB
+	if file.Size > 2*1024*1024 {
+		return badRequest(c, "Imaginea trebuie să fie mai mică de 2 MB.")
+	}
+
+	// Only JPEG and PNG
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		return badRequest(c, "Sunt acceptate doar imagini JPEG sau PNG.")
+	}
+
+	uploadDir := "/app/uploads/avatars"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return serverError(c, err)
+	}
+
+	filename := fmt.Sprintf("%s%s", userID.String(), ext)
+	dest := filepath.Join(uploadDir, filename)
+
+	if err := c.SaveFile(file, dest); err != nil {
+		return serverError(c, err)
+	}
+
+	avatarURL := fmt.Sprintf("/api/v1/settings/avatar/%s", filename)
+	if err := db.UpdateUserAvatar(c.Context(), h.db, userID, avatarURL); err != nil {
+		return serverError(c, err)
+	}
+
+	return c.JSON(fiber.Map{"avatar_url": avatarURL, "message": "Avatar actualizat."})
+}
+
+// GET /api/v1/settings/avatar/:filename — serve uploaded avatar (B-10 fix)
+func (h *Handlers) ServeAvatar(c *fiber.Ctx) error {
+	filename := filepath.Base(c.Params("filename")) // prevent path traversal
+	filePath := filepath.Join("/app/uploads/avatars", filename)
+	return c.SendFile(filePath)
+}
+
+// POST /api/v1/settings/password — change user password (B-9 fix)
+func (h *Handlers) ChangePassword(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "Date invalide.")
+	}
+	if len(req.NewPassword) < 8 {
+		return badRequest(c, "Parola nouă trebuie să aibă cel puțin 8 caractere.")
+	}
+
+	user, err := db.GetUserByID(c.Context(), h.db, userID)
+	if err != nil {
+		return serverError(c, err)
+	}
+
+	if !crypto.CheckPassword(req.CurrentPassword, user.PasswordHash) {
+		return c.Status(401).JSON(fiber.Map{"error": "Parola curentă este incorectă."})
+	}
+
+	newHash, err := crypto.HashPassword(req.NewPassword)
+	if err != nil {
+		return serverError(c, err)
+	}
+
+	if err := db.UpdateUserPassword(c.Context(), h.db, userID, newHash); err != nil {
+		return serverError(c, err)
+	}
+
+	db.WriteAudit(c.Context(), h.db, &userID, "USER_CHANGE_PASSWORD",
+		crypto.SHA256Hex(c.IP()), crypto.SHA256Hex(c.Get("User-Agent")))
+
+	return c.JSON(fiber.Map{"message": "Parola a fost schimbată cu succes."})
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1039,18 +1236,34 @@ type analyzeGOReq struct {
 }
 
 // AnalyzeGO verifică dacă textul unui GO este suficient de specific,
-// măsurabil și delimitat în timp. Returnează o întrebare de clarificare
-// dacă obiectivul este vag — fără AI, bazat pe reguli lingvistice.
+// măsurabil și delimitat în timp.
+// B-2 fix: folosește Claude Haiku dacă ANTHROPIC_API_KEY este configurat,
+// altfel cade pe analiza rule-based.
 func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 	var req analyzeGOReq
 	if err := c.BodyParser(&req); err != nil {
 		return badRequest(c, "Date invalide.")
 	}
 
-	text := strings.ToLower(strings.TrimSpace(req.Text))
-	if text == "" {
+	originalText := strings.TrimSpace(req.Text)
+	if originalText == "" {
 		return badRequest(c, "Textul GO-ului este gol.")
 	}
+
+	// B-2: Try AI analysis first
+	needsClarification, question, hint, aiUsed, _ := h.engine.AnalyzeGOText(c.Context(), originalText)
+	if aiUsed {
+		return c.JSON(fiber.Map{
+			"needs_clarification": needsClarification,
+			"question":            question,
+			"hint":                hint,
+			"source":              "ai",
+		})
+	}
+
+	// Fallback: rule-based analysis
+	text := strings.ToLower(originalText)
+	_ = text // used below
 
 	// Termeni vagi — nu descriu un rezultat concret
 	vagueTerms := []string{
@@ -1092,14 +1305,12 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 			break
 		}
 	}
-	// Verifică cuvinte cheie de măsurabilitate
 	for _, kw := range measurableKeywords {
 		if strings.Contains(text, kw) {
 			hasMeasurable = true
 			break
 		}
 	}
-	// Verifică numere reale (min 2 cifre consecutive sau număr zecimal)
 	if !hasMeasurable && reNumberReal.MatchString(text) {
 		hasMeasurable = true
 	}
@@ -1110,19 +1321,19 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 		}
 	}
 
-	needsClarification := isVague || !hasMeasurable || !hasTime
-
-	question := ""
-	hint := ""
-	if needsClarification {
-		question = "Pentru a-ți crea cel mai bun plan personalizat, ajută-mă să înțeleg mai bine: ce rezultat concret și măsurabil vrei să obții, și până când?"
-		hint = "Ex: Vreau să slăbesc 10 kg până în septembrie 2026 / Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026 / Vreau să economisesc 5.000 EUR până la sfârșitul anului"
+	rbNeedsClarification := isVague || !hasMeasurable || !hasTime
+	rbQuestion := ""
+	rbHint := ""
+	if rbNeedsClarification {
+		rbQuestion = "Pentru a-ți crea cel mai bun plan personalizat, ajută-mă să înțeleg mai bine: ce rezultat concret și măsurabil vrei să obții, și până când?"
+		rbHint = "Ex: Vreau să slăbesc 10 kg până în septembrie 2026 / Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026 / Vreau să economisesc 5.000 EUR până la sfârșitul anului"
 	}
 
 	return c.JSON(fiber.Map{
-		"needs_clarification": needsClarification,
-		"question":            question,
-		"hint":                hint,
+		"needs_clarification": rbNeedsClarification,
+		"question":            rbQuestion,
+		"hint":                rbHint,
+		"source":              "rules",
 	})
 }
 

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/components/layout/AppShell'
 
@@ -12,6 +12,10 @@ export default function ProfilePage() {
   const [lang, setLang]       = useState<Lang>('ro')
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
+  // B-10: avatar
+  const [avatarUrl, setAvatarUrl] = useState<string|null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const storedName   = localStorage.getItem('nv_profile_name')   || ''
@@ -21,12 +25,32 @@ export default function ProfilePage() {
     setDomain(storedDomain)
     setLang(storedLang)
 
-    // Fetch locale din backend
+    // Fetch locale + avatar din backend
     fetch('/api/proxy/settings')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.locale) setLang(d.locale as Lang) })
+      .then(d => {
+        if (d?.locale) setLang(d.locale as Lang)
+        if (d?.avatar_url) setAvatarUrl(d.avatar_url)
+      })
       .catch(() => {})
   }, [])
+
+  // B-10: handle avatar file selection
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    const form = new FormData()
+    form.append('avatar', file)
+    try {
+      const res = await fetch('/api/proxy/settings/avatar', { method: 'POST', body: form })
+      if (res.ok) {
+        const d = await res.json()
+        setAvatarUrl(d.avatar_url)
+      }
+    } catch { /* ignore */ }
+    setUploadingAvatar(false)
+  }
 
   async function save() {
     setSaving(true)
@@ -53,16 +77,51 @@ export default function ProfilePage() {
         <div className="greet-title" style={{marginBottom:4}}>Profilul meu</div>
         <div style={{fontSize:14,color:'var(--ink3)',marginBottom:24}}>Datele tale de bază</div>
 
-        {/* Avatar */}
+        {/* Avatar — B-10: clickable to upload */}
         <div style={{display:'flex',justifyContent:'center',marginBottom:28}}>
-          <div style={{
-            width:72, height:72, borderRadius:'50%',
-            background:'linear-gradient(135deg, var(--l0), var(--l2))',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize:26, fontWeight:800, color:'white', fontFamily:'var(--ff-h)',
-          }}>
-            {initials}
+          <div
+            onClick={()=>fileInputRef.current?.click()}
+            style={{position:'relative',cursor:'pointer'}}
+            title="Schimbă fotografia de profil"
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="Avatar" style={{
+                width:72, height:72, borderRadius:'50%', objectFit:'cover',
+                border:'2px solid var(--line)'
+              }}/>
+            ) : (
+              <div style={{
+                width:72, height:72, borderRadius:'50%',
+                background:'linear-gradient(135deg, var(--l0), var(--l2))',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:26, fontWeight:800, color:'white', fontFamily:'var(--ff-h)',
+              }}>
+                {uploadingAvatar ? (
+                  <div className="spinner" style={{width:20,height:20,borderTopColor:'white'}}/>
+                ) : initials}
+              </div>
+            )}
+            {/* Camera icon overlay */}
+            <div style={{
+              position:'absolute', bottom:0, right:0,
+              width:22, height:22, borderRadius:'50%',
+              background:'var(--l0)', border:'2px solid var(--bg)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+            }}>
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png"
+            style={{display:'none'}}
+            onChange={handleAvatarChange}
+          />
         </div>
 
         {/* Câmpuri */}

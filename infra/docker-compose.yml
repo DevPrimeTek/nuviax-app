@@ -24,6 +24,8 @@ volumes:
     name: nuviax_pg_data
   nuviax_redis_data:
     name: nuviax_redis_data
+  nuviax_uploads:
+    name: nuviax_uploads
 
 services:
 
@@ -100,11 +102,20 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       # CORS
       ALLOWED_ORIGINS: https://nuviax.app,https://www.nuviax.app
+      # AI (Claude Haiku) — graceful degradation if not set
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Email (Resend.com)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@nuviax.app}
+      # App environment
+      APP_ENV: ${APP_ENV:-production}
       # Nginx proxy — SSL auto prin acme-companion existent
       VIRTUAL_HOST: api.nuviax.app
       VIRTUAL_PORT: "8080"
       LETSENCRYPT_HOST: api.nuviax.app
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - nuviax_uploads:/app/uploads
     depends_on:
       nuviax_db:
         condition: service_healthy

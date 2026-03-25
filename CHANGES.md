@@ -1,108 +1,163 @@
-# NUViaX — Fișiere Corectate
+# NuviaX — Changelog
 
-## ✅ Modificări Implementate
+Format: `[vX.X.X] — Data — Descriere`
+Convenție: **feat** (funcționalitate nouă), **fix** (bug), **refactor**, **docs**, **chore** (infra/config)
 
-### 1. Nomenclatură Consistentă
-- **Schimbat**: `web` → `app` în toate fișierele
-- **Imagini Docker**: `nuviax-web` → `nuviax-app`
-- **Servicii**: `nuviax_web` → `nuviax_app`
-- **Căi**: `apps/web` → `frontend/app`
+---
 
-### 2. Fișiere Corectate
+## [v10.2.0] — 2026-03-24
 
-#### `.github/workflows/`
-- ✓ `deploy.yml` - Backend deployment workflow
-- ✓ `deploy-frontend.yml` - Frontend deployment workflow (app + landing)
+### fix: 10 Bug Fixes (B-2 through B-11) + AI Integration
 
-#### `backend/`
-- ✓ `Dockerfile` - Multi-stage build optimizat
-- ✓ `.dockerignore` - Exclude fișiere inutile din build
+**Bug Fixes:**
+- **B-3** — Sprint zile: `daysLeft` folosea `goal.EndDate` (89 zile) → acum folosește `sprint.EndDate` (30 zile)
+- **B-7** — Pagina Obiective: `GetGoals` returna array plat → acum returnează `{goals:[], waiting:[]}`
+- **B-8** — Pagina Recap: `GET /recap/current` + `POST /goals/:id/recap` implementate complet
+- **B-11** — CSS variabila `--ff-h` adăugată în `globals.css` (folosită în onboarding + profil)
+- **B-5** — Energia zilnică: endpoint corectat `/today/energy` → `/context/energy`; mapare nivel `mid→normal`, `hi→high`; `goal_id` auto-detectat server-side
+- **B-6** — Activități personale: adăugat input + buton "+" în `today/page.tsx` → `POST /today/personal`
+- **B-9** — Setări conectate: schimbare parolă (modal + `POST /settings/password`) + export date (JSON download)
+- **B-2** — Analiza GO: `AnalyzeGO` folosește Claude Haiku cu fallback pe analiza rule-based
+- **B-4** — Activități zilnice: `generateTaskTexts` folosește Claude Haiku cu fallback pe template-uri statice
+- **B-10** — Profil foto: avatar clickabil → upload `POST /settings/avatar`, stocare locală `/app/uploads/avatars/`
 
-#### `frontend/app/`
-- ✓ `Dockerfile` - Next.js build pentru aplicația principală
-  - Path corect: `frontend/app` (nu `apps/web`)
+### feat: Integrare Claude Haiku 4.5
+- `internal/ai/ai.go` — client HTTP direct (fără SDK), model `claude-haiku-4-5-20251001`
+- Metode: `GenerateTaskTexts` (activități zilnice contextualizate) + `AnalyzeGO` (clasificare SMART)
+- Graceful degradation: dacă `ANTHROPIC_API_KEY` lipsește → fallback automat pe reguli
+- Engine expune `AnalyzeGOText()` public pentru handlers
 
-#### `frontend/landing/`
-- ✓ `Dockerfile` - Next.js build pentru landing page
-  - Path corect: `frontend/landing` (nu `apps/landing`)
+### chore: Migration 008
+- `avatar_url VARCHAR(500)` adăugat pe `users`
+- Director upload: `/app/uploads/avatars/`
 
-#### `infra/`
-- ✓ `docker-compose.yml` - Configurație completă (DB, Redis, API, App, Landing)
-- ✓ `docker-compose.frontend.yml` - Overlay pentru frontend cu Traefik
-- ✓ `.env.example` - Template pentru variabile de mediu
-- ✓ `init-db.sql` - Schema PostgreSQL inițială
-- ✓ `deploy.sh` - Script de deployment și health check
-- ✓ `GITHUB_SECRETS.md` - Documentație pentru secrets
+---
 
-#### Root
-- ✓ `README.md` - Documentație completă
-- ✓ `.gitignore` - Exclude .env, .keys, etc.
+## [v10.1.0] — 2026-03-24
 
-## 📋 Pași pentru Aplicare
+### feat: Admin Panel complet
+- Pagină admin frontend (`/admin`) cu 4 tab-uri: Statistici, Utilizatori, Jurnal Audit, Sistem
+- Backend: 8 rute `/api/v1/admin/*` securizate cu `AdminOnly` middleware (`is_admin=TRUE`)
+- Statistici platformă: 20+ metrici (utilizatori, obiective, sprinturi, SRM, badge-uri)
+- Management utilizatori: dezactivare / activare / promovare admin
+- Resetare DB dev: `POST /admin/db/reset` (disponibil doar `APP_ENV=development`)
+- Sistem: DB pool stats, scheduler jobs, versiune PostgreSQL
 
-### 1. Backup Repository Existent
-```bash
-cd /path/to/local/nuviax-app
-git checkout -b backup-before-corrections
-git push origin backup-before-corrections
-```
+### fix: 5 Critical Gaps din Stress Test (P0)
+- **GAP #14** — Pauze retroactive (max 48h); câmp `retroactive_start_date` în SetPause
+- **GAP #15** — Detecție regresie (valoare sub sprint start); tabela `regression_events`
+- **GAP #20** — Freeze traiectorie în Stabilization Mode; `FreezeExpectedTrajectory()`
+- **GAP #8** — ALI per-goal vs total; breakdown complet în răspuns SRM
+- **GAP #13** — ALI_current vs ALI_projected; câmpuri separate în response
 
-### 2. Aplicare Fișiere Corectate
-```bash
-# Copiază fișierele din acest folder în repository-ul tău local
-cp -r nuviax-corrected-files/.github .
-cp -r nuviax-corrected-files/backend/Dockerfile backend/
-cp -r nuviax-corrected-files/backend/.dockerignore backend/
-cp -r nuviax-corrected-files/frontend/app/Dockerfile frontend/app/
-cp -r nuviax-corrected-files/frontend/landing/Dockerfile frontend/landing/
-cp -r nuviax-corrected-files/infra/* infra/
-cp nuviax-corrected-files/README.md .
-cp nuviax-corrected-files/.gitignore .
-```
+### feat: ConfirmSRML3 — implementat complet
+- Suspendă obiectivul (status PAUSED) + eveniment SRM L3 + freeze traiectorie
 
-### 3. Verificare Modificări
-```bash
-git status
-git diff
-```
+### chore: Migration 007
+- `is_admin` pe `users`; `retroactive` pe `context_adjustments`
+- Tabele noi: `regression_events`, `ali_snapshots`
+- Coloane sprint: `expected_pct_frozen`, `frozen_expected_pct`
+- Views admin: `v_admin_platform_stats`, `v_admin_user_list`
+- Funcție: `fn_dev_reset_data(admin_id)` — dev only, cu protecție is_admin
 
-### 4. Commit & Push
-```bash
-git add .
-git commit -m "fix: correct nomenclature and structure (web → app)"
-git push origin main
-```
+### docs
+- `CLAUDE.md` — fișier context master pentru continuarea sesiunilor (citit la start)
+- `CHANGES.md` — rescris ca changelog structurat și complet
 
-### 5. Configurare GitHub Secrets
-Urmează instrucțiunile din `infra/GITHUB_SECRETS.md`
+---
 
-### 6. Deploy
-GitHub Actions va detecta push-ul și va rula automat deployment.
+## [v10.0.0] — 2026-03-19
 
-## ⚠️ Important
+### feat: NUViaX Framework REV 5.6 — 40/40 componente implementate
+- Engine Go cu 6 fișiere: `engine.go`, `level1_structural.go` → `level5_growth.go`
+- **Layer 0 (C1-C8):** Drift, Chaos, Continuity, GORI, Visibility, Priority
+- **Level 1 (C9-C18):** Sprint Architecture, Checkpoints, Smart Reactivation
+- **Level 2 (C19-C25):** Execution Matrix, Daily Stack, Progress, Velocity
+- **Level 3 (C26-C31):** Context Events, Energy, Pause Analytics, Rhythm, Consistency, Behavioral
+- **Level 4 (C32-C36):** Adaptive Context, SRM, Stabilization, Reactivation, Regulatory
+- **Level 5 (C37-C40):** Evolution Detection, Ceremonies, Achievements, Visualization
 
-1. **NU ȘTERGE** fișierele existente fără backup
-2. **VERIFICĂ** că toate path-urile sunt corecte
-3. **CONFIGUREAZĂ** GitHub Secrets înainte de push
-4. **TESTEAZĂ** local cu `docker compose` înainte de deploy
+### feat: Level 5 Growth Orchestration
+- `MarkEvolutionSprint` — detecție delta ≥5% → inserare `evolution_sprints`
+- `GenerateCompletionCeremony` — tier BRONZE/SILVER/GOLD/PLATINUM din sprint score
+- `GetUserAchievements` — query `achievement_badges` cu 10 tipuri de badge
+- `GenerateProgressVisualization` — trajectory data + fallback snapshot live
 
-## 🔍 Verificare Post-Deploy
+### feat: Frontend componente Level 4/5
+- `CeremonyModal.tsx` — tier colors, mark-viewed POST, achievement list
+- `DashboardClientLayer.tsx` — polls `/ceremonies/unviewed` la mount
+- `SRMWarning.tsx` — bannere L1 (galben) / L2 (portocaliu) / L3 (roșu) cu confirmare
+- `ProgressCharts.tsx` — LineChart real vs așteptat + BarChart delta (Recharts 3.8)
+- `GoalTabs.tsx` — tab switcher client Prezentare / Progres
+- `achievements/page.tsx` — badge grid grupat pe categorii
 
-```bash
-# Health checks
-curl https://api.nuviax.app/health
-curl https://nuviax.app
-curl https://nuviaxapp.com
+### chore: Migration 006 (Level 5 Growth)
+- Tabele: `growth_milestones`, `achievement_badges`, `completion_ceremonies`, `growth_trajectories`
+- 7 views de analiză creștere
+- Materialized view: `mv_user_stats` (refresh orar)
+- Funcții: `fn_compute_growth_trajectory`, `fn_award_achievement_if_earned`
+- Triggers: `trg_milestone_check`, `trg_achievement_award`, `trg_trajectory_snapshot`
 
-# Docker logs pe server
-docker logs nuviax_api
-docker logs nuviax_app
-docker logs nuviax_landing
-```
+### chore: Scheduler — 10 background jobs (cron, UTC)
+- `00:00` — Generare activități zilnice
+- `23:50` — Calcul scor zilnic
+- `23:55` — Verificare progres
+- `00:01` — Închidere etape expirate
+- `*/90d 02:00` — Recalibrare relevanță
+- `01:00` — Detecție evolution sprint
+- `01:05` — Generare ceremonies
+- `00:05` — Progres reactivare obiective
+- `orar` — Verificare timeout SRM + Refresh matview
 
-## 📞 Support
+---
 
-În caz de probleme, verifică:
-- GitHub Actions logs: https://github.com/DevPrimeTek/nuviax-app/actions
-- Docker logs pe server
-- `infra/.env` pentru configurație
+## [v9.x] — 2026-03-17 — 2026-03-18
+
+### docs: Analiză completă 11 puncte (ANALYSIS_REPORT.md)
+- Bug-uri critice identificate: B-3 (sprint days calcul greșit), B-7 (goals API mismatch), B-8 (recap 404)
+- Bug-uri majore: B-5 (energy nivel), B-6 (personal tasks add), B-9 (settings incomplete), B-11 (CSS variabile lipsă)
+- Bug-uri medii: B-2 (AI analysis), B-4 (task generation static), B-10 (foto profil)
+- Nota: identificate în această versiune, nerezolvate
+
+### feat: Framework REV 5.6 — baza Level 1-4
+- Engine Level 1-4 implementat
+- Migrations 001-005 aplicate (23 tabele, views, triggers)
+- Handlers: auth, goals, tasks, sprints, context, settings
+- Scheduler parțial (jobs 1-5)
+
+---
+
+## [v8.x – v1.x] — 2026-03-13 — 2026-03-17
+
+### Early development — 10-15 iterații (nesistematizate)
+
+**Arhitectură și infrastructură:**
+- Structură Go (Fiber v2) + Next.js 14 inițializată
+- Docker Compose: PostgreSQL 16 + Redis 7 + Go API + Next.js App + Landing
+- GitHub Actions CI/CD: push `main` → build → DockerHub → SSH deploy VPS `83.143.69.103`
+- Proxy: nginx-proxy + acme-companion (shared cu alte proiecte pe VPS)
+- Domenii: `nuviax.app`, `api.nuviax.app`, `nuviaxapp.com`
+
+**Securitate:**
+- JWT RS256 (RSA 4096-bit), access token 15min, refresh 7 zile
+- Criptare email AES-256-GCM
+- Hashing parole PBKDF2 cu salt
+- Rate limiting: 100 req/min global, 10 req/min auth endpoints
+- Session management cu device fingerprinting + IP subnet
+
+**Frontend baza:**
+- Onboarding wizard (3 obiective cu activare secvențială)
+- Dashboard cu sprint card, stats, SRM warnings
+- Auth pages (login, register)
+- Today/tasks, goals list/detail, settings, profile
+
+**Corecții structurale:**
+- Corectare nomenclatură: `web` → `app` în toate containerele și workflow-urile
+- Fix Dockerfile handling `public/` folder
+- Fix 404 pe deploy inițial
+- README structurat cu documentație completă
+
+---
+
+*Bug-urile identificate în v9.x rămân deschise pentru rezolvare în v10.2+*
+*Referință completă bug-uri: `ANALYSIS_REPORT.md`*

@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/db"
 	"github.com/devprimetek/nuviax-app/internal/models"
 )
@@ -31,11 +32,14 @@ import (
 type Engine struct {
 	db    *pgxpool.Pool
 	redis *redis.Client
+	ai    *ai.Client // optional — nil when ANTHROPIC_API_KEY is not set
 }
 
-// New creează un engine nou cu pool-ul de DB și clientul Redis
+// New creează un engine nou cu pool-ul de DB și clientul Redis.
+// Dacă ANTHROPIC_API_KEY este configurat, activează AI (Claude Haiku).
 func New(pool *pgxpool.Pool, rdb *redis.Client) *Engine {
-	return &Engine{db: pool, redis: rdb}
+	aiClient, _ := ai.New() // nil on missing key — graceful degradation
+	return &Engine{db: pool, redis: rdb, ai: aiClient}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -118,6 +122,17 @@ func (e *Engine) GenerateDailyTasks(ctx context.Context, userID uuid.UUID, date 
 // Returnează: poate fi activat, motivul dacă nu poate
 func (e *Engine) ValidateGoalActivation(ctx context.Context, userID uuid.UUID, newGoal *models.Goal) (bool, string) {
 	return e.validateActivation(ctx, userID, newGoal)
+}
+
+// AnalyzeGOText analizează un obiectiv folosind Claude Haiku (B-2 fix).
+// Dacă AI nu e disponibil, returnează (false, nil) — caller folosește analiza rule-based.
+// Returnează: (needsClarification, question, hint, aiUsed, error)
+func (e *Engine) AnalyzeGOText(ctx context.Context, goalText string) (needsClarification bool, question, hint string, aiUsed bool, err error) {
+	if e.ai == nil {
+		return false, "", "", false, nil
+	}
+	needsClarification, question, hint, err = e.ai.AnalyzeGO(ctx, goalText)
+	return needsClarification, question, hint, true, err
 }
 
 // ComputeProgressPct returnează progresul vizual (0-100) pentru un obiectiv

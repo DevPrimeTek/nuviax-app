@@ -154,9 +154,10 @@ func NewServer(cfg Config) *fiber.App {
 	p.Get("/achievements",             h.GetUserAchievements)
 	p.Get("/achievements/progress",    h.GetAchievementProgress)
 
-	// SRM — Strategic Reset Mode (Level 4 — C33-C36)
+	// SRM — Strategic Reset Mode (Level 4 — C33-C36) — G-12
 	p.Get("/srm/status/:goalId",       h.GetSRMStatus)
-	p.Post("/srm/confirm-l3/:goalId",  h.ConfirmSRML3)
+	p.Post("/srm/confirm-l2/:goalId",  h.ConfirmSRML2)  // single confirm
+	p.Post("/srm/confirm-l3/:goalId",  h.ConfirmSRML3)  // double confirm (auto-pauses goal)
 
 	// Progress visualization (Level 5 — C40)
 	p.Get("/goals/:id/visualize",      h.GetProgressVisualization)

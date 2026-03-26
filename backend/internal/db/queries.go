@@ -257,6 +257,20 @@ func CreateSprint(ctx context.Context, pool *pgxpool.Pool,
 	return s, err
 }
 
+func GetSprintByID(ctx context.Context, pool *pgxpool.Pool, sprintID uuid.UUID) (*models.Sprint, error) {
+	s := &models.Sprint{}
+	err := pool.QueryRow(ctx, `
+		SELECT id, go_id, sprint_number, start_date, end_date, status, created_at
+		FROM sprints WHERE id = $1
+	`, sprintID).Scan(
+		&s.ID, &s.GoalID, &s.SprintNumber, &s.StartDate, &s.EndDate, &s.Status, &s.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return s, err
+}
+
 func GetCurrentSprint(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID) (*models.Sprint, error) {
 	s := &models.Sprint{}
 	err := pool.QueryRow(ctx, `

@@ -52,6 +52,12 @@ func (s *Scheduler) Start() {
 	// Job 5 — Recalibrare relevanță (la 90 de zile, 02:00 UTC)
 	s.cron.AddFunc("0 2 */90 * *", s.jobRecalibrateRelevance)
 
+	// Job 11 — Detecție stagnare (23:58 UTC zilnic) — G-5
+	s.cron.AddFunc("58 23 * * *", s.jobDetectStagnation)
+
+	// Job 12 — Propunere reactivare obiective PAUSED (00:10 UTC zilnic) — G-7
+	s.cron.AddFunc("10 0 * * *", s.jobProposeReactivation)
+
 	// ── Level 4 & 5 jobs ──────────────────────────────────────
 
 	// Job 6 — Detecție evoluție sprint (01:00 UTC zilnic)
@@ -347,8 +353,9 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// JOB 5 — Recalibrare relevanță (la 90 zile, 02:00 UTC)
-// Actualizează relevanța obiectivelor bazat pe comportament
+// JOB 5 — Recalibrare relevanță (la 90 zile, 02:00 UTC) — G-9
+// Actualizează relevanța obiectivelor bazat pe comportamentul ultimelor 90 zile.
+// Stochează health_90d și chaos_index în go_metrics.
 // ═══════════════════════════════════════════════════════════════
 func (s *Scheduler) jobRecalibrateRelevance() {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
@@ -367,7 +374,7 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 	// Curăță audit log mai vechi de 180 zile
 	s.db.Exec(ctx, `DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '180 days'`)
 
-	// Calculează scorul de sănătate pe 90 zile (opac)
+	// G-9: Calculează scorul de sănătate pe 90 zile + Chaos Index per sprint activ
 	rows, err := s.db.Query(ctx, `
 		SELECT go_id,
 			   COUNT(*) FILTER (WHERE completed) AS done,
@@ -384,14 +391,44 @@ func (s *Scheduler) jobRecalibrateRelevance() {
 			var goalID uuid.UUID
 			var done, total int
 			rows.Scan(&goalID, &done, &total)
-			if total > 0 {
-				healthScore := float64(done) / float64(total)
+			if total == 0 {
+				continue
+			}
+
+			healthScore := float64(done) / float64(total)
+			s.db.Exec(ctx, `
+				INSERT INTO go_metrics (go_id, metric_key, metric_value)
+				VALUES ($1, 'health_90d', $2)
+			`, goalID, healthScore)
+
+			// G-9: also store Chaos Index for the active sprint
+			sprint, sprintErr := db.GetCurrentSprint(ctx, s.db, goalID)
+			if sprintErr == nil && sprint != nil {
+				ci, triggerL2 := s.engine.CheckChaosIndex(ctx, sprint.ID)
 				s.db.Exec(ctx, `
 					INSERT INTO go_metrics (go_id, metric_key, metric_value)
-					VALUES ($1, 'health_90d', $2)
-				`, goalID, healthScore)
-				recalibrated++
+					VALUES ($1, 'chaos_index', $2)
+				`, goalID, ci)
+
+				// G-3: auto-trigger SRM L2 if chaos index >= 0.40 (only if no L2 in last 7 days)
+				if triggerL2 {
+					s.db.Exec(ctx, `
+						INSERT INTO srm_events (id, go_id, srm_level, trigger_reason)
+						SELECT gen_random_uuid(), $1, 'L2', 'chaos_index_threshold'
+						WHERE NOT EXISTS (
+							SELECT 1 FROM srm_events
+							WHERE go_id = $1 AND srm_level = 'L2'
+							  AND triggered_at > NOW() - INTERVAL '7 days'
+							  AND revoked_at IS NULL
+						)
+					`, goalID)
+					logger.Info("Job: SRM L2 triggered by Chaos Index",
+						zap.String("goal_id", goalID.String()),
+						zap.Float64("chaos_index", ci))
+				}
 			}
+
+			recalibrated++
 		}
 		logger.Info("Job: RecalibrateRelevance done",
 			zap.Int("recalibrated", recalibrated))
@@ -635,6 +672,103 @@ func (s *Scheduler) autoCompleteCheckpoints(ctx context.Context) {
 			WHERE s.id = cp.sprint_id AND dt.task_type = 'MAIN'
 		  ) >= 0.80
 	`)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 11 — Detect Stagnation (23:58 UTC zilnic) — G-5
+// Înregistrează stagnare când un obiectiv are >= 5 zile consecutive fără progres.
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobDetectStagnation() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	logger.Info("Job: DetectStagnation")
+
+	rows, err := s.db.Query(ctx, `
+		SELECT id, user_id FROM global_objectives WHERE status = 'ACTIVE'
+	`)
+	if err != nil {
+		logger.Error("DetectStagnation: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	type goalRef struct{ id, userID uuid.UUID }
+	var goals []goalRef
+	for rows.Next() {
+		var g goalRef
+		if err := rows.Scan(&g.id, &g.userID); err == nil {
+			goals = append(goals, g)
+		}
+	}
+
+	detected := 0
+	for _, g := range goals {
+		inactiveDays := s.engine.ConsecutiveInactiveDays(ctx, g.id)
+		if inactiveDays < 5 {
+			continue
+		}
+
+		// Record stagnation event (idempotent — unique per day)
+		_, err := s.db.Exec(ctx, `
+			INSERT INTO stagnation_events (go_id, user_id, inactive_days)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (go_id, detected_at::date) DO NOTHING
+		`, g.id, g.userID, inactiveDays)
+		if err == nil {
+			detected++
+			cache.InvalidateDashboard(ctx, s.redis, g.userID.String())
+		}
+	}
+
+	logger.Info("Job: DetectStagnation done", zap.Int("stagnant_goals", detected))
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JOB 12 — Propose Reactivation for eligible PAUSED goals (00:10 UTC) — G-7
+// Detectează obiective PAUSED cu >= 7 zile stabilitate → propune reactivare.
+// ═══════════════════════════════════════════════════════════════
+func (s *Scheduler) jobProposeReactivation() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	logger.Info("Job: ProposeReactivation")
+
+	rows, err := s.db.Query(ctx, `
+		SELECT id, user_id FROM global_objectives WHERE status = 'PAUSED'
+	`)
+	if err != nil {
+		logger.Error("ProposeReactivation: query failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	type goalRef struct{ id, userID uuid.UUID }
+	var goals []goalRef
+	for rows.Next() {
+		var g goalRef
+		if err := rows.Scan(&g.id, &g.userID); err == nil {
+			goals = append(goals, g)
+		}
+	}
+
+	proposed := 0
+	for _, g := range goals {
+		eligible, daysSince, err := s.engine.CheckReactivationEligibility(ctx, g.id)
+		if err != nil || !eligible {
+			continue
+		}
+
+		if err := s.engine.ProposeReactivation(ctx, g.id); err == nil {
+			proposed++
+			logger.Info("Job: reactivation proposed",
+				zap.String("goal_id", g.id.String()),
+				zap.Int("days_stable", daysSince))
+			cache.InvalidateDashboard(ctx, s.redis, g.userID.String())
+		}
+	}
+
+	logger.Info("Job: ProposeReactivation done", zap.Int("proposed", proposed))
 }
 
 func (s *Scheduler) activateWaitingGoal(ctx context.Context, completedGoalID uuid.UUID) {

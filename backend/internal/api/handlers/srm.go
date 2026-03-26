@@ -51,6 +51,47 @@ func (h *Handlers) GetSRMStatus(c *fiber.Ctx) error {
 	})
 }
 
+// ── ConfirmSRML2 — POST /api/v1/srm/confirm-l2/:goalId ───────────
+// GAP G-12 — L2 requires single user confirmation to apply structural recalibration.
+// L2 does NOT pause the goal — it reduces task intensity and schedules recalibration.
+func (h *Handlers) ConfirmSRML2(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	goalID, err := uuid.Parse(c.Params("goalId"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "ID obiectiv invalid."})
+	}
+
+	// Verify access
+	if _, err := db.GetGoalByID(c.Context(), h.db, goalID, userID); err != nil {
+		return notFound(c)
+	}
+
+	// Mark the most recent pending L2 event as confirmed
+	result, err := h.db.Exec(c.Context(), `
+		UPDATE srm_events
+		SET confirmed_at = NOW(), confirmed_by = $2
+		WHERE id = (
+			SELECT id FROM srm_events
+			WHERE go_id = $1 AND srm_level = 'L2'
+			  AND revoked_at IS NULL AND confirmed_at IS NULL
+			ORDER BY triggered_at DESC
+			LIMIT 1
+		)
+	`, goalID, userID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	if result.RowsAffected() == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "Niciun eveniment SRM L2 activ de confirmat."})
+	}
+
+	return c.JSON(fiber.Map{
+		"goal_id":   goalID,
+		"message":   "SRM Level 2 confirmat. Recalibrare structurală aplicată. Intensitatea sarcinilor va fi ajustată.",
+		"next_step": "Continuă activitățile la ritm redus. Dacă situația nu se îmbunătățește, SRM L3 poate fi necesar.",
+	})
+}
+
 // ── ConfirmSRML3 — POST /api/v1/srm/confirm-l3/:goalId ───────────
 func (h *Handlers) ConfirmSRML3(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
@@ -96,11 +137,11 @@ func (h *Handlers) ConfirmSRML3(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"goal_id":          goalID,
-		"new_status":       models.GoalPaused,
-		"frozen_expected":  frozenPct,
-		"message":          "SRM Level 3 confirmat. Modul de stabilizare activat. Obiectivul este suspendat temporar.",
-		"next_step":        "Reactivarea automată va fi propusă după 7 zile de stabilitate.",
+		"goal_id":         goalID,
+		"new_status":      models.GoalPaused,
+		"frozen_expected": frozenPct,
+		"message":         "SRM Level 3 confirmat. Modul de stabilizare activat. Obiectivul este suspendat temporar.",
+		"next_step":       "Reactivarea automată va fi propusă după 7 zile de stabilitate.",
 	})
 }
 

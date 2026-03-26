@@ -5,13 +5,14 @@
 // API-ul returnează DOAR: lista de sarcini, % progres, scor etapă, scor general.
 //
 // Structură:
-//   engine.go           — Layer 0: Engine core + API public
-//   level1_structural.go — Level 1: Generare sarcini + intensitate
-//   level2_execution.go  — Level 2: Calcul execuție + scor sprint
-//   level3_adaptive.go   — Level 3: Inteligență adaptivă + consistență
-//   level4_regulatory.go — Level 4: Autoritate regulatoare + validări
-//   level5_growth.go     — Level 5: Orchestrare creștere + progres
-//   helpers.go           — Funcții utilitare comune
+//
+//	engine.go           — Layer 0: Engine core + API public
+//	level1_structural.go — Level 1: Generare sarcini + intensitate
+//	level2_execution.go  — Level 2: Calcul execuție + scor sprint
+//	level3_adaptive.go   — Level 3: Inteligență adaptivă + consistență
+//	level4_regulatory.go — Level 4: Autoritate regulatoare + validări
+//	level5_growth.go     — Level 5: Orchestrare creștere + progres
+//	helpers.go           — Funcții utilitare comune
 package engine
 
 import (
@@ -110,6 +111,20 @@ func (e *Engine) GenerateDailyTasks(ctx context.Context, userID uuid.UUID, date 
 		intensity := e.computeIntensity(adjustments)
 		taskCount := e.taskCountFromIntensity(intensity)
 
+		// G-6: Velocity Control — reduce task count when ALI_projected > 1.15
+		if e.IsVelocityControlActive(ctx, goal.ID) {
+			if taskCount > 1 {
+				taskCount--
+			}
+		}
+
+		// G-2: Focus Rotation — add extra task for stagnant GOs (>= 5 inactive days)
+		if e.IsStagnant(ctx, goal.ID) {
+			if taskCount < 3 {
+				taskCount++
+			}
+		}
+
 		checkpoints, _ := db.GetSprintCheckpoints(ctx, e.db, sprint.ID)
 		tasks := e.generateTasksFromCheckpoints(ctx, checkpoints, goal, sprint, userID, date, taskCount)
 		allTasks = append(allTasks, tasks...)
@@ -133,6 +148,40 @@ func (e *Engine) AnalyzeGOText(ctx context.Context, goalText string) (needsClari
 	}
 	needsClarification, question, hint, err = e.ai.AnalyzeGO(ctx, goalText)
 	return needsClarification, question, hint, true, err
+}
+
+// ComputeGORI calculates the Global Objective Relevance Index for a user (G-4).
+// GORI = weighted average of computeInternalMetrics across all active goals.
+// Returns the composite score (0-1) and grade (A/B/C/D).
+func (e *Engine) ComputeGORI(ctx context.Context, userID uuid.UUID) (score float64, grade string, err error) {
+	goals, err := db.GetGoalsByUser(ctx, e.db, userID)
+	if err != nil {
+		return 0, "D", err
+	}
+
+	total := 0.0
+	count := 0
+	for _, goal := range goals {
+		if goal.Status != models.GoalActive {
+			continue
+		}
+		sprint, sprintErr := db.GetCurrentSprint(ctx, e.db, goal.ID)
+		if sprintErr != nil || sprint == nil {
+			continue
+		}
+		g := goal // avoid loop variable capture
+		internal := e.computeInternalMetrics(ctx, &g, sprint)
+		total += internal.finalScore
+		count++
+	}
+
+	if count == 0 {
+		return 0, "D", nil
+	}
+
+	score = total / float64(count)
+	grade, _ = gradeFromScore(score)
+	return score, grade, nil
 }
 
 // ComputeProgressPct returnează progresul vizual (0-100) pentru un obiectiv
@@ -172,9 +221,9 @@ func (e *Engine) computeInternalMetrics(ctx context.Context, goal *models.Goal, 
 	m := internalMetrics{}
 
 	m.completionRate = e.computeCompletionRate(ctx, sprint.ID)      // Level 2
-	m.consistencyComp = e.computeConsistency(ctx, sprint)            // Level 3
-	m.progressComp = e.computeProgressVsExpected(ctx, goal, sprint)   // Level 5
-	m.contextPenalty, m.energyBonus = e.computeContextFactors(       // Level 3
+	m.consistencyComp = e.computeConsistency(ctx, sprint)           // Level 3
+	m.progressComp = e.computeProgressVsExpected(ctx, goal, sprint) // Level 5
+	m.contextPenalty, m.energyBonus = e.computeContextFactors(      // Level 3
 		ctx, goal.ID)
 
 	// Scor final compozit — ponderi strict opace

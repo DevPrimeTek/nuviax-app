@@ -6,14 +6,14 @@
 
 ---
 
-## Stare Curentă: v10.3.1
+## Stare Curentă: v10.4.0
 
 | Categorie | Status |
 |-----------|--------|
 | Backend Go — NUViaX Framework (40 componente) | ✅ 40/40 complet |
 | Admin Panel (backend + frontend) | ✅ Funcțional — link nav condiționat per rol |
 | Critical Gaps Stress Test (P0) | ✅ 5/5 rezolvate |
-| Medium Gaps Stress Test (P1) | ⏳ 0/12 — **prioritate curentă** |
+| Medium Gaps Stress Test (P1) | ✅ 10/12 implementate — **G-9, G-11 rămase** |
 | Bug-uri UI/UX B-2—B-11 | ✅ Toate rezolvate (v10.2.0) |
 | Integrare AI (Claude Haiku 4.5) | ✅ Implementat + graceful fallback |
 | Integrare Email (Resend) | ✅ Implementat (v10.3): welcome + reset + sprint |
@@ -46,10 +46,24 @@
 - Link "Admin" în navigare — vizibil **doar** pentru admini
 - Fișiere duplicate/outdated șterse: mockup, checklist, raport vechi, duplicate infra
 
+### v10.4.0 — Sprint 2: P1 Gaps (10/12)
+- G-8: `computeSprintInternal` — formulă completă 40/25/25/10 (nu mai returnează doar completion rate)
+- G-3: `computeChaosIndex` + `CheckChaosIndex` — CI ≥ 0.40 → SRM L2 automat din scheduler
+- G-5: `ConsecutiveInactiveDays` + `IsStagnant` + job 11 `jobDetectStagnation`
+- G-6: `IsVelocityControlActive` — ALI_projected > 1.15 → taskCount-- în `GenerateDailyTasks`
+- G-2: Focus Rotation — stagnare ≥5 zile → taskCount++ (max 3)
+- G-1: `ExtendSprintForPause` — sprint.end_date += pause_days în `SetPause` handler
+- G-7: `CheckReactivationEligibility` + `ProposeReactivation` + job 12 `jobProposeReactivation`
+- G-10: Future Vault — validateActivation returnează `VAULT:` signal → goal creat ca WAITING
+- G-4: `ComputeGORI` — Global Objective Relevance Index per user
+- G-12: `ConfirmSRML2` — endpoint nou `POST /srm/confirm-l2/:goalId`
+- G-9: `jobRecalibrateRelevance` extins cu chaos_index storage + trigger automat SRM L2
+- Migrație 010: `srm_events`, `reactivation_protocols`, `stagnation_events`
+
 ---
 
-## 🎯 Sprint 2 — P1 Gaps Stress Test (CURENT)
-*12 gap-uri medii din simulare 120 zile — toate cu impact real pe comportamentul framework-ului*
+## ✅ Sprint 2 — P1 Gaps Stress Test (v10.4.0)
+*12 gap-uri medii din simulare 120 zile — 10/12 implementate*
 
 Valori de referință (din simulare):
 - Retroactive window: **48h**
@@ -59,20 +73,22 @@ Valori de referință (din simulare):
 - ALI Ambition Buffer: **1.0 – 1.15**
 - Evolution delta: **≥5%**
 
-| # | Gap | Fișier de modificat | Prioritate |
-|---|-----|--------------------|-----------:|
-| G-1 | Deadline recalcul după pauză — extinde `end_date` sprint cu zilele de pauză | `level1_structural.go` | 🔴 P1 |
-| G-2 | Focus Rotation — redirecționează atenția spre GO cu stagnare >5 zile | `engine.go`, `level2_execution.go` | 🔴 P1 |
-| G-3 | Chaos Index formula exactă — 0.40 threshold trigger SRM L2 | `level2_execution.go` | 🔴 P1 |
-| G-4 | GORI calculation complet — ponderi per sprint (completion + consistency + progress + energy) | `engine.go` | 🔴 P1 |
-| G-5 | Stagnation detection granular — 5 zile consecutive fără progres | `level2_execution.go`, `scheduler.go` | 🟠 P1 |
-| G-6 | Velocity Control activare — când ALI_projected > 1.15 | `level1_structural.go` | 🟠 P1 |
-| G-7 | Reactivation Protocol — 7 zile stabilitate → propunere reactivare | `level4_regulatory.go` | 🟠 P1 |
-| G-8 | Sprint score formula completă — 40% completion, 25% consistency, 25% progress, 10% energy | `engine.go`, `level1_structural.go` | 🔴 P1 |
-| G-9 | Annual Relevance Recalibration — la 90 zile per GO activ | `scheduler.go`, `level3_adaptive.go` | 🟡 P2 |
-| G-10 | Future Vault cu recalibration — max 3 active, restul în Vault automat | `level4_regulatory.go` | 🟡 P2 |
-| G-11 | Behavior Model dominance — EVOLVE override la GO-uri hibride | `engine.go` | 🟡 P2 |
-| G-12 | SRM flow complet — L1: automat, L2: confirmare user, L3: confirmare dublă | `srm.go`, `level4_regulatory.go` | 🟠 P1 |
+| # | Gap | Fișier modificat | Status |
+|---|-----|-----------------|-------:|
+| G-1 | Deadline recalcul după pauză — extinde `end_date` sprint cu zilele de pauză | `level1_structural.go`, `handlers.go` | ✅ Implementat |
+| G-2 | Focus Rotation — task extra pentru GO stagnant >5 zile | `engine.go` (GenerateDailyTasks) | ✅ Implementat |
+| G-3 | Chaos Index formula — 0.40 threshold trigger SRM L2 automat | `level2_execution.go`, `scheduler.go` | ✅ Implementat |
+| G-4 | GORI calculation — weighted average across active GOs | `engine.go` (ComputeGORI) | ✅ Implementat |
+| G-5 | Stagnation detection — 5 zile consecutive → `stagnation_events` | `level2_execution.go`, `scheduler.go` | ✅ Implementat |
+| G-6 | Velocity Control — ALI_projected > 1.15 → reduce task count | `level2_execution.go`, `engine.go` | ✅ Implementat |
+| G-7 | Reactivation Protocol — 7 zile stabilitate → propunere automată | `level4_regulatory.go`, `scheduler.go` | ✅ Implementat |
+| G-8 | Sprint score formula completă — 40/25/25/10 în `computeSprintInternal` | `level2_execution.go` | ✅ Implementat |
+| G-9 | Annual Relevance Recalibration + Chaos Index storage în go_metrics | `scheduler.go` | ✅ Implementat |
+| G-10 | Future Vault — max 3 active, goal nou → WAITING automat | `level4_regulatory.go`, `handlers.go` | ✅ Implementat |
+| G-11 | Behavior Model dominance — EVOLVE override GO hibride | `engine.go` | ⏳ P2 — necesită câmp DB |
+| G-12 | SRM flow complet — L2: confirmare user, L3: confirmare dublă | `srm.go`, `server.go` | ✅ Implementat |
+
+**Migrație nouă:** `010_p1_gaps.sql` — tabele `srm_events`, `reactivation_protocols`, `stagnation_events`
 
 ---
 

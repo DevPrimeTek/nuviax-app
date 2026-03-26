@@ -49,8 +49,12 @@
 \i 008_avatar.sql
 
 -- ── Migration 009: Password Reset Tokens ──────────────────────
-\echo '[009/009] Applying Password Reset Tokens (forgot-password flow)...'
+\echo '[009/010] Applying Password Reset Tokens (forgot-password flow)...'
 \i 009_password_reset.sql
+
+-- ── Migration 010: P1 Gap Tables ───────────────────────────────
+\echo '[010/010] Applying P1 gap tables (srm_events, reactivation_protocols, stagnation_events)...'
+\i 010_p1_gaps.sql
 
 \echo ''
 \echo '══════════════════════════════════════════════════════'
@@ -90,7 +94,7 @@ FROM information_schema.triggers
 WHERE trigger_schema = 'public';
 
 \echo ''
-\echo 'Expected: 30+ tables, 26+ views, 1 materialized view,'
+\echo 'Expected: 33+ tables, 26+ views, 1 materialized view,'
 \echo '          10 functions, 12 triggers'
 \echo ''
 

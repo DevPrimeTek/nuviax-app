@@ -17,7 +17,7 @@
 - `api.nuviax.app` — backend API (Go)
 
 **Proprietar:** DevPrimeTek (`github.com/DevPrimeTek/nuviax-app`)
-**Versiune curentă:** 10.3.0
+**Versiune curentă:** 10.4.0
 **Branch de development:** `claude/*` → PR → `main`
 
 ---
@@ -182,7 +182,7 @@ nuviax-app/
 | # | Descriere | Status |
 |---|-----------|--------|
 | E-1 | Integrare Resend email (confirmare înregistrare, reset parolă, sprint complet) | ✅ Implementat v10.3 |
-| E-2 | P1 Gaps din stress test (12 gap-uri medii) | ⏳ Neimplementat |
+| E-2 | P1 Gaps din stress test (12 gap-uri medii) | ✅ 10/12 implementate v10.4 (G-11 rămâne) |
 | E-3 | Translations EN + RU | ⏳ Neimplementat |
 | E-4 | Monetizare Stripe | ⏳ Neimplementat |
 
@@ -415,7 +415,7 @@ chore: configurare, dependențe
 ### 🎯 Sprint curent (imediat)
 
 1. ✅ **Integrare Resend** — email service complet (E-1)
-2. **P1 gaps** din stress test — 12 gap-uri medii (E-2)
+2. ✅ **P1 gaps** — 10/12 implementate (G-1 până G-10, G-12) (E-2)
 3. **Translations** — framework EN/RU (E-3)
 
 ### Mai târziu

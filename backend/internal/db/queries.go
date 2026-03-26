@@ -799,3 +799,42 @@ func GetStreakDays(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (i
 	}
 	return streak, nil
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PASSWORD RESET TOKENS
+// ═══════════════════════════════════════════════════════════════
+
+// CreatePasswordResetToken inserts a new reset token for the user.
+// tokenHash is SHA-256 hex of the raw random token sent in the email link.
+func CreatePasswordResetToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, tokenHash string) error {
+	// Invalidate any previous unused tokens for this user first
+	_, _ = pool.Exec(ctx,
+		`DELETE FROM password_reset_tokens WHERE user_id=$1 AND used_at IS NULL`, userID)
+	_, err := pool.Exec(ctx, `
+		INSERT INTO password_reset_tokens (user_id, token_hash)
+		VALUES ($1, $2)
+	`, userID, tokenHash)
+	return err
+}
+
+// GetPasswordResetToken returns a valid (unused, not expired) token record.
+func GetPasswordResetToken(ctx context.Context, pool *pgxpool.Pool, tokenHash string) (uuid.UUID, error) {
+	var userID uuid.UUID
+	err := pool.QueryRow(ctx, `
+		SELECT user_id FROM password_reset_tokens
+		WHERE token_hash = $1
+		  AND used_at IS NULL
+		  AND expires_at > NOW()
+	`, tokenHash).Scan(&userID)
+	if err != nil {
+		return uuid.Nil, ErrNotFound
+	}
+	return userID, nil
+}
+
+// MarkPasswordResetTokenUsed marks the token as consumed so it cannot be reused.
+func MarkPasswordResetTokenUsed(ctx context.Context, pool *pgxpool.Pool, tokenHash string) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE password_reset_tokens SET used_at=NOW() WHERE token_hash=$1`, tokenHash)
+	return err
+}

@@ -17,7 +17,7 @@
 - `api.nuviax.app` — backend API (Go)
 
 **Proprietar:** DevPrimeTek (`github.com/DevPrimeTek/nuviax-app`)
-**Versiune curentă:** 10.0.0
+**Versiune curentă:** 10.2.0
 **Branch de development:** `claude/*` → PR → `main`
 
 ---
@@ -71,6 +71,7 @@ nuviax-app/
 │   │   ├── auth/auth.go             # JWT service
 │   │   ├── cache/cache.go           # Redis helpers
 │   │   └── scheduler/scheduler.go  # 10 background jobs (cron)
+│   │   ├── ai/ai.go                 # Claude Haiku HTTP client (adăugat v10.2)
 │   ├── migrations/
 │   │   ├── 001_base_schema.sql      # Core: users, sessions, goals, sprints, tasks
 │   │   ├── 002_layer0_level1.sql
@@ -78,7 +79,8 @@ nuviax-app/
 │   │   ├── 004_level3_adaptive.sql
 │   │   ├── 005_level4_regulatory.sql
 │   │   ├── 006_level5_growth.sql
-│   │   └── 007_admin_fixes.sql      # Admin panel + 5 critical gap fixes (v10.1)
+│   │   ├── 007_admin_fixes.sql      # Admin panel + 5 critical gap fixes (v10.1)
+│   │   └── 008_avatar.sql           # avatar_url pe users (v10.2)
 │   └── pkg/
 │       ├── crypto/crypto.go         # AES-256-GCM, PBKDF2, SHA256
 │       └── logger/logger.go         # Uber Zap structured logging
@@ -86,12 +88,12 @@ nuviax-app/
 │   └── app/
 │       ├── app/                     # Next.js App Router
 │       │   ├── dashboard/           # ✅ Funcțional
-│       │   ├── goals/               # ⚠️ Bug #7: array vs obiect mismatch
-│       │   ├── today/               # ⚠️ Bug #5: energy nu se salvează, Bug #6: fără add task
+│       │   ├── goals/               # ✅ Fix v10.2: {goals:[], waiting:[]} response
+│       │   ├── today/               # ✅ Fix v10.2: energy salvată + personal tasks
 │       │   ├── achievements/        # ✅ Funcțional
-│       │   ├── recap/               # ❌ Bug #8: endpoint /recap/current lipsă
-│       │   ├── settings/            # ⚠️ Bug #9: parțial conectat
-│       │   ├── profile/             # ⚠️ Bug #10: fără upload foto
+│       │   ├── recap/               # ✅ Fix v10.2: GET /recap/current implementat
+│       │   ├── settings/            # ✅ Fix v10.2: parolă + export date conectate
+│       │   ├── profile/             # ✅ Fix v10.2: upload avatar implementat
 │       │   ├── admin/               # ✅ Nou în v10.1 (panel administrare)
 │       │   ├── auth/                # ✅ Login + Register
 │       │   └── onboarding/          # ✅ Funcțional
@@ -114,32 +116,31 @@ nuviax-app/
 
 ---
 
-## 4. Starea Curentă — Bug-uri Cunoscute
+## 4. Starea Curentă — Bug-uri
 
-### 🔴 Critice (Blockers)
+### ✅ Toate bug-urile rezolvate în v10.2.0 (2026-03-24)
 
-| # | Locație | Problemă | Fix necesar |
-|---|---------|---------|------------|
-| B-7 | `handlers.go:343` + `lib/api.ts:92` | Goals endpoint returnează array plat, frontend așteaptă `{goals:[], waiting:[]}` | Schimbă response handler sau schimbă api.ts |
-| B-8 | `server.go` | `GET /recap/current` nu există — 404 | Adaugă endpoint `/recap/current` care returnează ultimul sprint + reflecție |
-| B-3 | `handlers.go:276` | `days_left` calculat din `goal.EndDate` (90 zile) în loc de `sprint.EndDate` (30 zile) | `daysLeft := int(time.Until(sprint.EndDate).Hours() / 24)` |
+| # | Locație | Problema | Status |
+|---|---------|---------|--------|
+| B-3 | `handlers.go` | `days_left` folosea `goal.EndDate` în loc de `sprint.EndDate` | ✅ Rezolvat |
+| B-7 | `handlers.go` + `goals/page.tsx` | Goals returna array plat; acum returnează `{goals:[], waiting:[]}` | ✅ Rezolvat |
+| B-8 | `server.go` + `handlers.go` | `GET /recap/current` lipsea — 404 | ✅ Rezolvat |
+| B-5 | `today/page.tsx` | Energy nu se salva — endpoint greșit | ✅ Rezolvat |
+| B-6 | `today/page.tsx` | Fără formular sarcini personale | ✅ Rezolvat |
+| B-11 | `styles/globals.css` | `--ul`, `--ug`, `--l2g`, `--ff-h` lipseau; Light theme lipsă | ✅ Rezolvat |
+| B-9 | `settings/page.tsx` | Parolă/export neconectate la API | ✅ Rezolvat |
+| B-4 | `level1_structural.go` | Task generation static fără AI | ✅ Rezolvat (Claude Haiku cu fallback) |
+| B-2 | `handlers.go AnalyzeGO` | Analiză GO fără AI | ✅ Rezolvat (Claude Haiku cu fallback) |
+| B-10 | `profile/page.tsx` | Fără upload foto profil | ✅ Rezolvat |
 
-### 🟠 Majore
+### 🟠 În lucru / Următor
 
-| # | Locație | Problemă | Fix necesar |
-|---|---------|---------|------------|
-| B-5 | `today/page.tsx:139` | Click "Cum mă simt" nu apelează `POST /context/energy` | Conectează button la API call |
-| B-6 | `today/page.tsx` | Lipsă formular/buton pentru sarcini personale | Adaugă UI pentru `POST /today/personal` |
-| B-11 | `globals.css` | `--ul`, `--l2g`, `--ff-h` nedefinite; tema Light lipsă | Adaugă variabile CSS + `[data-theme="light"]` |
-| B-9 | `settings/page.tsx` | Notificări/parolă/export date neconectate la API | Conectează toate acțiunile la endpoint-uri existente |
-| B-4 | `level1_structural.go:72` | Sarcini zilnice din template static, ignoră contextul GO | Integrare Claude Haiku (Faza 2) |
-
-### 🟡 Medii
-
-| # | Locație | Problemă | Fix necesar |
-|---|---------|---------|------------|
-| B-2 | `handlers.go AnalyzeGO` | Analiză GO fără sugestii AI | Integrare Claude Haiku |
-| B-10 | `profile/page.tsx` | Fără upload foto profil | UI + endpoint backend |
+| # | Descriere | Status |
+|---|-----------|--------|
+| E-1 | Integrare Resend email (confirmare înregistrare, reset parolă, sprint complet) | ✅ Implementat v10.3 |
+| E-2 | P1 Gaps din stress test (12 gap-uri medii) | ⏳ Neimplementat |
+| E-3 | Translations EN + RU | ⏳ Neimplementat |
+| E-4 | Monetizare Stripe | ⏳ Neimplementat |
 
 ---
 
@@ -169,27 +170,21 @@ Valorile de referință din stress test (folosite dacă nu sunt specificate altf
 
 ---
 
-## 6. Integrare AI — Claude Haiku
+## 6. Integrare AI — Claude Haiku ✅ Implementat în v10.2
 
 **Model:** `claude-haiku-4-5-20251001`
 **Provider:** Anthropic API
+**Fișier:** `backend/internal/ai/ai.go` — client HTTP direct (stdlib net/http, fără SDK)
 **Cost estimat:** $4-5/lună la 1.000 utilizatori activi
 
-**Unde se folosește:**
-1. **Task generation** (`level1_structural.go` → `generateTaskTexts`) — Faza 2 neimplementată
-2. **GO analysis** (`handlers.go` → `AnalyzeGO`) — înlocuiește regex-ul static
-3. **Semantic parsing** (clasificare BM: INCREASE/REDUCE/CREATE/EVOLVE)
+**Implementat:**
+1. **Task generation** (`level1_structural.go` → `generateTaskTexts`) — Claude Haiku cu fallback pe template-uri statice
+2. **GO analysis** (`handlers.go` → `AnalyzeGO`) — Claude Haiku cu fallback pe rule-based
+3. **Graceful degradation:** dacă `ANTHROPIC_API_KEY` lipsește → fallback automat, fără erori
 
-**Variabilă de environment necesară:**
+**Variabilă de environment:**
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
-```
-
-**Pattern de apel (Go):**
-```go
-// POST https://api.anthropic.com/v1/messages
-// Model: claude-haiku-4-5-20251001
-// Max tokens: 256 (pentru task generation)
 ```
 
 ---
@@ -213,11 +208,20 @@ RESEND_API_KEY=re_...
 EMAIL_FROM=noreply@nuviax.app
 ```
 
-**Email-uri tranzacționale necesare:**
-1. Confirmare înregistrare
-2. Reset parolă
-3. Notificare sprint completat
-4. Reminder zilnic activități (opțional, bazat pe preferințe)
+**Email-uri tranzacționale necesare (⏳ E-1 — neimplementat):**
+1. Confirmare înregistrare (la Register)
+2. Reset parolă (endpoint `POST /auth/forgot-password`)
+3. Notificare sprint completat (declanșat din scheduler)
+4. Reminder zilnic activități (opțional, bazat pe preferințe user)
+
+**Implementat în v10.3 (E-1 ✅):**
+- `backend/internal/email/email.go` — client HTTP Resend API direct (fără SDK)
+- Email welcome trimis în `Register` handler (goroutine fire-and-forget)
+- Email sprint complet trimis în scheduler `jobCloseExpiredSprints`
+- `POST /api/v1/auth/forgot-password` — generează token, trimite email (timing-safe)
+- `POST /api/v1/auth/reset-password` — validează token, actualizează parola
+- Frontend: `/auth/forgot-password` + `/auth/reset-password` pages
+- Migration 009: tabelă `password_reset_tokens`
 
 ---
 
@@ -272,34 +276,42 @@ RESEND_API_KEY    = [re_...]      # Nou în v10.1
 - Views admin: `v_admin_platform_stats`, `v_admin_user_list`
 - Funcție: `fn_dev_reset_data(admin_id)` — dev only
 
+**Migration 008 (v10.2):**
+- `users.avatar_url VARCHAR(500)` — URL avatar profil
+
+**Migration 009 (v10.3):**
+- `password_reset_tokens` — token_hash, user_id, expires_at, used_at (1 oră TTL)
+
 **Cum aplici migrările:**
 ```bash
 # Pe server în containerul nuviax_db:
-docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/007_admin_fixes.sql
+docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/apply_all.sql
+# SAU individual:
+docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/009_password_reset.sql
 ```
 
 ---
 
 ## 10. Frontend — Design System
 
-**Variabile CSS definite în `frontend/app/app/globals.css`:**
+**Fișier CSS:** `frontend/app/styles/globals.css` (NU `app/app/globals.css`)
+
+**Variabile CSS definite (toate prezente din v10.2):**
 ```css
 --bg, --bg2, --bg3         # fundal principal / secundar / terțiar
 --ink, --ink2, --ink3, --ink4  # text principal → subtil
 --line, --line2            # borduri
 --l0, --l0l, --l0g         # Level 0 / light / glow (portocaliu)
---l2, --l2l, --l2g         # Level 2 / light / glow (verde)
+--l2, --l2l, --l2g         # Level 2 / light / glow (verde)  ✅ adăugat v10.2
 --l5, --l5l                # Level 5 / light (violet)
---ul, --ug                 # urgency / urgency-glow (galben/portocaliu)  ← LIPSĂ, trebuie adăugat
---ff-d, --ff-b, --ff-m     # font display, body, mono
+--u, --ul, --ug            # urgency / urgency-light / urgency-glow  ✅ adăugat v10.2
+--ff-d, --ff-b, --ff-m, --ff-h  # fonturi display, body, mono, heading  ✅ --ff-h adăugat v10.2
 ```
 
-**⚠️ Variabile CSS lipsă (Bug #11):** `--ul`, `--ug`, `--l2g`, `--ff-h` — trebuie adăugate în `globals.css`
+**Tema Light:** `[data-theme="light"] { ... }` — ✅ prezentă în v10.2
 
-**Tema Light:** `[data-theme="light"] { ... }` — lipsă complet, trebuie adăugată
-
-**Fonturi necesare** (import în `layout.tsx`):
-- `Bricolage Grotesque` — display (`--ff-d`)
+**Fonturi** (import în `layout.tsx`):
+- `Bricolage Grotesque` — display (`--ff-d`, `--ff-h`)
 - `DM Sans` — body (`--ff-b`)
 - `JetBrains Mono` — mono (`--ff-m`)
 
@@ -343,31 +355,31 @@ chore: configurare, dependențe
 
 ## 12. Roadmap — Priorități
 
-### Sprint curent (imediat)
+### ✅ Sprint anterior — COMPLET (v10.2.0, 2026-03-24)
 
-1. **Fix Bug #7** — Goals API mismatch (blocker)
-2. **Fix Bug #8** — Recap endpoint lipsă (blocker)
-3. **Fix Bug #3** — Sprint days wrong calculation
-4. **Fix Bug #11** — CSS variables lipsă + Light theme
-5. **Fix Bug #5** — Energy level nu se salvează
-6. **Fix Bug #6** — Personal task add
-7. **Fix Bug #9** — Settings complet conectate
-8. **Integrare Resend** — email service de bază
-9. **Integrare Claude Haiku** — task generation + GO analysis
+1. ✅ Fix Bug #7 — Goals API mismatch
+2. ✅ Fix Bug #8 — Recap endpoint implementat
+3. ✅ Fix Bug #3 — Sprint days calcul corect
+4. ✅ Fix Bug #11 — CSS variables + Light theme
+5. ✅ Fix Bug #5 — Energy salvată corect
+6. ✅ Fix Bug #6 — Personal task add UI
+7. ✅ Fix Bug #9 — Settings complet conectate
+8. ✅ Fix Bug #2 — Analiză GO cu Claude Haiku
+9. ✅ Fix Bug #4 — Task generation cu Claude Haiku
+10. ✅ Fix Bug #10 — Upload avatar profil
 
-### Următor sprint
+### 🎯 Sprint curent (imediat)
 
-10. **P1 gaps** din stress test (12 gap-uri medii)
-11. **Upload foto profil** (Bug #10)
-12. **Light theme** CSS complet
-13. **Translations** EN + RU (framework există, conținut lipsă)
-14. **Onboarding** îmbunătățit cu AI suggestions
+1. ✅ **Integrare Resend** — email service complet (E-1)
+2. **P1 gaps** din stress test — 12 gap-uri medii (E-2)
+3. **Translations** — framework EN/RU (E-3)
 
 ### Mai târziu
 
-15. **Monetizare** — Stripe integration
-16. **Mobile** — PWA sau React Native
-17. **Analytics** — dashboard utilizator avansat
+4. **Monetizare** — Stripe integration (E-4)
+5. **Mobile** — PWA sau React Native
+6. **Analytics** — dashboard utilizator avansat
+7. **Onboarding** îmbunătățit cu AI suggestions
 
 ---
 
@@ -385,4 +397,4 @@ chore: configurare, dependențe
 
 ---
 
-*Ultima actualizare: 2026-03-24 — v10.1 (admin panel + stress test gap fixes)*
+*Ultima actualizare: 2026-03-25 — v10.3 (Resend email integration + forgot/reset password flow)*

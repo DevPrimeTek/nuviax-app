@@ -47,7 +47,11 @@ export default function LoginPage() {
             {loading ? <span className="spinner"/> : 'Intră în cont'}
           </button>
         </form>
-        <p className="auth-footer">Nu ai cont? <Link href="/auth/register" className="auth-link">Creează unul gratuit</Link></p>
+        <p className="auth-footer">
+          <Link href="/auth/forgot-password" className="auth-link">Ai uitat parola?</Link>
+          {' · '}
+          Nu ai cont? <Link href="/auth/register" className="auth-link">Creează unul gratuit</Link>
+        </p>
       </div>
     </div>
   )

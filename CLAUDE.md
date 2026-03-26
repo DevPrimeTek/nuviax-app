@@ -397,7 +397,33 @@ chore: configurare, dependențe
 
 ---
 
-## 12. Roadmap — Priorități
+## 12. Regula README.md — Actualizare Permanentă
+
+> **OBLIGATORIU:** `README.md` trebuie actualizat la FIECARE sesiune care modifică oricare dintre:
+
+| Eveniment | Ce actualizezi în README.md |
+|-----------|---------------------------|
+| Versiune nouă (bump) | Linia `**Versiune curentă:**`, tabelul Changelog |
+| Funcționalitate nouă | Secțiunea API Endpoints și/sau Framework Components |
+| Migration nouă | Secțiunea Database (număr migrări, tabele) |
+| Job scheduler nou/modificat | Tabelul Scheduler Jobs |
+| Endpoint nou/eliminat | Secțiunea API Endpoints |
+| Fișier structură modificat | Secțiunea Structura Proiectului |
+| Variabilă de environment nouă | Secțiunea Environment Variables |
+| Procedură deploy modificată | Secțiunea Deployment |
+
+**Locație fișier:** `README.md` (rădăcina proiectului)
+
+**Verificare rapidă la sfârșitul sesiunii:**
+```bash
+# Verifică că versiunea din README coincide cu cea din CLAUDE.md
+grep "Versiune curentă" README.md
+grep "Versiune curentă" CLAUDE.md
+```
+
+---
+
+## 14. Roadmap — Priorități
 
 ### ✅ Sprint anterior — COMPLET (v10.2.0, 2026-03-24)
 
@@ -427,7 +453,7 @@ chore: configurare, dependențe
 
 ---
 
-## 13. Resurse și Referințe
+## 15. Resurse și Referințe
 
 | Resursă | Locație |
 |---------|---------|
@@ -441,4 +467,4 @@ chore: configurare, dependențe
 
 ---
 
-*Ultima actualizare: 2026-03-26 — v10.3.1 (Admin fix: is_admin în nav + cleanup fișiere duplicate)*
+*Ultima actualizare: 2026-03-26 — v10.4.0 (P1 Gaps 10/12, migration 010, README.md maintenance rule)*

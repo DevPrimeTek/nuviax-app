@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/auth"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/email"
 	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/internal/models"
 	"github.com/devprimetek/nuviax-app/pkg/crypto"
@@ -27,15 +29,16 @@ import (
 var reNumberReal = regexp.MustCompile(`\d{2,}|\d+[.,]\d+`)
 
 type Handlers struct {
-	db      *pgxpool.Pool
-	redis   *redis.Client
-	auth    *auth.Service
-	engine  *engine.Engine
-	encKey  []byte
+	db     *pgxpool.Pool
+	redis  *redis.Client
+	auth   *auth.Service
+	engine *engine.Engine
+	encKey []byte
+	email  *email.Client // nil if RESEND_API_KEY not configured
 }
 
-func New(pool *pgxpool.Pool, rdb *redis.Client, authSvc *auth.Service, eng *engine.Engine, encKey []byte) *Handlers {
-	return &Handlers{db: pool, redis: rdb, auth: authSvc, engine: eng, encKey: encKey}
+func New(pool *pgxpool.Pool, rdb *redis.Client, authSvc *auth.Service, eng *engine.Engine, encKey []byte, emailClient *email.Client) *Handlers {
+	return &Handlers{db: pool, redis: rdb, auth: authSvc, engine: eng, encKey: encKey, email: emailClient}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -89,6 +92,16 @@ func (h *Handlers) Register(c *fiber.Ctx) error {
 	}
 
 	db.WriteAudit(c.Context(), h.db, &user.ID, "REGISTER", crypto.SHA256Hex(c.IP()), crypto.SHA256Hex(c.Get("User-Agent")))
+
+	// Send welcome email — fire-and-forget, non-blocking
+	if h.email != nil {
+		name := ""
+		if req.FullName != nil {
+			name = *req.FullName
+		}
+		go h.email.SendWelcome(context.Background(), req.Email, name) //nolint:errcheck
+	}
+
 	return c.Status(201).JSON(tokens)
 }
 
@@ -785,16 +798,16 @@ func (h *Handlers) GetCurrentRecap(c *fiber.Ctx) error {
 	nextSprintName := fmt.Sprintf("Etapa %d", recap.SprintNumber+1)
 
 	return c.JSON(fiber.Map{
-		"sprint_name":    recap.SprintName,
-		"score":          int(recap.Score * 100),
-		"grade":          recap.Grade,
-		"days_active":    recap.DaysActive,
-		"days_total":     recap.DaysTotal,
-		"streak":         streak,
-		"mrr_delta":      recap.MRRDelta,
+		"sprint_name":      recap.SprintName,
+		"score":            int(recap.Score * 100),
+		"grade":            recap.Grade,
+		"days_active":      recap.DaysActive,
+		"days_total":       recap.DaysTotal,
+		"streak":           streak,
+		"mrr_delta":        recap.MRRDelta,
 		"next_sprint_name": nextSprintName,
-		"goal_id":        recap.GoalID,
-		"sprint_id":      recap.SprintID,
+		"goal_id":          recap.GoalID,
+		"sprint_id":        recap.SprintID,
 	})
 }
 
@@ -917,9 +930,9 @@ func (h *Handlers) CloseSprint(c *fiber.Ctx) error {
 // ═══════════════════════════════════════════════════════════════
 
 type pauseReq struct {
-	GoalID      string `json:"goal_id" validate:"required,uuid"`
-	Days        int    `json:"days" validate:"required,min=1,max=30"`
-	Note        string `json:"note" validate:"omitempty,max=200"`
+	GoalID string `json:"goal_id" validate:"required,uuid"`
+	Days   int    `json:"days" validate:"required,min=1,max=30"`
+	Note   string `json:"note" validate:"omitempty,max=200"`
 	// GAP #14 — Retroactive pause support (max 48h back).
 	// When the user was ill and couldn't log the pause in time,
 	// they can retroactively register a pause that started up to 48 hours ago.
@@ -993,7 +1006,7 @@ type energyReq struct {
 	// B-5 fix: goal_id is optional — if omitted, the first active goal is used.
 	GoalID string `json:"goal_id"`
 	// Level accepts "low", "mid"/"normal", "hi"/"high" (frontend and backend variants).
-	Level  string `json:"level" validate:"required"`
+	Level string `json:"level" validate:"required"`
 }
 
 func (h *Handlers) SetEnergy(c *fiber.Ctx) error {
@@ -1044,7 +1057,7 @@ func (h *Handlers) SetEnergy(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"message": "Nivel de energie normal setat."})
 	}
 
-	tomorrow := time.Now().UTC().Truncate(24 * time.Hour).AddDate(0, 0, 1)
+	tomorrow := time.Now().UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
 	startDate := time.Now().UTC().Truncate(24 * time.Hour)
 
 	db.CreateContextAdjustment(c.Context(), h.db, goalID, userID, adjType, startDate, &tomorrow, nil)
@@ -1378,6 +1391,93 @@ func (h *Handlers) createTokenPair(c *fiber.Ctx, user *models.User, email string
 		RefreshToken: refreshToken,
 		ExpiresIn:    900, // 15 min
 	}, nil
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FORGOT PASSWORD / RESET PASSWORD
+// ═══════════════════════════════════════════════════════════════
+
+// POST /auth/forgot-password — initiates password reset flow.
+// Always returns 200 to prevent email enumeration.
+func (h *Handlers) ForgotPassword(c *fiber.Ctx) error {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+	}
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	if req.Email == "" {
+		return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+	}
+
+	user, err := db.GetUserByEmailHash(c.Context(), h.db, crypto.SHA256Hex(req.Email))
+	if err != nil {
+		// User not found — return success anyway (timing-safe)
+		return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+	}
+
+	// Generate a cryptographically random token (32 bytes → 64 hex chars)
+	rawToken, err := crypto.RandomHex(32)
+	if err != nil {
+		return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+	}
+	tokenHash := crypto.SHA256Hex(rawToken)
+
+	if err := db.CreatePasswordResetToken(c.Context(), h.db, user.ID, tokenHash); err != nil {
+		return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+	}
+
+	// Send reset email — fire-and-forget
+	if h.email != nil {
+		resetLink := fmt.Sprintf("https://nuviax.app/auth/reset-password?token=%s", rawToken)
+		go h.email.SendPasswordReset(context.Background(), req.Email, resetLink) //nolint:errcheck
+	}
+
+	db.WriteAudit(c.Context(), h.db, &user.ID, "PASSWORD_RESET_REQUEST",
+		crypto.SHA256Hex(c.IP()), crypto.SHA256Hex(c.Get("User-Agent")))
+
+	return c.JSON(fiber.Map{"message": "Dacă adresa există, vei primi un email."})
+}
+
+// POST /auth/reset-password — validates token and sets new password.
+func (h *Handlers) ResetPassword(c *fiber.Ctx) error {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "Date invalide.")
+	}
+	if len(req.NewPassword) < 8 {
+		return badRequest(c, "Parola nouă trebuie să aibă cel puțin 8 caractere.")
+	}
+	if req.Token == "" {
+		return badRequest(c, "Token invalid sau expirat.")
+	}
+
+	tokenHash := crypto.SHA256Hex(strings.TrimSpace(req.Token))
+	userID, err := db.GetPasswordResetToken(c.Context(), h.db, tokenHash)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Token invalid sau expirat."})
+	}
+
+	newHash, err := crypto.HashPassword(req.NewPassword)
+	if err != nil {
+		return serverError(c, err)
+	}
+
+	if err := db.UpdateUserPassword(c.Context(), h.db, userID, newHash); err != nil {
+		return serverError(c, err)
+	}
+	if err := db.MarkPasswordResetTokenUsed(c.Context(), h.db, tokenHash); err != nil {
+		return serverError(c, err)
+	}
+
+	db.WriteAudit(c.Context(), h.db, &userID, "PASSWORD_RESET_COMPLETE",
+		crypto.SHA256Hex(c.IP()), crypto.SHA256Hex(c.Get("User-Agent")))
+
+	return c.JSON(fiber.Map{"message": "Parola a fost resetată cu succes. Te poți autentifica."})
 }
 
 func fingerprint(c *fiber.Ctx) string {

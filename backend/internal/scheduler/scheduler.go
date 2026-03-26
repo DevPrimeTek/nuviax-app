@@ -12,7 +12,9 @@ import (
 
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/email"
 	"github.com/devprimetek/nuviax-app/internal/engine"
+	"github.com/devprimetek/nuviax-app/pkg/crypto"
 	"github.com/devprimetek/nuviax-app/pkg/logger"
 )
 
@@ -22,14 +24,16 @@ type Scheduler struct {
 	db     *pgxpool.Pool
 	redis  *redis.Client
 	engine *engine.Engine
+	email  *email.Client // optional: nil if RESEND_API_KEY not set
+	encKey []byte
 }
 
-func New(pool *pgxpool.Pool, rdb *redis.Client, eng *engine.Engine) *Scheduler {
+func New(pool *pgxpool.Pool, rdb *redis.Client, eng *engine.Engine, emailClient *email.Client, encKey []byte) *Scheduler {
 	c := cron.New(
 		cron.WithLocation(time.UTC),
 		cron.WithLogger(cron.DefaultLogger),
 	)
-	return &Scheduler{cron: c, db: pool, redis: rdb, engine: eng}
+	return &Scheduler{cron: c, db: pool, redis: rdb, engine: eng, email: emailClient, encKey: encKey}
 }
 
 func (s *Scheduler) Start() {
@@ -264,9 +268,9 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 	defer rows.Close()
 
 	type expiredSprint struct {
-		id, goalID uuid.UUID
-		userID     uuid.UUID
-		number     int
+		id, goalID  uuid.UUID
+		userID      uuid.UUID
+		number      int
 		goalEndDate time.Time
 	}
 	var expired []expiredSprint
@@ -287,6 +291,34 @@ func (s *Scheduler) jobCloseExpiredSprints() {
 		db.SaveSprintResult(ctx, s.db, sp.id, score, grade)
 		db.CloseSprint(ctx, s.db, sp.id)
 		closed++
+
+		// Send sprint-complete email — fire-and-forget
+		if s.email != nil && sp.userID != uuid.Nil {
+			sprintNum := sp.number
+			sprintGrade := grade
+			goalID := sp.goalID
+			userID := sp.userID
+			go func() {
+				user, err := db.GetUserByID(context.Background(), s.db, userID)
+				if err != nil {
+					return
+				}
+				userEmail, _ := crypto.Decrypt(user.EmailEncrypted, s.encKey)
+				if userEmail == "" {
+					return
+				}
+				name := ""
+				if user.FullName != nil {
+					name = *user.FullName
+				}
+				goal, _ := db.GetGoalByID(context.Background(), s.db, goalID, userID)
+				goalName := ""
+				if goal != nil {
+					goalName = goal.Name
+				}
+				_ = s.email.SendSprintComplete(context.Background(), userEmail, name, goalName, sprintGrade, sprintNum)
+			}()
+		}
 
 		nextStart := today
 		nextEnd := today.AddDate(0, 0, 30)

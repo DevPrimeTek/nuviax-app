@@ -45,8 +45,12 @@
 \i 007_admin_fixes.sql
 
 -- ── Migration 008: Avatar ──────────────────────────────────────
-\echo '[008/008] Applying Avatar (B-10 fix)...'
+\echo '[008/009] Applying Avatar (B-10 fix)...'
 \i 008_avatar.sql
+
+-- ── Migration 009: Password Reset Tokens ──────────────────────
+\echo '[009/009] Applying Password Reset Tokens (forgot-password flow)...'
+\i 009_password_reset.sql
 
 \echo ''
 \echo '══════════════════════════════════════════════════════'
@@ -86,7 +90,7 @@ FROM information_schema.triggers
 WHERE trigger_schema = 'public';
 
 \echo ''
-\echo 'Expected: 29+ tables, 26+ views, 1 materialized view,'
+\echo 'Expected: 30+ tables, 26+ views, 1 materialized view,'
 \echo '          10 functions, 12 triggers'
 \echo ''
 

@@ -18,6 +18,7 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/auth"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/email"
 	"github.com/devprimetek/nuviax-app/internal/engine"
 )
 
@@ -28,6 +29,7 @@ type Config struct {
 	JWTPublicKey   []byte
 	EncryptionKey  []byte
 	AllowedOrigins string
+	EmailClient    *email.Client // optional: nil if RESEND_API_KEY not set
 }
 
 func NewServer(cfg Config) *fiber.App {
@@ -37,7 +39,7 @@ func NewServer(cfg Config) *fiber.App {
 	}
 	eng := engine.New(cfg.DB, cfg.Redis)
 	encKey := parseEncKey(cfg.EncryptionKey)
-	h := handlers.New(cfg.DB, cfg.Redis, authSvc, eng, encKey)
+	h := handlers.New(cfg.DB, cfg.Redis, authSvc, eng, encKey, cfg.EmailClient)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "NUViaX API",
@@ -90,10 +92,12 @@ func NewServer(cfg Config) *fiber.App {
 			return c.Status(429).JSON(fiber.Map{"error": "Prea multe încercări."})
 		},
 	}))
-	ag.Post("/register",   h.Register)
-	ag.Post("/login",      h.Login)
-	ag.Post("/refresh",    h.RefreshToken)
-	ag.Post("/mfa/verify", h.MFAVerify)
+	ag.Post("/register",        h.Register)
+	ag.Post("/login",           h.Login)
+	ag.Post("/refresh",         h.RefreshToken)
+	ag.Post("/mfa/verify",      h.MFAVerify)
+	ag.Post("/forgot-password", h.ForgotPassword)
+	ag.Post("/reset-password",  h.ResetPassword)
 
 	// Protected
 	jwtMW := middleware.JWTAuth(authSvc, cfg.Redis)

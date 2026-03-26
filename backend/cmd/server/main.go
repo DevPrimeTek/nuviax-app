@@ -13,6 +13,7 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/api"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
+	"github.com/devprimetek/nuviax-app/internal/email"
 	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/internal/scheduler"
 	"github.com/devprimetek/nuviax-app/pkg/logger"
@@ -56,8 +57,16 @@ func main() {
 	// ── Engine ─────────────────────────────────────────────────
 	eng := engine.New(pool, rdb)
 
-	// ── Background Scheduler (5 jobs) ─────────────────────────
-	sched := scheduler.New(pool, rdb, eng)
+	// ── Email (optional — graceful degradation if key missing) ─
+	emailClient, _ := email.New()
+	if emailClient != nil {
+		logger.Info("Email service: Resend.com configured")
+	} else {
+		logger.Info("Email service: RESEND_API_KEY not set — emails disabled")
+	}
+
+	// ── Background Scheduler ───────────────────────────────────
+	sched := scheduler.New(pool, rdb, eng, emailClient, []byte(cfg.EncryptionKey))
 	sched.Start()
 	defer sched.Stop()
 
@@ -69,6 +78,7 @@ func main() {
 		JWTPublicKey:   []byte(cfg.JWTPublicKey),
 		EncryptionKey:  []byte(cfg.EncryptionKey),
 		AllowedOrigins: cfg.AllowedOrigins,
+		EmailClient:    emailClient,
 	})
 
 	// ── Graceful shutdown ──────────────────────────────────────

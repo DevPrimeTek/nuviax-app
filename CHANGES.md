@@ -5,6 +5,26 @@ Convenție: **feat** (funcționalitate nouă), **fix** (bug), **refactor**, **do
 
 ---
 
+## [v10.4.1] — 2026-03-26
+
+### feat: Admin Panel standalone + Setup script proprietar
+
+**Admin page redesign — layout independent de aplicație:**
+- `frontend/app/app/admin/page.tsx` — eliminat `AppShell`; înlocuit cu `AdminShell` propriu
+- Fundal dark `#0a0a0f` complet separat de tema aplicației principale
+- Top bar minimal: logo NuviaX + badge **ADMIN** + username + butoane Refresh / Deconectare
+- Pagina de eroare cu butoane „← Dashboard" și „Login" (nu mai arată navigarea principală)
+- Culorile nu mai folosesc variabilele CSS ale aplicației (funcționează independent)
+
+**Setup script proprietar:**
+- `scripts/setup_admin.sh` — creare cont admin via API + setare `is_admin=TRUE` în DB
+  - Pasul 1: `POST /auth/register` (gestionează crypto corect: bcrypt cost 14 + AES-256-GCM)
+  - Pasul 2: `UPDATE users SET is_admin=TRUE WHERE email_hash=SHA256(email)` via docker exec
+  - Pasul 3: verificare finală + instrucțiuni de acces
+  - Graceful: dacă utilizatorul există deja (HTTP 409) → continuă direct cu setarea admin
+
+---
+
 ## [v10.4.0] — 2026-03-26
 
 ### feat: P1 Gaps Stress Test (10/12) + Migration 010

@@ -2,7 +2,7 @@
 
 Platformă SaaS de management al obiectivelor personale și profesionale, bazată pe **NUViaX Growth Framework REV 5.6** — un sistem proprietar cu 5 niveluri (Layer 0 + Level 1-5) și 40 de componente (C1–C40).
 
-**Versiune curentă:** `10.4.0` | **Status:** ✅ Production Ready
+**Versiune curentă:** `10.4.1` | **Status:** ✅ Production Ready
 
 ---
 
@@ -308,6 +308,7 @@ docker exec -i nuviax_db psql -U nuviax -d nuviax \
 
 | Versiune | Data | Descriere |
 |---------|------|-----------|
+| v10.4.1 | 2026-03-26 | Admin page standalone (fără AppShell); setup_admin.sh script |
 | v10.4.0 | 2026-03-26 | P1 Gaps: G-1—G-10, G-12 (10/12) implementate; migration 010 |
 | v10.3.1 | 2026-03-26 | Admin fix: is_admin în nav; cleanup fișiere duplicate |
 | v10.3.0 | 2026-03-25 | Email Resend: welcome + sprint complet + forgot/reset parolă |

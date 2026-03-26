@@ -1099,6 +1099,7 @@ func (h *Handlers) GetSettings(c *fiber.Ctx) error {
 		UserID:            userID,
 		Locale:            user.Locale,
 		AvatarURL:         user.AvatarURL,
+		IsAdmin:           user.IsAdmin,
 		NotificationsOn:   true,
 		ReminderHour:      8,
 		SprintReflection:  true,

@@ -2,127 +2,87 @@
 
 > Acest document reflectă starea curentă a proiectului și pașii următori în ordine de prioritate.
 > Se actualizează la fiecare versiune majoră.
-> **Ultima actualizare:** v10.1.0 — 2026-03-24
+> **Ultima actualizare:** v10.3.1 — 2026-03-26
 
 ---
 
-## Stare Curentă: v10.2.0
+## Stare Curentă: v10.3.1
 
 | Categorie | Status |
 |-----------|--------|
-| Backend Go — NUViaX Framework | ✅ 40/40 componente |
-| Admin Panel (backend + frontend) | ✅ Complet |
+| Backend Go — NUViaX Framework (40 componente) | ✅ 40/40 complet |
+| Admin Panel (backend + frontend) | ✅ Funcțional — link nav condiționat per rol |
 | Critical Gaps Stress Test (P0) | ✅ 5/5 rezolvate |
-| Medium Gaps Stress Test (P1) | ⏳ 0/12 rezolvate |
-| Bug-uri UI/UX critice (B-3,B-7,B-8) | ✅ Rezolvate |
-| Bug-uri UI/UX majore (B-5,B-6,B-9,B-11) | ✅ Rezolvate |
-| Bug-uri medii (B-2,B-4,B-10) | ✅ Rezolvate |
-| Integrare AI (Claude Haiku 4.5) | ✅ Implementat (cu graceful fallback) |
-| Integrare Email (Resend) | ❌ Neimplementat |
+| Medium Gaps Stress Test (P1) | ⏳ 0/12 — **prioritate curentă** |
+| Bug-uri UI/UX B-2—B-11 | ✅ Toate rezolvate (v10.2.0) |
+| Integrare AI (Claude Haiku 4.5) | ✅ Implementat + graceful fallback |
+| Integrare Email (Resend) | ✅ Implementat (v10.3): welcome + reset + sprint |
+| Forgot/Reset parolă | ✅ Implementat (v10.3): endpoint + pagini frontend |
 | Tema Light CSS | ✅ Implementat (variabile + bloc light) |
+| Structura proiect curată | ✅ Fișiere duplicate/outdated șterse (v10.3.1) |
 | Traduceri EN/RU | ❌ Neimplementat |
 | Monetizare (Stripe) | 📅 Planificat târziu |
 
 ---
 
-## Sprint 1 — Bug Fixes Critice + AI + Email ✅ PARȚIAL COMPLET
-*v10.2.0 — toate bug-urile rezolvate; email Resend rămâne*
+## ✅ Sprint 1 — COMPLET (v10.2.0 + v10.3.x)
 
-### ✅ Bug-uri Critice (Rezolvate în v10.2.0)
+### v10.1.0 — Admin Panel + P0 Gaps
+- Admin panel complet (stats, users, audit, health, dev-reset)
+- 5 gap-uri critice stress test rezolvate (retroactive pause, regression events, ALI, freeze trajectory)
 
-**B-7 — Pagina Obiective goală** ✅
-- `GetGoals` acum returnează `{goals:[], waiting:[]}` în loc de array plat
+### v10.2.0 — 10 Bug Fixes + Claude Haiku AI
+- Toate bug-urile B-2—B-11 rezolvate
+- `internal/ai/ai.go` — Claude Haiku 4.5 pentru task generation + GO analysis
 
-**B-8 — Pagina Recap returnează 404** ✅
-- `GET /api/v1/recap/current` + `POST /api/v1/goals/:id/recap` implementate
+### v10.3.0 — Resend Email Integration
+- `internal/email/email.go` — client Resend (Welcome, PasswordReset, SprintComplete)
+- `POST /auth/forgot-password` + `POST /auth/reset-password` (timing-safe)
+- Pagini frontend `/auth/forgot-password` + `/auth/reset-password`
+- Migration 009: `password_reset_tokens`
 
-**B-3 — Sprint afișează 89 zile în loc de 30** ✅
-- `daysLeft` folosește `currentSprint.EndDate` când sprint activ există
-
-### ✅ Bug-uri Majore (Rezolvate în v10.2.0)
-
-**B-5 — "Cum mă simt" nu salvează energia** ✅
-- Endpoint corectat la `/context/energy`; nivel `mid→normal`, `hi→high`; `goal_id` auto-detectat
-
-**B-6 — Nu se pot adăuga sarcini personale** ✅
-- Input + buton "+" adăugat în `today/page.tsx` → `POST /today/personal`
-
-**B-11 — CSS variabile lipsă** ✅
-- `--ff-h` adăugat; `[data-theme="light"]` există și e complet
-
-**B-9 — Settings parțial conectate** ✅
-- Export date (JSON download), schimbare parolă (modal complet)
-
-### ✅ Bug-uri Medii (Rezolvate în v10.2.0)
-
-**B-4 — Activități zilnice generice** ✅
-- Claude Haiku 4.5 cu fallback pe template-uri statice
-
-**B-2 — Analiza GO fără AI** ✅
-- Claude Haiku 4.5 cu fallback pe analiza rule-based
-
-**B-10 — Profil fără foto** ✅
-- Avatar clickabil, upload local, previzualizare în timp real
-
-### ✉️ Integrare Email (Resend.com)
-
-**Pași necesari:**
-1. Creare cont Resend.com
-2. Adaugă domeniu `nuviax.app` → obții DNS records
-3. Configurezi pe name.com: TXT (SPF), TXT (DKIM), CNAME (tracking)
-4. Variabile `RESEND_API_KEY` + `EMAIL_FROM` în `.env` și GitHub Secrets
-5. Implementare Go `pkg/email/email.go`
-6. Email-uri necesare:
-   - Confirmare înregistrare (cu link activare)
-   - Reset parolă
-   - Notificare sprint completat
-   - Notificare ceremony generată
-
-### 🤖 Integrare Claude Haiku
-
-**Pași necesari:**
-1. Variabilă `ANTHROPIC_API_KEY` în `.env` și GitHub Secrets
-2. Dependință Go: `go get github.com/anthropics/anthropic-sdk-go`
-3. Implementare `internal/ai/ai.go` cu client Haiku
-4. Înlocuiește `generateTaskTexts` în `level1_structural.go`
-5. Upgrade `AnalyzeGO` în `handlers.go`
-
-**Cost estimat:** $4-5/lună la 1.000 utilizatori activi
-**Model recomandat:** `claude-haiku-4-5-20251001` — $0.25/1M tokens input
+### v10.3.1 — Admin Fix + Cleanup
+- `is_admin` expus în `/settings` response
+- Link "Admin" în navigare — vizibil **doar** pentru admini
+- Fișiere duplicate/outdated șterse: mockup, checklist, raport vechi, duplicate infra
 
 ---
 
-## Sprint 2 — Medium Gaps Stress Test (P1)
-*12 gap-uri din simulare — valori de referință din `NUVIAX_Stress_Test_Simulation.docx`*
+## 🎯 Sprint 2 — P1 Gaps Stress Test (CURENT)
+*12 gap-uri medii din simulare 120 zile — toate cu impact real pe comportamentul framework-ului*
 
-| Gap | Titlu | Valoare referință |
-|-----|-------|-----------------|
-| #1 | Deadline recalcul după pauză | Sprint curent + zile pauză |
-| #2 | Focus Rotation algorithm | Redirect atenție spre GO cu stagnare |
-| #3 | Chaos Index formula exactă | 0.40 threshold → SRM L2 |
-| #4 | GORI calculation complet | Formula cu ponderi per sprint |
-| #5 | Stagnation detection granular | 5 zile consecutive fără progres |
-| #6 | Velocity Control activare | ALI_projected > 1.15 |
-| #7 | Reactivation Protocol pași | 7 zile stabilitate → propunere reactivare |
-| #8 | Sprint score formula completă | Ponderi: 40% completion, 25% consistency, 25% progress, 10% energy |
-| #9 | Annual Relevance Recalibration | La 90 zile per GO, 180 zile Vault |
-| #10 | Future Vault cu recalibration | Max 3 active, restul în Vault |
-| #11 | Behavior Model dominance | EVOLVE override la GO-uri hibride |
-| #12 | SRM L1 auto + L2 manual flow | L1: automat, L2: confirmare, L3: confirmare dublă |
+Valori de referință (din simulare):
+- Retroactive window: **48h**
+- Reactivation stability: **7 zile**
+- Stagnation threshold: **5 zile consecutive**
+- Chaos Index L2 threshold: **0.40**
+- ALI Ambition Buffer: **1.0 – 1.15**
+- Evolution delta: **≥5%**
+
+| # | Gap | Fișier de modificat | Prioritate |
+|---|-----|--------------------|-----------:|
+| G-1 | Deadline recalcul după pauză — extinde `end_date` sprint cu zilele de pauză | `level1_structural.go` | 🔴 P1 |
+| G-2 | Focus Rotation — redirecționează atenția spre GO cu stagnare >5 zile | `engine.go`, `level2_execution.go` | 🔴 P1 |
+| G-3 | Chaos Index formula exactă — 0.40 threshold trigger SRM L2 | `level2_execution.go` | 🔴 P1 |
+| G-4 | GORI calculation complet — ponderi per sprint (completion + consistency + progress + energy) | `engine.go` | 🔴 P1 |
+| G-5 | Stagnation detection granular — 5 zile consecutive fără progres | `level2_execution.go`, `scheduler.go` | 🟠 P1 |
+| G-6 | Velocity Control activare — când ALI_projected > 1.15 | `level1_structural.go` | 🟠 P1 |
+| G-7 | Reactivation Protocol — 7 zile stabilitate → propunere reactivare | `level4_regulatory.go` | 🟠 P1 |
+| G-8 | Sprint score formula completă — 40% completion, 25% consistency, 25% progress, 10% energy | `engine.go`, `level1_structural.go` | 🔴 P1 |
+| G-9 | Annual Relevance Recalibration — la 90 zile per GO activ | `scheduler.go`, `level3_adaptive.go` | 🟡 P2 |
+| G-10 | Future Vault cu recalibration — max 3 active, restul în Vault automat | `level4_regulatory.go` | 🟡 P2 |
+| G-11 | Behavior Model dominance — EVOLVE override la GO-uri hibride | `engine.go` | 🟡 P2 |
+| G-12 | SRM flow complet — L1: automat, L2: confirmare user, L3: confirmare dublă | `srm.go`, `level4_regulatory.go` | 🟠 P1 |
 
 ---
 
-## Sprint 3 — UX Completare + Traduceri
-*Funcționalitate completă, experiență de utilizare șlefuită*
+## Sprint 3 — Traduceri + UX Completare
 
-- [ ] **Tema Light CSS** — bloc complet `[data-theme="light"]`
-- [ ] **Traduceri EN** — toate textele din RO → EN (framework localizare există)
+- [ ] **Traduceri EN** — textele interfețe RO → EN (framework `T{}` există în AppShell)
 - [ ] **Traduceri RU** — RO → RU
-- [ ] **Upload foto profil** — UI + backend + stocare
 - [ ] **Onboarding îmbunătățit** — AI suggestions la clasificare GO
 - [ ] **Notificări push** — PWA web push pentru reminders zilnice
-- [ ] **Pagina profil** — statistici personale avansate, calendar activitate
-- [ ] **Export date** — GDPR compliance (endpoint există, UI lipsă)
+- [ ] **Statistici personale avansate** — calendar activitate în pagina profil
 
 ---
 
@@ -133,33 +93,20 @@
 - [ ] **Free tier limits** — max 1 GO, fără vizualizare, fără achievements
 - [ ] **Pro tier** — 3 GO, toate funcționalitățile
 - [ ] **Trial 14 zile** — acces complet fără card
-- [ ] **Billing portal** — upgrade/downgrade/cancel
 - [ ] **Webhook Stripe** — actualizare status subscripție în timp real
 
 ---
 
-## Decizii Tehnice Deschise
+## Decizii Tehnice
 
-| Decizie | Opțiuni | Recomandare |
-|---------|---------|------------|
-| Stocare foto profil | Local VPS / AWS S3 / Cloudflare R2 | R2 — cel mai ieftin, S3-compatible |
-| Notificări push | Web Push API / OneSignal | Web Push API nativ (FOSS) |
-| Mobile | PWA / React Native / Expo | PWA pentru v1, React Native mai târziu |
-| Căutare full-text | PostgreSQL tsvector / Meilisearch | PostgreSQL tsvector (fără infra extra) |
-| Analytics | Plausible / PostHog / self-hosted | Plausible (GDPR compliant, ieftin) |
-
----
-
-## Decizii Confirmate
-
-| Decizie | Alegere | Motiv |
-|---------|---------|-------|
-| AI provider | Anthropic Claude Haiku 4.5 | $4-5/lună la 1K users, context nativ NuviaX |
-| Email tranzacțional | Resend.com | Setup 15 min, 3K email/lună gratis |
-| Email business | Microsoft 365 (existent) | Deja configurat pe domeniu proprietar |
-| DNS | name.com (existent) | Deja configurat |
-| CI/CD | GitHub Actions → DockerHub → SSH | Configurat și funcțional |
-| Proxy | nginx-proxy + acme-companion | Shared cu alte proiecte pe același VPS |
+| Subiect | Decizie | Status |
+|---------|---------|--------|
+| Stocare foto profil | Local VPS `/app/uploads/avatars/` | ✅ Implementat — upgrade R2 mai târziu |
+| Email tranzacțional | Resend.com (3K/lună gratis) | ✅ Implementat |
+| AI provider | Anthropic Claude Haiku 4.5 ($4-5/lună) | ✅ Implementat |
+| Mobile | PWA pentru v1, React Native mai târziu | 📅 Planificat |
+| Analytics | Plausible (GDPR, ieftin) | 📅 Planificat |
+| Full-text search | PostgreSQL tsvector | 📅 Planificat |
 
 ---
 

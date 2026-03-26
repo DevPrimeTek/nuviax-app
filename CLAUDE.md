@@ -17,7 +17,7 @@
 - `api.nuviax.app` — backend API (Go)
 
 **Proprietar:** DevPrimeTek (`github.com/DevPrimeTek/nuviax-app`)
-**Versiune curentă:** 10.2.0
+**Versiune curentă:** 10.3.0
 **Branch de development:** `claude/*` → PR → `main`
 
 ---
@@ -40,79 +40,123 @@
 
 ---
 
-## 3. Structura Proiectului
+## 3. Structura Proiectului (v10.3 — curățată)
 
 ```
 nuviax-app/
+├── .github/workflows/
+│   ├── deploy.yml                   # CI/CD backend: push main → DockerHub → VPS
+│   └── deploy-frontend.yml          # CI/CD frontend: push main → DockerHub → VPS
+│
 ├── backend/
-│   ├── cmd/server/main.go           # Entry point
+│   ├── cmd/server/main.go           # Entry point: config, DB, Redis, email, scheduler, HTTP
 │   ├── internal/
+│   │   ├── ai/ai.go                 # Claude Haiku 4.5 HTTP client (fără SDK)
 │   │   ├── api/
-│   │   │   ├── server.go            # Toate rutele + middleware
+│   │   │   ├── server.go            # Toate rutele + middleware Fiber
 │   │   │   ├── handlers/
-│   │   │   │   ├── handlers.go      # Auth, Goals, Tasks, Sprint, Context, Settings
-│   │   │   │   ├── admin.go         # Admin panel handlers
-│   │   │   │   ├── srm.go           # SRM (Strategic Reset Management)
-│   │   │   │   ├── ceremonies.go    # Level 5 ceremonies
-│   │   │   │   ├── achievements.go  # Level 5 badges
-│   │   │   │   └── visualization.go # Progress charts
+│   │   │   │   ├── handlers.go      # Auth, Goals, Tasks, Sprint, Context, Settings, Recap
+│   │   │   │   ├── admin.go         # Admin panel: stats, users, audit, health, dev-reset
+│   │   │   │   ├── srm.go           # SRM (Strategic Reset Management) L1/L2/L3
+│   │   │   │   ├── ceremonies.go    # Level 5: GetLatestCeremony, MarkViewed
+│   │   │   │   ├── achievements.go  # Level 5: badge grid
+│   │   │   │   └── visualization.go # Level 5: progress charts data
 │   │   │   └── middleware/
-│   │   │       ├── jwt.go           # JWT auth middleware
-│   │   │       └── admin.go         # Admin-only middleware (is_admin check)
+│   │   │       ├── jwt.go           # JWT RS256 auth middleware
+│   │   │       └── admin.go         # AdminOnly: verifică is_admin=TRUE, returnează 404 altfel
+│   │   ├── auth/auth.go             # JWT service (RS256, access 15min, refresh 7 zile)
+│   │   ├── cache/cache.go           # Redis helpers (sessions, dashboard cache)
+│   │   ├── db/
+│   │   │   ├── db.go                # pgxpool connect + RunMigrations
+│   │   │   └── queries.go           # Toate query-urile (users, goals, sprints, tasks, SRM, admin, email reset)
+│   │   ├── email/email.go           # Resend.com HTTP client: Welcome + PasswordReset + SprintComplete
 │   │   ├── engine/
-│   │   │   ├── engine.go            # Layer 0 + public API
-│   │   │   ├── level1_structural.go # C9-C18: Sprint, checkpoints, tasks
+│   │   │   ├── engine.go            # Layer 0 (C1-C8) + API publică
+│   │   │   ├── helpers.go           # Funcții interne reutilizabile
+│   │   │   ├── level1_structural.go # C9-C18: Sprint, checkpoints, task generation (Claude Haiku)
 │   │   │   ├── level2_execution.go  # C19-C25: Execution rate, regression events
 │   │   │   ├── level3_adaptive.go   # C26-C31: Consistency, energy, context
 │   │   │   ├── level4_regulatory.go # C32-C36: Activation rules, SRM
 │   │   │   └── level5_growth.go     # C37-C40: Evolution, ceremonies, visualization
-│   │   ├── models/models.go         # 50+ structs (User.IsAdmin adăugat în v10.1)
-│   │   ├── db/queries.go            # Toate query-urile DB (CreateRetroactivePause adăugat)
-│   │   ├── auth/auth.go             # JWT service
-│   │   ├── cache/cache.go           # Redis helpers
-│   │   └── scheduler/scheduler.go  # 10 background jobs (cron)
-│   │   ├── ai/ai.go                 # Claude Haiku HTTP client (adăugat v10.2)
+│   │   ├── models/models.go         # 50+ structuri Go (UserSettings include is_admin din v10.3)
+│   │   └── scheduler/scheduler.go  # 10 cron jobs: daily tasks, sprint close, ceremonies, SRM, email
 │   ├── migrations/
-│   │   ├── 001_base_schema.sql      # Core: users, sessions, goals, sprints, tasks
-│   │   ├── 002_layer0_level1.sql
-│   │   ├── 003_level2_execution.sql
-│   │   ├── 004_level3_adaptive.sql
-│   │   ├── 005_level4_regulatory.sql
-│   │   ├── 006_level5_growth.sql
-│   │   ├── 007_admin_fixes.sql      # Admin panel + 5 critical gap fixes (v10.1)
-│   │   └── 008_avatar.sql           # avatar_url pe users (v10.2)
-│   └── pkg/
-│       ├── crypto/crypto.go         # AES-256-GCM, PBKDF2, SHA256
-│       └── logger/logger.go         # Uber Zap structured logging
+│   │   ├── 001_base_schema.sql      # Core tables: users, sessions, goals, sprints, tasks, audit
+│   │   ├── 002_layer0_level1.sql    # Layer 0 + Level 1 tables
+│   │   ├── 003_level2_execution.sql # Level 2 tables
+│   │   ├── 004_level3_adaptive.sql  # Level 3 tables
+│   │   ├── 005_level4_regulatory.sql # Level 4 + SRM tables
+│   │   ├── 006_level5_growth.sql    # Level 5: ceremonies, achievements, trajectories
+│   │   ├── 007_admin_fixes.sql      # Admin + 5 P0 gap fixes: regression, ALI, retroactive pause
+│   │   ├── 008_avatar.sql           # users.avatar_url
+│   │   ├── 009_password_reset.sql   # password_reset_tokens (forgot-password flow)
+│   │   └── apply_all.sql            # Script aplicare toate migrările (idempotent)
+│   ├── pkg/
+│   │   ├── crypto/crypto.go         # AES-256-GCM, PBKDF2, bcrypt, SHA256, RandomHex
+│   │   └── logger/logger.go         # Uber Zap structured logging
+│   └── scripts/
+│       ├── test_all.sh              # Build validation + gofmt check
+│       ├── test_api.sh              # Teste curl pe endpoint-uri API
+│       ├── verify_db.sql            # Verificare integritate schema DB
+│       ├── performance_check.sql    # View timing + index stats
+│       └── integration_test.md     # Ghid E2E test manual (10 scenarii)
+│
 ├── frontend/
-│   └── app/
-│       ├── app/                     # Next.js App Router
-│       │   ├── dashboard/           # ✅ Funcțional
-│       │   ├── goals/               # ✅ Fix v10.2: {goals:[], waiting:[]} response
-│       │   ├── today/               # ✅ Fix v10.2: energy salvată + personal tasks
-│       │   ├── achievements/        # ✅ Funcțional
-│       │   ├── recap/               # ✅ Fix v10.2: GET /recap/current implementat
-│       │   ├── settings/            # ✅ Fix v10.2: parolă + export date conectate
-│       │   ├── profile/             # ✅ Fix v10.2: upload avatar implementat
-│       │   ├── admin/               # ✅ Nou în v10.1 (panel administrare)
-│       │   ├── auth/                # ✅ Login + Register
-│       │   └── onboarding/          # ✅ Funcțional
-│       ├── components/
-│       │   ├── layout/AppShell.tsx
-│       │   ├── DashboardClientLayer.tsx  # Polls ceremonies/unviewed
-│       │   ├── SRMWarning.tsx           # L1/L2/L3 warning banners
-│       │   ├── CeremonyModal.tsx        # Sprint ceremony modal
-│       │   ├── ProgressCharts.tsx       # Recharts LineChart + BarChart
-│       │   └── GoalTabs.tsx             # Prezentare/Progres tabs
-│       ├── lib/api.ts               # API client utilities
-│       └── api/
-│           ├── auth/                # Login/register/logout routes
-│           └── proxy/[...path]/     # Generic backend proxy cu auto-refresh token
-└── infra/
-    ├── docker-compose.yml           # Prod: DB + Redis + API + App + Landing
-    ├── .env.example                 # Template variabile
-    └── GITHUB_SECRETS.md            # SSH_HOST=83.143.69.103, SSH_USER=sbarbu
+│   ├── app/                         # Aplicația principală → nuviax.app
+│   │   ├── app/                     # Next.js App Router pages
+│   │   │   ├── admin/page.tsx       # ✅ Panel admin (acces: nuviax.app/admin, link în nav doar pt admini)
+│   │   │   ├── achievements/page.tsx
+│   │   │   ├── api/
+│   │   │   │   ├── auth/            # login, register, logout, forgot-password, reset-password, set
+│   │   │   │   └── proxy/[...path]/ # Proxy JWT auto-refresh → backend
+│   │   │   ├── auth/                # login, register, forgot-password, reset-password pages
+│   │   │   ├── dashboard/page.tsx
+│   │   │   ├── goals/               # list + [id]/page.tsx (detalii + charts)
+│   │   │   ├── onboarding/page.tsx
+│   │   │   ├── profile/page.tsx     # Upload avatar
+│   │   │   ├── recap/page.tsx
+│   │   │   ├── settings/page.tsx    # Schimbare parolă + export date
+│   │   │   ├── today/page.tsx       # Energy + sarcini principale + sarcini personale
+│   │   │   ├── layout.tsx           # Root layout cu fonturi (Bricolage, DM Sans, JetBrains Mono)
+│   │   │   └── page.tsx             # Redirect → /dashboard sau /auth/login
+│   │   ├── components/
+│   │   │   ├── layout/AppShell.tsx  # Nav + link Admin condiționat (is_admin din settings)
+│   │   │   ├── CeremonyModal.tsx    # Modal ceremonie sprint (BRONZE/SILVER/GOLD/PLATINUM)
+│   │   │   ├── DashboardClientLayer.tsx # Polls /ceremonies/unviewed
+│   │   │   ├── GoalTabs.tsx         # Tabs Prezentare / Progres
+│   │   │   ├── ProgressCharts.tsx   # LineChart + BarChart (Recharts)
+│   │   │   └── SRMWarning.tsx       # Bannere SRM L1/L2/L3
+│   │   ├── lib/api.ts               # API client helpers
+│   │   ├── middleware.ts            # Auth middleware Next.js (redirect neautentificați)
+│   │   └── styles/globals.css       # Design system: CSS vars, dark/light theme, componente
+│   └── landing/                     # Landing page → nuviaxapp.com
+│       └── app/page.tsx             # Pagina principală landing (statică)
+│
+├── infra/
+│   ├── docker-compose.yml           # Prod: nuviax_db + nuviax_redis + nuviax_api
+│   ├── docker-compose.frontend.yml  # Prod: nuviax_app (port 3000) + nuviax_landing (port 3001)
+│   ├── .env.example                 # Template complet variabile environment
+│   ├── GITHUB_SECRETS.md            # Ghid configurare GitHub Secrets CI/CD
+│   ├── deploy.sh                    # Script deploy manual
+│   ├── setup-server.sh              # Setup inițial VPS (Docker, nginx-proxy, etc.)
+│   └── verify-deployment.sh         # Verificare health post-deploy
+│
+├── scripts/
+│   └── test_components.sh           # Teste C1-C40 comprehensive
+│
+├── CLAUDE.md                        # ← Context master (citit la START oricărei sesiuni)
+├── CHANGES.md                       # Changelog detaliat (v1.x → v10.3)
+├── ROADMAP.md                       # Planul de dezvoltare și priorități
+└── README.md                        # Documentație principală + setup
 ```
+
+**Fișiere șterse în v10.3 (cleanup):**
+- `NuviaX_UI_Mockup_v4.html` — mockup vechi, înlocuit de implementare reală
+- `ANALYSIS_REPORT.md` — raport inițial, integrat în CHANGES.md
+- `IMPLEMENTATION_CHECKLIST.md` — checklist vechi, înlocuit de această secțiune
+- `TEST_REPORT.md` — generat automat, nu se mai ține în git
+- `frontend/infra/` — director duplicat (conținut mutat în `infra/`)
+- `frontend/.github/workflows/` — workflows duplicate (există în `.github/workflows/`)
 
 ---
 
@@ -397,4 +441,4 @@ chore: configurare, dependențe
 
 ---
 
-*Ultima actualizare: 2026-03-25 — v10.3 (Resend email integration + forgot/reset password flow)*
+*Ultima actualizare: 2026-03-26 — v10.3.1 (Admin fix: is_admin în nav + cleanup fișiere duplicate)*

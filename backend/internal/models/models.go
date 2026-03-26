@@ -221,6 +221,7 @@ type UserSettings struct {
 	UserID            uuid.UUID `json:"user_id"`
 	Locale            string    `json:"locale"`
 	AvatarURL         *string   `json:"avatar_url,omitempty"`
+	IsAdmin           bool      `json:"is_admin"`
 	NotificationsOn   bool      `json:"notifications_on"`
 	ReminderHour      int       `json:"reminder_hour"`
 	SeasonalPauses    bool      `json:"seasonal_pauses"`

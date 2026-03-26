@@ -113,3 +113,27 @@ func findActiveCheckpoint(cps []models.Checkpoint) *models.Checkpoint {
 	}
 	return nil
 }
+
+// ── GAP G-1 — Deadline Recalcul After Pause ─────────────────────────────────
+
+// ExtendSprintForPause extends the active sprint's end_date by pauseDays (G-1).
+// This ensures the sprint deadline is fair after a planned absence — the user
+// doesn't lose sprint time to a pause they reported honestly.
+// Only affects ACTIVE sprints; completed/skipped sprints are not extended.
+func (e *Engine) ExtendSprintForPause(ctx context.Context, goalID uuid.UUID, pauseDays int) error {
+	if pauseDays <= 0 {
+		return nil
+	}
+
+	sprint, err := db.GetCurrentSprint(ctx, e.db, goalID)
+	if err != nil {
+		return nil // no active sprint — nothing to extend
+	}
+
+	_, err = e.db.Exec(ctx, `
+		UPDATE sprints
+		SET end_date = end_date + ($2 * INTERVAL '1 day')
+		WHERE id = $1 AND status = 'ACTIVE'
+	`, sprint.ID, pauseDays)
+	return err
+}

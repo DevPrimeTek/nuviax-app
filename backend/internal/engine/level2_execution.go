@@ -7,10 +7,19 @@ package engine
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/devprimetek/nuviax-app/internal/db"
 )
+
+// chaosIndexL2Threshold — Chaos Index >= 0.40 triggers SRM L2 (G-3)
+const chaosIndexL2Threshold = 0.40
+
+// stagnationThresholdDays — consecutive days without progress before Focus Rotation (G-5)
+const stagnationThresholdDays = 5
 
 // querySprintTaskRatio este helper intern — interogare unică pentru total/completed sarcini MAIN
 func (e *Engine) querySprintTaskRatio(ctx context.Context, sprintID uuid.UUID) (total, completed int) {
@@ -31,13 +40,38 @@ func (e *Engine) computeCompletionRate(ctx context.Context, sprintID uuid.UUID) 
 	return float64(completed) / float64(total)
 }
 
-// C20 — computeSprintInternal: scorul brut al unui sprint (0-1)
+// C20 — computeSprintInternal: scorul compozit al unui sprint (0-1)
+// GAP G-8 FIX — formula completă: 40% completion + 25% consistency + 25% progress + 10% energy
 func (e *Engine) computeSprintInternal(ctx context.Context, sprintID uuid.UUID) float64 {
 	total, completed := e.querySprintTaskRatio(ctx, sprintID)
 	if total == 0 {
 		return 0
 	}
-	return clamp(float64(completed)/float64(total), 0, 1)
+	completionRate := clamp(float64(completed)/float64(total), 0, 1)
+
+	// Load sprint for full formula — graceful fallback to completion-only on error
+	sprint, err := db.GetSprintByID(ctx, e.db, sprintID)
+	if err != nil {
+		return completionRate
+	}
+
+	goal, err := db.GetGoalByID(ctx, e.db, sprint.GoalID, uuid.Nil)
+	if err != nil {
+		return completionRate
+	}
+
+	consistency := e.computeConsistency(ctx, sprint)
+	progress := e.computeProgressVsExpected(ctx, goal, sprint)
+	contextPenalty, energyBonus := e.computeContextFactors(ctx, sprint.GoalID)
+
+	return clamp(
+		completionRate*0.40+
+			consistency*0.25+
+			progress*0.25+
+			energyBonus*0.10-
+			contextPenalty*0.05,
+		0, 1,
+	)
 }
 
 // GAP #15 — CheckAndRecordRegressionEvent detects when a goal's current progress
@@ -116,4 +150,144 @@ func (e *Engine) GetRegressionEvents(ctx context.Context, sprintID uuid.UUID) ([
 		})
 	}
 	return events, rows.Err()
+}
+
+// ── GAP G-3 — Chaos Index ───────────────────────────────────────────────────
+
+// computeChaosIndex measures daily completion rate variability (G-3).
+// CI = std_dev(daily_rates) / mean(daily_rates) — Coefficient of Variation.
+// Requires at least 3 days of data; returns 0 otherwise.
+func (e *Engine) computeChaosIndex(ctx context.Context, sprintID uuid.UUID) float64 {
+	rows, err := e.db.Query(ctx, `
+		SELECT
+			CAST(COUNT(*) FILTER (WHERE completed = TRUE) AS FLOAT) /
+			NULLIF(COUNT(*), 0)
+		FROM daily_tasks
+		WHERE sprint_id = $1 AND task_type = 'MAIN'
+		GROUP BY task_date
+		ORDER BY task_date
+	`, sprintID)
+	if err != nil {
+		return 0
+	}
+	defer rows.Close()
+
+	var rates []float64
+	for rows.Next() {
+		var rate float64
+		if err := rows.Scan(&rate); err == nil {
+			rates = append(rates, rate)
+		}
+	}
+
+	if len(rates) < 3 {
+		return 0 // not enough data
+	}
+
+	sum := 0.0
+	for _, r := range rates {
+		sum += r
+	}
+	mean := sum / float64(len(rates))
+	if mean < 0.01 {
+		return 1.0 // fully inactive = maximum chaos
+	}
+
+	sumSq := 0.0
+	for _, r := range rates {
+		d := r - mean
+		sumSq += d * d
+	}
+	stdDev := math.Sqrt(sumSq / float64(len(rates)))
+	return clamp(stdDev/mean, 0, 2)
+}
+
+// CheckChaosIndex returns the Chaos Index for a sprint and whether SRM L2 should trigger (G-3).
+// CI >= 0.40 → L2 trigger. Public API — called by scheduler and SRM handlers.
+func (e *Engine) CheckChaosIndex(ctx context.Context, sprintID uuid.UUID) (ci float64, triggerL2 bool) {
+	ci = e.computeChaosIndex(ctx, sprintID)
+	triggerL2 = ci >= chaosIndexL2Threshold
+	return
+}
+
+// ── GAP G-5 — Stagnation Detection ─────────────────────────────────────────
+
+// ConsecutiveInactiveDays returns the number of consecutive days without any
+// completed main task for a given goal (G-5).
+// Returns 0 if a task was completed today. Caps at 30.
+func (e *Engine) ConsecutiveInactiveDays(ctx context.Context, goalID uuid.UUID) int {
+	var lastCompleted time.Time
+	err := e.db.QueryRow(ctx, `
+		SELECT COALESCE(MAX(task_date), '0001-01-01'::date)
+		FROM daily_tasks
+		WHERE go_id = $1 AND task_type = 'MAIN' AND completed = TRUE
+	`, goalID).Scan(&lastCompleted)
+
+	if err != nil || lastCompleted.IsZero() || lastCompleted.Year() == 1 {
+		// No completed tasks — count from goal creation
+		var created time.Time
+		e.db.QueryRow(ctx, `SELECT created_at FROM global_objectives WHERE id = $1`, goalID).Scan(&created)
+		if created.IsZero() {
+			return 0
+		}
+		days := int(time.Now().UTC().Truncate(24*time.Hour).Sub(created.Truncate(24*time.Hour)).Hours() / 24)
+		if days > 30 {
+			return 30
+		}
+		return days
+	}
+
+	days := int(time.Now().UTC().Truncate(24*time.Hour).Sub(lastCompleted.Truncate(24*time.Hour)).Hours() / 24)
+	if days > 30 {
+		return 30
+	}
+	return days
+}
+
+// IsStagnant returns true when a goal has been inactive for >= stagnationThresholdDays (G-5).
+func (e *Engine) IsStagnant(ctx context.Context, goalID uuid.UUID) bool {
+	return e.ConsecutiveInactiveDays(ctx, goalID) >= stagnationThresholdDays
+}
+
+// ── GAP G-6 — Velocity Control ──────────────────────────────────────────────
+
+// IsVelocityControlActive checks if ALI_projected > 1.15 for a goal's current sprint (G-6).
+// When true, task generation should reduce count by 1 to avoid overload.
+func (e *Engine) IsVelocityControlActive(ctx context.Context, goalID uuid.UUID) bool {
+	sprint, err := db.GetCurrentSprint(ctx, e.db, goalID)
+	if err != nil || sprint == nil {
+		return false
+	}
+
+	var completedTasks, totalTasks int
+	e.db.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE completed = TRUE),
+			COUNT(*)
+		FROM daily_tasks
+		WHERE sprint_id = $1 AND task_type = 'MAIN'
+	`, sprint.ID).Scan(&completedTasks, &totalTasks)
+
+	if totalTasks == 0 {
+		return false
+	}
+
+	sprintDuration := sprint.EndDate.Sub(sprint.StartDate).Hours() / 24
+	elapsed := time.Now().UTC().Sub(sprint.StartDate).Hours() / 24
+	remaining := sprintDuration - elapsed
+
+	if elapsed <= 0 || remaining <= 0 {
+		return false
+	}
+
+	dailyRate := float64(completedTasks) / math.Max(elapsed, 1)
+	projectedTotal := float64(completedTasks) + dailyRate*remaining
+	expectedTotal := float64(totalTasks)
+
+	if expectedTotal <= 0 {
+		return false
+	}
+
+	aliProjected := projectedTotal / expectedTotal
+	return aliProjected > 1.15 // Ambition Buffer upper limit
 }

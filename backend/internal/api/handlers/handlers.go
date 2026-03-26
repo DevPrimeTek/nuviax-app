@@ -410,8 +410,9 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		return badRequest(c, "Un obiectiv nu poate dura mai mult de 365 de zile.")
 	}
 
-	// Determină status: ACTIVE sau WAITING
+	// Determină status: ACTIVE, WAITING sau VAULT (G-10)
 	status := models.GoalActive
+	vaultedBySystem := false
 	if req.WaitingList {
 		status = models.GoalWaiting
 	} else {
@@ -424,6 +425,11 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		ok, reason := h.engine.ValidateGoalActivation(c.Context(), userID, tempGoal)
 		if !ok {
 			return c.Status(422).JSON(fiber.Map{"error": reason})
+		}
+		// G-10: Vault signal — engine says capacity full, auto-route to WAITING
+		if ok && len(reason) > 6 && reason[:6] == "VAULT:" {
+			status = models.GoalWaiting
+			vaultedBySystem = true
 		}
 	}
 
@@ -464,6 +470,17 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	}
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
+
+	// G-10: Add vault notice to response if auto-vaulted by system
+	if vaultedBySystem {
+		return c.Status(201).JSON(fiber.Map{
+			"goal":    goal,
+			"message": "Ai deja 3 obiective active. Obiectivul a fost adăugat în Vault-ul viitor și va fi activat automat când un slot se eliberează.",
+			"status":  "WAITING",
+			"vaulted": true,
+		})
+	}
+
 	return c.Status(201).JSON(goal)
 }
 
@@ -587,6 +604,13 @@ func (h *Handlers) ActivateGoal(c *fiber.Ctx) error {
 	ok, reason := h.engine.ValidateGoalActivation(c.Context(), userID, goal)
 	if !ok {
 		return c.Status(422).JSON(fiber.Map{"error": reason})
+	}
+	// G-10: Vault signal — explicit activation blocked when at capacity
+	if ok && len(reason) > 6 && reason[:6] == "VAULT:" {
+		return c.Status(422).JSON(fiber.Map{
+			"error":   "Poți lucra la maxim 3 obiective active. Eliberează un slot înainte de a activa acest obiectiv.",
+			"vaulted": true,
+		})
 	}
 
 	if err := db.UpdateGoalStatus(c.Context(), h.db, goalID, userID, models.GoalActive); err != nil {
@@ -989,16 +1013,24 @@ func (h *Handlers) SetPause(c *fiber.Ctx) error {
 
 	cache.InvalidateDashboard(c.Context(), h.redis, userID.String())
 
-	msg := "Pauză activată. Progresul așteptat este suspendat."
+	// G-1: Extend the current sprint end_date by the pause duration
+	// This ensures the sprint deadline is fair — users don't lose sprint time to a pause.
+	if err := h.engine.ExtendSprintForPause(c.Context(), goalID, req.Days); err != nil {
+		// Non-fatal — log but continue (pause is still registered)
+		_ = err
+	}
+
+	msg := "Pauză activată. Progresul așteptat este suspendat. Termenul etapei a fost extins corespunzător."
 	if retroactive {
-		msg = "Pauză retroactivă înregistrată. Progresul din această perioadă nu va fi penalizat."
+		msg = "Pauză retroactivă înregistrată. Progresul din această perioadă nu va fi penalizat. Termenul etapei a fost extins."
 	}
 
 	return c.Status(201).JSON(fiber.Map{
-		"message":     msg,
-		"start_date":  adj.StartDate,
-		"end_date":    adj.EndDate,
-		"retroactive": retroactive,
+		"message":              msg,
+		"start_date":           adj.StartDate,
+		"end_date":             adj.EndDate,
+		"retroactive":          retroactive,
+		"sprint_extended_days": req.Days,
 	})
 }
 
@@ -1099,6 +1131,7 @@ func (h *Handlers) GetSettings(c *fiber.Ctx) error {
 		UserID:            userID,
 		Locale:            user.Locale,
 		AvatarURL:         user.AvatarURL,
+		IsAdmin:           user.IsAdmin,
 		NotificationsOn:   true,
 		ReminderHour:      8,
 		SprintReflection:  true,

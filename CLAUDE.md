@@ -326,12 +326,17 @@ RESEND_API_KEY    = [re_...]      # Nou în v10.1
 **Migration 009 (v10.3):**
 - `password_reset_tokens` — token_hash, user_id, expires_at, used_at (1 oră TTL)
 
+**Migration 010 (v10.4):**
+- `srm_events` — audit trail complet SRM L1/L2/L3 per obiectiv
+- `reactivation_protocols` — tracking 7-day stability per obiectiv PAUSED
+- `stagnation_events` — log zile consecutive inactive per GO
+
 **Cum aplici migrările:**
 ```bash
 # Pe server în containerul nuviax_db:
 docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/apply_all.sql
 # SAU individual:
-docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/009_password_reset.sql
+docker exec -i nuviax_db psql -U nuviax -d nuviax < migrations/010_p1_gaps.sql
 ```
 
 ---
@@ -425,31 +430,30 @@ grep "Versiune curentă" CLAUDE.md
 
 ## 14. Roadmap — Priorități
 
-### ✅ Sprint anterior — COMPLET (v10.2.0, 2026-03-24)
+### ✅ Sprinturi completate
 
-1. ✅ Fix Bug #7 — Goals API mismatch
-2. ✅ Fix Bug #8 — Recap endpoint implementat
-3. ✅ Fix Bug #3 — Sprint days calcul corect
-4. ✅ Fix Bug #11 — CSS variables + Light theme
-5. ✅ Fix Bug #5 — Energy salvată corect
-6. ✅ Fix Bug #6 — Personal task add UI
-7. ✅ Fix Bug #9 — Settings complet conectate
-8. ✅ Fix Bug #2 — Analiză GO cu Claude Haiku
-9. ✅ Fix Bug #4 — Task generation cu Claude Haiku
-10. ✅ Fix Bug #10 — Upload avatar profil
+| Sprint | Versiune | Conținut principal |
+|--------|---------|-------------------|
+| Sprint 0 | v10.0.0 | Framework REV 5.6: 40/40 componente |
+| Sprint 1a | v10.1.0 | Admin Panel + 5 P0 Gaps critice |
+| Sprint 1b | v10.2.0 | 10 Bug Fixes (B-2—B-11) + Claude Haiku AI |
+| Sprint 1c | v10.3.0 | Email Resend (E-1) + Forgot/Reset Password |
+| Sprint 1d | v10.3.1 | Admin nav fix + cleanup fișiere duplicate |
+| Sprint 2 | v10.4.0 | P1 Gaps 10/12 (G-1—G-10, G-12) + migration 010 |
 
-### 🎯 Sprint curent (imediat)
+### 🎯 Sprint curent — Sprint 3 (UX + Traduceri + G-11)
 
-1. ✅ **Integrare Resend** — email service complet (E-1)
-2. ✅ **P1 gaps** — 10/12 implementate (G-1 până G-10, G-12) (E-2)
-3. **Translations** — framework EN/RU (E-3)
+1. **G-11** — Behavior Model dominance (EVOLVE override pentru GO hibride) — migration 011
+2. **Traduceri EN** — framework i18n, `useTranslation()` hook, toate textele UI
+3. **Traduceri RU** — același framework i18n
+4. **Onboarding AI** — Claude Haiku sugestii la clasificare GO nouă
 
-### Mai târziu
+### Mai târziu — Sprint 4 (Monetizare)
 
-4. **Monetizare** — Stripe integration (E-4)
-5. **Mobile** — PWA sau React Native
-6. **Analytics** — dashboard utilizator avansat
-7. **Onboarding** îmbunătățit cu AI suggestions
+5. **Stripe integration** — subscripție Pro + Free tier limits + Trial 14 zile
+6. **PWA + Notificări push** — service worker + web push opt-in din settings
+7. **Export PDF** — raport lunar din `/recap`
+8. **Statistici avansate** — heatmap activitate în `/profile`
 
 ---
 
@@ -458,13 +462,17 @@ grep "Versiune curentă" CLAUDE.md
 | Resursă | Locație |
 |---------|---------|
 | Stress Test (120 zile, 38 componente) | `NUVIAX_Stress_Test_Simulation.docx` |
-| Mockup UI v4 | `NuviaX_UI_Mockup_v4.html` |
-| API Documentation | `backend/API.md` |
-| Bug Analysis | `ANALYSIS_REPORT.md` |
-| Implementation Status | `IMPLEMENTATION_CHECKLIST.md` |
 | GitHub Secrets Guide | `infra/GITHUB_SECRETS.md` |
 | Env Template | `infra/.env.example` |
+| Changelog detaliat | `CHANGES.md` |
+| Plan de dezvoltare | `ROADMAP.md` |
+
+**Fișiere șterse în v10.3.1 (nu mai există în repo):**
+- `NuviaX_UI_Mockup_v4.html` — înlocuit de implementare reală
+- `ANALYSIS_REPORT.md` — conținut integrat în `CHANGES.md`
+- `IMPLEMENTATION_CHECKLIST.md` — înlocuit de `ROADMAP.md`
+- `TEST_REPORT.md` — generat automat, nu se ține în git
 
 ---
 
-*Ultima actualizare: 2026-03-26 — v10.4.0 (P1 Gaps 10/12, migration 010, README.md maintenance rule)*
+*Ultima actualizare: 2026-03-26 — v10.4.0 (docs sync: CHANGES.md completat v10.3→v10.4, ROADMAP Sprint 3 detaliat)*

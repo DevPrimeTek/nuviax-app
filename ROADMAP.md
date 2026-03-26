@@ -2,7 +2,7 @@
 
 > Acest document reflectă starea curentă a proiectului și pașii următori în ordine de prioritate.
 > Se actualizează la fiecare versiune majoră.
-> **Ultima actualizare:** v10.3.1 — 2026-03-26
+> **Ultima actualizare:** v10.4.0 — 2026-03-26
 
 ---
 
@@ -92,24 +92,46 @@ Valori de referință (din simulare):
 
 ---
 
-## Sprint 3 — Traduceri + UX Completare
+## Sprint 3 — Traduceri + UX Completare + G-11
 
-- [ ] **Traduceri EN** — textele interfețe RO → EN (framework `T{}` există în AppShell)
-- [ ] **Traduceri RU** — RO → RU
-- [ ] **Onboarding îmbunătățit** — AI suggestions la clasificare GO
-- [ ] **Notificări push** — PWA web push pentru reminders zilnice
-- [ ] **Statistici personale avansate** — calendar activitate în pagina profil
+*Obiectiv: aplicație utilizabilă internațional, experiență utilizator completă*
+
+### Prioritate înaltă
+
+- [ ] **G-11: Behavior Model dominance** — EVOLVE override GO hibride; necesită câmp `dominant_behavior_model VARCHAR(20)` pe `global_objectives`; `level5_growth.go` + migration 011
+- [ ] **Traduceri EN** — framework i18n: toate textele interfață RO → EN; `lib/i18n.ts` cu `useTranslation()` hook; detectare limbă din `settings.language`
+- [ ] **Traduceri RU** — același framework, RO → RU
+
+### Prioritate medie
+
+- [ ] **Onboarding îmbunătățit** — la pasul de clasificare GO, Claude Haiku sugerează categoria (SMART analysis) → utilizatorul confirmă sau corectează
+- [ ] **Statistici personale avansate** — calendar activitate tip GitHub heatmap în `/profile`; date din `daily_metrics`
+- [ ] **Notificări push PWA** — `manifest.json` + service worker; web push pentru remindere zilnice (opt-in din `settings`)
+
+### Prioritate scăzută
+
+- [ ] **Export PDF raport lunar** — `/recap` → PDF cu progres lunar (bibliotecă `pdf-lib` sau similar)
+- [ ] **Dark/Light theme toggle** — buton în navigare; salvat în `localStorage` + `settings.theme`
 
 ---
 
 ## Sprint 4 — Monetizare (Planificat)
 *Doar după ce aplicația funcționează complet și are utilizatori reali*
 
-- [ ] **Stripe integration** — subscripție lunară/anuală
-- [ ] **Free tier limits** — max 1 GO, fără vizualizare, fără achievements
-- [ ] **Pro tier** — 3 GO, toate funcționalitățile
-- [ ] **Trial 14 zile** — acces complet fără card
-- [ ] **Webhook Stripe** — actualizare status subscripție în timp real
+### Stripe Integration
+
+- [ ] **Stripe Checkout** — subscripție lunară ($9.99) / anuală ($89.99)
+- [ ] **Free tier limits** — max 1 GO activ, fără vizualizare avansată, fără achievements
+- [ ] **Pro tier** — max 3 GO active, toate funcționalitățile, AI analysis nelimitat
+- [ ] **Trial 14 zile** — acces Pro complet fără card la înregistrare
+- [ ] **Webhook Stripe** — `POST /api/v1/webhooks/stripe` — actualizare `users.subscription_status` în timp real
+- [ ] **Billing portal** — redirect Stripe Customer Portal din `/settings`
+- [ ] **Enforcement middleware** — verificare `subscription_status` la endpoint-uri Pro
+
+### Backend
+
+- [ ] **Migration 011** (sau mai târziu) — `users.subscription_status ENUM`, `users.stripe_customer_id`, `users.trial_ends_at`
+- [ ] **GitHub Secret nou** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ---
 

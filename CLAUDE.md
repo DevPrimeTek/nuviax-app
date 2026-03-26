@@ -17,7 +17,7 @@
 - `api.nuviax.app` — backend API (Go)
 
 **Proprietar:** DevPrimeTek (`github.com/DevPrimeTek/nuviax-app`)
-**Versiune curentă:** 10.4.0
+**Versiune curentă:** 10.4.1
 **Branch de development:** `claude/*` → PR → `main`
 
 ---
@@ -466,6 +466,7 @@ grep "Versiune curentă" CLAUDE.md
 | Env Template | `infra/.env.example` |
 | Changelog detaliat | `CHANGES.md` |
 | Plan de dezvoltare | `ROADMAP.md` |
+| Setup cont admin (prima rulare) | `scripts/setup_admin.sh` |
 
 **Fișiere șterse în v10.3.1 (nu mai există în repo):**
 - `NuviaX_UI_Mockup_v4.html` — înlocuit de implementare reală
@@ -475,4 +476,4 @@ grep "Versiune curentă" CLAUDE.md
 
 ---
 
-*Ultima actualizare: 2026-03-26 — v10.4.0 (docs sync: CHANGES.md completat v10.3→v10.4, ROADMAP Sprint 3 detaliat)*
+*Ultima actualizare: 2026-03-26 — v10.4.1 (admin page standalone, setup_admin.sh, docs sync complet)*

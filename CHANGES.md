@@ -5,6 +5,86 @@ Convenție: **feat** (funcționalitate nouă), **fix** (bug), **refactor**, **do
 
 ---
 
+## [v10.4.0] — 2026-03-26
+
+### feat: P1 Gaps Stress Test (10/12) + Migration 010
+
+**Gap-uri implementate:**
+- **G-8** — `computeSprintInternal` — formulă completă 40/25/25/10 (completion rate + consistency + context + quality), nu mai returnează doar completion rate simplu
+- **G-3** — `computeChaosIndex` + `CheckChaosIndex` — Chaos Index ≥ 0.40 trigger automat SRM L2 din scheduler
+- **G-5** — `ConsecutiveInactiveDays` + `IsStagnant` + job 11 `jobDetectStagnation` — ≥5 zile inactive → event în `stagnation_events`
+- **G-6** — `IsVelocityControlActive` — ALI_projected > 1.15 → taskCount-- în `GenerateDailyTasks`
+- **G-2** — Focus Rotation — GO stagnant ≥5 zile → taskCount++ (max 3) în `GenerateDailyTasks`
+- **G-1** — `ExtendSprintForPause` — `sprint.end_date += pause_days` în `SetPause` handler (deadline recalcul după pauză)
+- **G-7** — `CheckReactivationEligibility` + `ProposeReactivation` + job 12 `jobProposeReactivation` — PAUSED GO cu ≥7 zile stabilitate → propunere automată reactivare
+- **G-10** — Future Vault — `validateActivation` returnează `VAULT:` signal → goal creat ca WAITING automat (max 3 obiective active)
+- **G-4** — `ComputeGORI` — Global Objective Relevance Index ca medie ponderată per user
+- **G-12** — `ConfirmSRML2` — endpoint `POST /srm/confirm-l2/:goalId` — confirmare user L2; SRM flow complet L1/L2/L3
+- **G-9** — `jobRecalibrateRelevance` extins: chaos_index stocat în `go_metrics` + trigger automat SRM L2 la CI ≥ 0.40
+
+**Rămas (P2):**
+- **G-11** — Behavior Model dominance — EVOLVE override GO hibride — necesită câmp DB suplimentar; planificat în Sprint 3
+
+### chore: Migration 010
+- Tabele noi: `srm_events` (audit trail SRM L1/L2/L3), `reactivation_protocols` (7-day stability tracking), `stagnation_events` (consecutive inactive days log)
+
+### docs: README.md actualizat complet
+- Structura proiect actualizată cu 12 scheduler jobs
+- 10 migrații documentate
+- Toate endpoint-urile sincronizate
+- Regula de menținere README adăugată în CLAUDE.md
+
+---
+
+## [v10.3.1] — 2026-03-26
+
+### fix: Admin Panel — is_admin expus în settings
+
+- `GET /settings` returnează acum `is_admin` în response (din `UserSettings` struct)
+- `AppShell.tsx` — link "Admin" vizibil **doar** pentru utilizatorii cu `is_admin=true`
+- Link admin ascuns pentru utilizatori normali (nu apare în navigare)
+
+### chore: Cleanup fișiere duplicate/outdated
+
+- Șters: `NuviaX_UI_Mockup_v4.html` — mockup vechi (înlocuit de implementare reală)
+- Șters: `ANALYSIS_REPORT.md` — raport inițial (integrat în CHANGES.md)
+- Șters: `IMPLEMENTATION_CHECKLIST.md` — checklist vechi (înlocuit de ROADMAP.md)
+- Șters: `TEST_REPORT.md` — raport generat automat (nu se ține în git)
+- Șters: `frontend/infra/` — director duplicat (conținut mutat în `infra/`)
+- Șters: `frontend/.github/workflows/` — workflows duplicate (există în `.github/workflows/`)
+
+### docs: ROADMAP.md restructurat
+
+- Sprint 1 și Sprint 2 marcate complet
+- Sprint 3 (Traduceri + UX) și Sprint 4 (Monetizare) adăugate
+- Decizii tehnice documentate
+
+---
+
+## [v10.3.0] — 2026-03-25
+
+### feat: Integrare Email — Resend.com (E-1)
+
+- `backend/internal/email/email.go` — client HTTP Resend API direct (stdlib, fără SDK extern)
+  - `SendWelcomeEmail` — trimis la înregistrare (goroutine fire-and-forget)
+  - `SendSprintCompleteEmail` — trimis la închidere sprint (din scheduler `jobCloseExpiredSprints`)
+  - `SendPasswordResetEmail` — trimis la `POST /auth/forgot-password`
+- Graceful degradation: dacă `RESEND_API_KEY` lipsește → log warning, fără erori aplicație
+
+### feat: Forgot/Reset Password flow complet
+
+- `POST /api/v1/auth/forgot-password` — timing-safe (mereu 200, previne user enumeration), token 1h TTL
+- `POST /api/v1/auth/reset-password` — validare token single-use, actualizare parolă cu PBKDF2
+- Frontend: `/auth/forgot-password` — formular email cu feedback vizual
+- Frontend: `/auth/reset-password` — formular parolă nouă (citește token din URL query param)
+
+### chore: Migration 009
+
+- `password_reset_tokens` — `token_hash VARCHAR(64)`, `user_id UUID`, `expires_at TIMESTAMPTZ`, `used_at TIMESTAMPTZ`
+- Index pe `token_hash` + constraint single-use (UPDATE `used_at`)
+
+---
+
 ## [v10.2.0] — 2026-03-24
 
 ### fix: 10 Bug Fixes (B-2 through B-11) + AI Integration

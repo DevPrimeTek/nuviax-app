@@ -11,17 +11,18 @@
 | Categorie | Status |
 |-----------|--------|
 | Backend Go — NUViaX Framework (40 componente) | ✅ 40/40 complet |
-| Admin Panel (backend + frontend) | ✅ Funcțional — link nav condiționat per rol |
+| Admin Panel (backend + frontend) | ✅ Funcțional — standalone layout |
+| Setup cont admin proprietar | ⚠️ Nefinalizat — HTTP 500 la register, revenit post-deploy |
 | Critical Gaps Stress Test (P0) | ✅ 5/5 rezolvate |
-| Medium Gaps Stress Test (P1) | ✅ 10/12 implementate — **G-9, G-11 rămase** |
+| Medium Gaps Stress Test (P1) | ✅ 10/12 implementate — G-11 rămâne (P2) |
 | Bug-uri UI/UX B-2—B-11 | ✅ Toate rezolvate (v10.2.0) |
 | Integrare AI (Claude Haiku 4.5) | ✅ Implementat + graceful fallback |
 | Integrare Email (Resend) | ✅ Implementat (v10.3): welcome + reset + sprint |
 | Forgot/Reset parolă | ✅ Implementat (v10.3): endpoint + pagini frontend |
 | Tema Light CSS | ✅ Implementat (variabile + bloc light) |
 | Structura proiect curată | ✅ Fișiere duplicate/outdated șterse (v10.3.1) |
-| Traduceri EN/RU | ❌ Neimplementat |
-| Monetizare (Stripe) | 📅 Planificat târziu |
+| Traduceri EN/RU | ❌ Neimplementat — Sprint 3 |
+| Monetizare (Stripe) | 📅 Planificat Sprint 4 |
 
 ---
 
@@ -89,6 +90,15 @@ Valori de referință (din simulare):
 | G-12 | SRM flow complet — L2: confirmare user, L3: confirmare dublă | `srm.go`, `server.go` | ✅ Implementat |
 
 **Migrație nouă:** `010_p1_gaps.sql` — tabele `srm_events`, `reactivation_protocols`, `stagnation_events`
+
+---
+
+## ⚠️ Blocker post-deploy — Setup Admin
+
+**Problemă:** `scripts/setup_admin.sh` returnează HTTP 500 la `POST /auth/register`.
+**Cauze posibile:** `ENCRYPTION_KEY` incorect în `.env` sau migrații neaplicate.
+**Acțiune:** după primul deploy complet, verifică `docker logs nuviax_api --tail 30` și rulează scriptul din nou.
+**URL admin:** `https://nuviax.app/admin` (accesibil doar după setarea `is_admin=TRUE`)
 
 ---
 

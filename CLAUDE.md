@@ -104,7 +104,7 @@ nuviax-app/
 ├── frontend/
 │   ├── app/                         # Aplicația principală → nuviax.app
 │   │   ├── app/                     # Next.js App Router pages
-│   │   │   ├── admin/page.tsx       # ✅ Panel admin (acces: nuviax.app/admin, link în nav doar pt admini)
+│   │   │   ├── admin/page.tsx       # ✅ Panel admin standalone (acces: nuviax.app/admin) — setup cont ⚠️ post-deploy
 │   │   │   ├── achievements/page.tsx
 │   │   │   ├── api/
 │   │   │   │   ├── auth/            # login, register, logout, forgot-password, reset-password, set
@@ -183,8 +183,9 @@ nuviax-app/
 |---|-----------|--------|
 | E-1 | Integrare Resend email (confirmare înregistrare, reset parolă, sprint complet) | ✅ Implementat v10.3 |
 | E-2 | P1 Gaps din stress test (12 gap-uri medii) | ✅ 10/12 implementate v10.4 (G-11 rămâne) |
-| E-3 | Translations EN + RU | ⏳ Neimplementat |
-| E-4 | Monetizare Stripe | ⏳ Neimplementat |
+| E-3 | Translations EN + RU | ⏳ Sprint 3 |
+| E-4 | Monetizare Stripe | ⏳ Sprint 4 |
+| E-5 | Setup cont admin proprietar | ⚠️ Blocker post-deploy — `scripts/setup_admin.sh` returnează HTTP 500; verifică `docker logs nuviax_api` după primul deploy complet |
 
 ---
 

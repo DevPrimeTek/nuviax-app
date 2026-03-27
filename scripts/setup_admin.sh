@@ -21,13 +21,29 @@ echo ""
 
 # ── Verificare containere ─────────────────────────────────────────
 echo "[0/3] Verificare containere..."
-for C in nuviax_app nuviax_db; do
+for C in nuviax_app nuviax_db nuviax_api; do
   docker ps --format '{{.Names}}' | grep -q "^${C}$" || {
-    echo "✗ Containerul '$C' nu rulează. Pornește aplicația mai întâi."
+    echo "✗ Containerul '$C' nu rulează."
+    docker ps --format 'table {{.Names}}\t{{.Status}}' | grep nuviax || echo "(niciun container nuviax activ)"
     exit 1
   }
 done
 echo "✓ Containere active"
+
+# ── Verificare migrații aplicate ──────────────────────────────────
+echo "[0b] Verificare schema DB..."
+TABLE_COUNT=$(docker exec -i nuviax_db \
+  psql -U nuviax -d nuviax -t -A \
+  -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null || echo "0")
+
+if [[ "$TABLE_COUNT" -lt 5 ]]; then
+  echo "  ℹ Schema DB incompletă ($TABLE_COUNT tabele). Aplicare migrații..."
+  docker exec -i nuviax_db psql -U nuviax -d nuviax \
+    < /var/www/wxr-nuviax/backend/migrations/apply_all.sql 2>&1 | tail -5
+  echo "  ✓ Migrații aplicate"
+else
+  echo "✓ Schema DB OK ($TABLE_COUNT tabele)"
+fi
 
 # ── Scrie script Node.js în /tmp pe HOST ──────────────────────────
 cat > /tmp/nv_register.js << 'NODEOF'
@@ -57,22 +73,29 @@ req.write(data);
 req.end();
 NODEOF
 
-# ── Copiază scriptul în container și rulează-l ────────────────────
+# ── Copiază și rulează Node.js în nuviax_app ──────────────────────
 echo "[1/3] Înregistrare cont..."
-docker cp /tmp/nv_register.js nuviax_app:/tmp/nv_register.js
+docker cp /tmp/nv_register.js nuviax_app:/tmp/nv_register.js 2>/dev/null
 
 RESULT=$(docker exec \
   -e NV_EMAIL="$EMAIL_LOWER" \
   -e NV_PASS="$PASSWORD" \
   -e NV_NAME="$FULL_NAME" \
   nuviax_app node /tmp/nv_register.js 2>&1) || {
-    echo "✗ Eroare: $RESULT"
-    docker exec nuviax_app rm -f /tmp/nv_register.js
+    echo "✗ Eroare înregistrare: $RESULT"
+    echo ""
+    echo "  Loguri backend (ultimele 20 linii):"
+    echo "  ─────────────────────────────────"
+    docker logs nuviax_api --tail 20 2>&1 | sed 's/^/  /'
+    echo "  ─────────────────────────────────"
+    # Curăță
+    docker exec --user 0 nuviax_app rm -f /tmp/nv_register.js 2>/dev/null || true
     rm -f /tmp/nv_register.js
     exit 1
   }
 
-docker exec nuviax_app rm -f /tmp/nv_register.js
+# Curăță
+docker exec --user 0 nuviax_app rm -f /tmp/nv_register.js 2>/dev/null || true
 rm -f /tmp/nv_register.js
 
 [[ "$RESULT" == "CREATED" ]] && echo "✓ Cont creat"
@@ -88,7 +111,6 @@ UPDATED=$(docker exec -i nuviax_db \
 
 [[ -z "$UPDATED" || "$UPDATED" == "UPDATE 0" ]] && {
   echo "✗ Utilizatorul nu a fost găsit în DB."
-  echo "  Utilizatori existenți:"
   docker exec -i nuviax_db psql -U nuviax -d nuviax \
     -c "SELECT full_name, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 5;"
   exit 1

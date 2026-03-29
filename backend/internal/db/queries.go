@@ -180,10 +180,10 @@ func CreateGoal(ctx context.Context, pool *pgxpool.Pool,
 		INSERT INTO global_objectives
 			(user_id, name, description, status, start_date, end_date)
 		VALUES ($1,$2,$3,$4,$5,$6)
-		RETURNING id, user_id, name, description, status, start_date, end_date, created_at, updated_at
+		RETURNING id, user_id, name, description, status, start_date, end_date, dominant_behavior_model, created_at, updated_at
 	`, userID, name, desc, status, startDate, endDate).Scan(
 		&g.ID, &g.UserID, &g.Name, &g.Description, &g.Status,
-		&g.StartDate, &g.EndDate, &g.CreatedAt, &g.UpdatedAt,
+		&g.StartDate, &g.EndDate, &g.DominantBehaviorModel, &g.CreatedAt, &g.UpdatedAt,
 	)
 	return g, err
 }
@@ -191,11 +191,11 @@ func CreateGoal(ctx context.Context, pool *pgxpool.Pool,
 func GetGoalByID(ctx context.Context, pool *pgxpool.Pool, goalID, userID uuid.UUID) (*models.Goal, error) {
 	g := &models.Goal{}
 	err := pool.QueryRow(ctx, `
-		SELECT id, user_id, name, description, status, start_date, end_date, created_at, updated_at
+		SELECT id, user_id, name, description, status, start_date, end_date, dominant_behavior_model, created_at, updated_at
 		FROM global_objectives WHERE id=$1 AND user_id=$2
 	`, goalID, userID).Scan(
 		&g.ID, &g.UserID, &g.Name, &g.Description, &g.Status,
-		&g.StartDate, &g.EndDate, &g.CreatedAt, &g.UpdatedAt,
+		&g.StartDate, &g.EndDate, &g.DominantBehaviorModel, &g.CreatedAt, &g.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -205,7 +205,7 @@ func GetGoalByID(ctx context.Context, pool *pgxpool.Pool, goalID, userID uuid.UU
 
 func GetGoalsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) ([]models.Goal, error) {
 	rows, err := pool.Query(ctx, `
-		SELECT id, user_id, name, description, status, start_date, end_date, created_at, updated_at
+		SELECT id, user_id, name, description, status, start_date, end_date, dominant_behavior_model, created_at, updated_at
 		FROM global_objectives
 		WHERE user_id=$1 AND status != 'ARCHIVED'
 		ORDER BY
@@ -220,7 +220,7 @@ func GetGoalsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (
 	for rows.Next() {
 		g := models.Goal{}
 		if err := rows.Scan(&g.ID, &g.UserID, &g.Name, &g.Description, &g.Status,
-			&g.StartDate, &g.EndDate, &g.CreatedAt, &g.UpdatedAt); err != nil {
+			&g.StartDate, &g.EndDate, &g.DominantBehaviorModel, &g.CreatedAt, &g.UpdatedAt); err != nil {
 			return nil, err
 		}
 		goals = append(goals, g)
@@ -232,6 +232,13 @@ func UpdateGoalStatus(ctx context.Context, pool *pgxpool.Pool, goalID, userID uu
 	_, err := pool.Exec(ctx,
 		`UPDATE global_objectives SET status=$1, updated_at=NOW() WHERE id=$2 AND user_id=$3`,
 		status, goalID, userID)
+	return err
+}
+
+func SetGoalBehaviorModel(ctx context.Context, pool *pgxpool.Pool, goalID, userID uuid.UUID, behaviorModel *string) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE global_objectives SET dominant_behavior_model=$1, updated_at=NOW() WHERE id=$2 AND user_id=$3`,
+		behaviorModel, goalID, userID)
 	return err
 }
 

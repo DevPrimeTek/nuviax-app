@@ -78,17 +78,18 @@ git branch --show-current
 
 ## 4. Starea Curentă
 
-**Versiune:** `10.4.1` | **Sprint activ:** Sprint 3
+**Versiune:** `10.4.2` | **Sprint activ:** Sprint 3
 
 | Categorie | Status |
 |-----------|--------|
 | Framework REV 5.6 (40 componente) | ✅ 40/40 complet |
 | P0 Gaps (stress test) | ✅ 5/5 rezolvate (v10.1) |
-| P1 Gaps (stress test) | ✅ 10/12 — G-11 rămâne |
+| P1 Gaps (stress test) | ✅ 11/12 — G-12 rămâne |
 | Bug-uri B-2—B-11 | ✅ Toate rezolvate (v10.2) |
 | AI Claude Haiku | ✅ Implementat (v10.2) |
 | Email Resend | ✅ Implementat (v10.3) |
 | Forgot/Reset parolă | ✅ Implementat (v10.3) |
+| G-11 Behavior Model | ✅ Implementat (v10.4.2) |
 | Traduceri EN/RU | ❌ Neimplementat |
 | Monetizare Stripe | 📅 Planificat Sprint 4 |
 
@@ -98,13 +99,14 @@ git branch --show-current
 
 ### Task-uri în ordine de prioritate
 
-**G-11 — Behavior Model dominance** ← URMĂTOR
-- Câmp nou: `dominant_behavior_model VARCHAR(20)` pe `global_objectives`
-- Migration: `011_behavior_model.sql`
-- Fișiere de modificat: `level5_growth.go`, eventual `handlers.go`
-- Logică: EVOLVE override pentru GO hibride
+**G-11 — Behavior Model dominance** ✅ COMPLET (v10.4.2)
+- ✅ Câmp nou: `dominant_behavior_model VARCHAR(20)` pe `global_objectives`
+- ✅ Migration: `011_behavior_model.sql`
+- ✅ `level5_growth.go`: ApplyEvolveOverride() pentru GO hibride
+- ✅ `handlers.go`: CreateGoal cu dominant_behavior_model opțional
+- ✅ Models, DB queries: dominant_behavior_model support
 
-**Traduceri i18n EN + RU**
+**Traduceri i18n EN + RU** ← URMĂTOR
 - Creează `lib/i18n.ts` cu `useTranslation()` hook
 - Detectare limbă din `settings.language` (câmp JSONB pe `users`)
 - Fișiere: `public/locales/ro.json`, `en.json`, `ru.json`
@@ -222,4 +224,4 @@ EXPUNE DOAR:
 
 ---
 
-*Ultima actualizare: 2026-03-29 — v10.4.1 — docs restructurate în `docs/`, CLAUDE.md optimizat*
+*Ultima actualizare: 2026-03-29 — v10.4.2 — G-11 Behavior Model dominance completat, migration 011*

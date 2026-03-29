@@ -91,15 +91,16 @@ const (
 )
 
 type Goal struct {
-	ID          uuid.UUID  `db:"id"          json:"id"`
-	UserID      uuid.UUID  `db:"user_id"     json:"user_id"`
-	Name        string     `db:"name"        json:"name"`
-	Description *string    `db:"description" json:"description,omitempty"`
-	Status      GoalStatus `db:"status"      json:"status"`
-	StartDate   time.Time  `db:"start_date"  json:"start_date"`
-	EndDate     time.Time  `db:"end_date"    json:"end_date"`
-	CreatedAt   time.Time  `db:"created_at"  json:"created_at"`
-	UpdatedAt   time.Time  `db:"updated_at"  json:"updated_at"`
+	ID                      uuid.UUID  `db:"id"                        json:"id"`
+	UserID                  uuid.UUID  `db:"user_id"                   json:"user_id"`
+	Name                    string     `db:"name"                      json:"name"`
+	Description             *string    `db:"description"               json:"description,omitempty"`
+	Status                  GoalStatus `db:"status"                    json:"status"`
+	StartDate               time.Time  `db:"start_date"                json:"start_date"`
+	EndDate                 time.Time  `db:"end_date"                  json:"end_date"`
+	DominantBehaviorModel   *string    `db:"dominant_behavior_model"   json:"dominant_behavior_model,omitempty"`
+	CreatedAt               time.Time  `db:"created_at"                json:"created_at"`
+	UpdatedAt               time.Time  `db:"updated_at"                json:"updated_at"`
 }
 
 // ── Sprint (Etapă) ────────────────────────────────────────────────────────────

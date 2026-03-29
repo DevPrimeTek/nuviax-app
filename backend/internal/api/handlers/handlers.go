@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
 	"github.com/devprimetek/nuviax-app/internal/auth"
 	"github.com/devprimetek/nuviax-app/internal/cache"
@@ -1134,9 +1135,14 @@ func (h *Handlers) GetSettings(c *fiber.Ctx) error {
 	if err != nil {
 		return serverError(c, err)
 	}
+	theme := user.Theme
+	if theme == "" {
+		theme = "dark"
+	}
 	return c.JSON(models.UserSettings{
 		UserID:            userID,
 		Locale:            user.Locale,
+		Theme:             theme,
 		AvatarURL:         user.AvatarURL,
 		IsAdmin:           user.IsAdmin,
 		NotificationsOn:   true,
@@ -1150,12 +1156,16 @@ func (h *Handlers) UpdateSettings(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	var req struct {
 		Locale string `json:"locale" validate:"omitempty,oneof=ro en ru"`
+		Theme  string `json:"theme"  validate:"omitempty,oneof=dark light"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return badRequest(c, "Date invalide.")
 	}
 	if req.Locale != "" {
 		db.UpdateUserLocale(c.Context(), h.db, userID, req.Locale)
+	}
+	if req.Theme == "dark" || req.Theme == "light" {
+		db.UpdateUserTheme(c.Context(), h.db, userID, req.Theme)
 	}
 	return c.JSON(fiber.Map{"message": "Setări actualizate."})
 }
@@ -1392,6 +1402,91 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
+// ═══════════════════════════════════════════════════════════════
+// SUGGEST CATEGORY (AI Onboarding)
+// ═══════════════════════════════════════════════════════════════
+
+// POST /api/v1/goals/suggest-category
+// Given a goal title+description, returns an AI-suggested category.
+// Graceful: if AI is unavailable → 200 with empty category.
+// Timeout: 2 seconds (enforced inside ai.SuggestGOCategory).
+func (h *Handlers) SuggestCategory(c *fiber.Ctx) error {
+	var req struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "Date invalide.")
+	}
+
+	title := strings.TrimSpace(req.Title)
+	description := strings.TrimSpace(req.Description)
+	if title == "" {
+		return c.JSON(fiber.Map{"category": "", "confidence": 0, "reasoning": ""})
+	}
+
+	if !ai.IsAvailable() {
+		return c.JSON(fiber.Map{"category": "", "confidence": 0, "reasoning": ""})
+	}
+
+	client, err := ai.New()
+	if err != nil {
+		return c.JSON(fiber.Map{"category": "", "confidence": 0, "reasoning": ""})
+	}
+
+	result := client.SuggestGOCategory(title, description)
+	return c.JSON(fiber.Map{
+		"category":   result.Category,
+		"confidence": result.Confidence,
+		"reasoning":  result.Reasoning,
+	})
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROFILE ACTIVITY (Heatmap)
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/v1/profile/activity
+// Returns last 365 days of activity data from daily_metrics.
+// Used by the ActivityHeatmap frontend component.
+func (h *Handlers) GetProfileActivity(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	rows, err := h.db.Query(c.Context(), `
+		SELECT metric_date, SUM(tasks_done) AS tasks_done, AVG(completion_rate) AS score
+		FROM daily_metrics
+		WHERE user_id = $1
+		  AND metric_date >= CURRENT_DATE - INTERVAL '364 days'
+		GROUP BY metric_date
+		ORDER BY metric_date ASC
+	`, userID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	defer rows.Close()
+
+	type ActivityDay struct {
+		Date           string  `json:"date"`
+		Score          float64 `json:"score"`
+		TasksCompleted int64   `json:"tasks_completed"`
+	}
+
+	var activity []ActivityDay
+	for rows.Next() {
+		var day ActivityDay
+		var date time.Time
+		if err := rows.Scan(&date, &day.TasksCompleted, &day.Score); err != nil {
+			continue
+		}
+		day.Date = date.Format("2006-01-02")
+		activity = append(activity, day)
+	}
+	if activity == nil {
+		activity = []ActivityDay{}
+	}
+	return c.JSON(fiber.Map{"activity": activity})
+}
+
 // ═══════════════════════════════════════════════════════════════
 
 // truncateGoalName returnează primele n caractere din goal name (fără a tăia cuvinte)

@@ -1,8 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Step = 'welcome' | 'input' | 'verify' | 'analyzing' | 'done'
+
+type Category = 'HEALTH' | 'CAREER' | 'FINANCE' | 'RELATIONSHIPS' | 'LEARNING' | 'CREATIVITY' | 'OTHER'
+
+const CATEGORIES: { key: Category; label: string; emoji: string }[] = [
+  { key: 'HEALTH',        label: 'Sănătate',      emoji: '🏃' },
+  { key: 'CAREER',        label: 'Carieră',        emoji: '💼' },
+  { key: 'FINANCE',       label: 'Finanțe',        emoji: '💰' },
+  { key: 'RELATIONSHIPS', label: 'Relații',         emoji: '🤝' },
+  { key: 'LEARNING',      label: 'Educație',        emoji: '📚' },
+  { key: 'CREATIVITY',    label: 'Creativitate',    emoji: '🎨' },
+  { key: 'OTHER',         label: 'Altele',          emoji: '✨' },
+]
 
 const ANALYSIS_STEPS = [
   'Identificare pattern comportamental...',
@@ -29,6 +41,13 @@ export default function OnboardingPage() {
   const [verifyHint, setVerifyHint] = useState('')
   const [verifyAnswer, setVerifyAnswer] = useState('')
 
+  // AI category suggestion state
+  const [suggestedCategory, setSuggestedCategory] = useState<Category | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [suggestionLoading, setSuggestionLoading] = useState(false)
+  const [suggestionConfidence, setSuggestionConfidence] = useState(0)
+  const suggestDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     fetch('/api/proxy/settings')
       .then(r => r.ok ? r.json() : null)
@@ -40,6 +59,39 @@ export default function OnboardingPage() {
       })
       .catch(() => {})
   }, [])
+
+  // Auto-suggest category when user types (debounced 1s)
+  useEffect(() => {
+    const text = goInputs[currentGoIndex]?.trim() || ''
+    if (text.length < 10) {
+      setSuggestedCategory(null)
+      setSuggestionLoading(false)
+      return
+    }
+    setSuggestionLoading(true)
+    if (suggestDebounce.current) clearTimeout(suggestDebounce.current)
+    suggestDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/proxy/goals/suggest-category', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: text, description: '' }),
+        })
+        if (res.ok) {
+          const d = await res.json()
+          if (d.category) {
+            setSuggestedCategory(d.category as Category)
+            setSuggestionConfidence(d.confidence || 0)
+            if (!selectedCategory) setSelectedCategory(d.category as Category)
+          } else {
+            setSuggestedCategory(null)
+          }
+        }
+      } catch { /* ignore */ }
+      setSuggestionLoading(false)
+    }, 1000)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goInputs[currentGoIndex], currentGoIndex])
 
   function handleAddGo() {
     const text = goInputs[currentGoIndex]?.trim()
@@ -213,6 +265,52 @@ export default function OnboardingPage() {
             onFocus={e => e.target.style.borderColor='var(--l0)'}
             onBlur={e => e.target.style.borderColor='var(--line)'}
           />
+
+          {/* AI Category Suggestion */}
+          {(suggestionLoading || suggestedCategory) && (
+            <div style={{marginTop:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                <span style={{fontSize:12,color:'var(--ink3)',fontFamily:'var(--ff-m)'}}>
+                  Categorie GO
+                </span>
+                {suggestionLoading && (
+                  <div className="spinner" style={{width:12,height:12,borderTopColor:'var(--l0)',borderWidth:2}}/>
+                )}
+                {!suggestionLoading && suggestedCategory && (
+                  <span style={{fontSize:11,color:'var(--l0l)',background:'var(--l0g)',
+                    padding:'2px 7px',borderRadius:20,fontFamily:'var(--ff-m)'}}>
+                    AI · {Math.round(suggestionConfidence * 100)}%
+                  </span>
+                )}
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+                {CATEGORIES.map(cat => {
+                  const isSuggested = cat.key === suggestedCategory
+                  const isSelected = cat.key === selectedCategory
+                  return (
+                    <button
+                      key={cat.key}
+                      onClick={() => setSelectedCategory(cat.key)}
+                      style={{
+                        padding:'6px 12px', borderRadius:20, fontSize:13,
+                        fontFamily:'var(--ff-b)', cursor:'pointer',
+                        border: isSelected ? '1.5px solid var(--l0)' : '1.5px solid var(--line)',
+                        background: isSelected ? 'var(--l0g)' : 'var(--bg3)',
+                        color: isSelected ? 'var(--l0l)' : isSuggested ? 'var(--ink2)' : 'var(--ink3)',
+                        transition:'all .15s',
+                        display:'flex', alignItems:'center', gap:5,
+                      }}>
+                      <span>{cat.emoji}</span>
+                      {cat.label}
+                      {isSuggested && !isSelected && (
+                        <span style={{fontSize:10,color:'var(--l0l)',marginLeft:2}}>✦</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={{display:'flex',gap:10,marginTop:16}}>
             {currentGoIndex < 2 && (

@@ -15,6 +15,7 @@ type User struct {
 	Salt           string     `db:"salt"            json:"-"`
 	FullName       *string    `db:"full_name"       json:"full_name,omitempty"`
 	Locale         string     `db:"locale"          json:"locale"`
+	Theme          string     `db:"theme"           json:"theme"`
 	AvatarURL      *string    `db:"avatar_url"      json:"avatar_url,omitempty"`
 	MFASecret      *string    `db:"mfa_secret"      json:"-"`
 	MFAEnabled     bool       `db:"mfa_enabled"     json:"mfa_enabled"`
@@ -221,6 +222,7 @@ type SprintReflection struct {
 type UserSettings struct {
 	UserID            uuid.UUID `json:"user_id"`
 	Locale            string    `json:"locale"`
+	Theme             string    `json:"theme"`
 	AvatarURL         *string   `json:"avatar_url,omitempty"`
 	IsAdmin           bool      `json:"is_admin"`
 	NotificationsOn   bool      `json:"notifications_on"`

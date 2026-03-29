@@ -5,10 +5,23 @@
 
 ---
 
+## ⚠️ ACȚIUNE URGENTĂ — Rotire chei API
+
+**Problemă:** Cheile API reale au fost commituite accidental în `.env.example` (commits `76166c2`, `f678ae9`, `ddd5e9e`, `958a4ce`). Istoricul git este public.
+
+**Pași imediat:**
+1. Mergi pe [console.anthropic.com](https://console.anthropic.com) → **API Keys** → revocă cheia curentă → creează una nouă
+2. Mergi pe [resend.com/api-keys](https://resend.com/api-keys) → șterge cheia curentă → creează una nouă
+3. Actualizează **GitHub Secrets** cu noile chei (aceeași procedură ca mai jos)
+4. Actualizează **VPS `.env`** cu noile chei
+5. Actualizează `.env.example` — pune înapoi placeholder `CHANGE_ME` (nu cheia reală)
+
+---
+
 ## 1. 🤖 Anthropic API Key (Claude Haiku)
 
 **Status cod:** ✅ Implementat în `backend/internal/ai/ai.go`
-**Status tău:** ❌ Cheia nu a fost furnizată
+**Status tău:** ✅ Cheia a fost adăugată — ⚠️ rotire necesară (vezi mai sus)
 
 ### Ce trebuie să faci
 
@@ -61,7 +74,7 @@ curl https://api.nuviax.app/health
 ## 2. 📧 Resend Email
 
 **Status cod:** ✅ Implementat în `backend/internal/email/email.go`
-**Status tău:** ❌ Cont Resend nu e creat, DNS neconfigurats
+**Status tău:** ✅ Cheia a fost adăugată — ⚠️ rotire necesară (vezi mai sus)
 
 ### Ce trebuie să faci
 
@@ -183,14 +196,16 @@ SELECT id, is_admin FROM users WHERE id = 'uuid-din-query-de-sus';
 
 ## Sumar rapid
 
-| Task | Timp estimat | Blocant pentru |
-|------|-------------|----------------|
-| Anthropic API Key | 10 minute | Sarcini zilnice AI, analiză GO |
-| Resend cont + DNS | 30 minute + 30 min așteptare propagare | Emailuri welcome, reset parolă, sprint |
-| Admin cont creat | 5 minute | Accesul la panoul de administrare |
+| Task | Status | Prioritate |
+|------|--------|------------|
+| ⚠️ Rotire ANTHROPIC_API_KEY | 🔴 Urgent — cheie expusă în git | Imediat |
+| ⚠️ Rotire RESEND_API_KEY | 🔴 Urgent — cheie expusă în git | Imediat |
+| Admin cont creat pe VPS | ❌ Nu e creat încă | Ridicată |
+| Verificat emailuri (welcome, reset) | ❓ Netestat | Medie |
+| Verificat DNS Resend (SPF, DKIM) | ❓ Neverificat | Medie |
 
-**Ordinea recomandată:** Admin → Anthropic → Resend (DNS ia timp, pornește cu el primul dacă poți)
+**Ordinea recomandată:** Rotire chei (urgent) → Admin cont → Verificare email deliverability
 
 ---
 
-*Ultima actualizare: 2026-03-29*
+*Ultima actualizare: 2026-03-29 — cheile API au fost adăugate dar necesită rotire urgentă*

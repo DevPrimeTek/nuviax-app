@@ -1,227 +1,248 @@
 # CLAUDE.md — NuviaX: Context Master
 
-> **Citește acest fișier la ÎNCEPUTUL oricărei sesiuni noi. Confirmă versiunea și branch-ul înainte de orice task.**
-> Documentație extinsă → `docs/` (nu e necesară la fiecare sesiune).
+> **Read this file at the START of every new session. Confirm version and branch before any task.**
+> Extended docs → `docs/` (not needed every session — use as reference only).
 
 ---
 
-## 0. Protocol Sesiune Nouă
+## 0. New Session Protocol
 
-**Pași obligatorii la start:**
+**Mandatory steps at start:**
 
-```powershell
-# 1. Verifică starea repo
+```bash
+# 1. Check repo state
 git status
 git log --oneline -5
 git branch --show-current
 
-# 2. Confirmă înainte de a începe task-ul:
-# "Am citit CLAUDE.md. Versiune curentă: X.X.X. Branch activ: Y. Task: Z."
+# 2. Confirm before starting the task:
+# "Read CLAUDE.md. Current version: X.X.X. Active branch: Y. Task: Z."
 ```
 
-**Reguli token:**
-- Citește **maxim 3 fișiere** per task — nu explora global
-- Specifică întotdeauna path exact + funcția/linia care te interesează
-- Un singur task per sesiune — commit, apoi sesiune nouă
-- Folosește `/compact` după fiecare subtask major (nu la final)
-- **NU citi:** `node_modules/`, `vendor/`, `.next/`, `build/`, `dist/`
+**Token rules:**
+- Read **max 3 files** per task — do not explore globally
+- Always specify exact path + function/line of interest
+- One task per session — commit, then new session
+- Use `/compact` after each major subtask (not at the end)
+- **DO NOT read:** `node_modules/`, `vendor/`, `.next/`, `build/`, `dist/`
 
 ---
 
-## 1. Ce este NuviaX
+## 1. What is NuviaX
 
-**NuviaX** este o platformă SaaS de management al obiectivelor personale și profesionale, bazată pe **NUViaX Growth Framework REV 5.6** — sistem proprietar cu 5 niveluri (Layer 0 + Level 1–5) și 40 componente (C1–C40).
+**NuviaX** is a SaaS platform for personal and professional goal management, based on the **NUViaX Growth Framework REV 5.6** — proprietary system with 5 levels (Layer 0 + Level 1–5) and 40 components (C1–C40).
 
-**Principiu fundamental:** Toate calculele rulează exclusiv server-side. Clientul primește doar rezultate opace (%, grade A/B/C/D, liste sarcini). Nicio formulă nu iese din engine-ul Go.
+**Core principle:** All calculations run exclusively server-side. The client receives only opaque results (%, grades A/B/C/D, task lists). No formula leaves the Go engine.
 
-| Produs | URL |
-|--------|-----|
-| Aplicație | `nuviax.app` (Next.js) |
+| Product | URL |
+|---------|-----|
+| App | `nuviax.app` (Next.js) |
 | Landing | `nuviaxapp.com` (Next.js static) |
 | API | `api.nuviax.app` (Go) |
 
-**Proprietar:** DevPrimeTek — `github.com/DevPrimeTek/nuviax-app`
-**Versiune curentă:** `10.4.1`
-**Branch development:** `claude/*` → PR → `main`
+**Owner:** DevPrimeTek — `github.com/DevPrimeTek/nuviax-app`
+**Current version:** `10.4.2`
+**Dev branch:** `claude/*` → PR → `main`
 
 ---
 
-## 2. Stack Tehnic
+## 2. Tech Stack
 
-| Layer | Tehnologie | Versiune |
+| Layer | Technology | Version |
 |-------|-----------|---------|
 | Backend API | Go + Fiber v2 | Go 1.22, Fiber 2.52 |
 | Database | PostgreSQL | 16 (Docker) |
 | Cache/Sessions | Redis | 7 (Docker) |
 | Frontend App | Next.js + TypeScript + Tailwind | Next.js 14, React 18 |
 | Frontend Landing | Next.js (static) | Next.js 14 |
-| Auth | JWT RS256 (RSA 4096-bit) | access: 15min, refresh: 7 zile |
-| Email | Resend.com (tranzacțional) | — |
+| Auth | JWT RS256 (RSA 4096-bit) | access: 15min, refresh: 7 days |
+| Email | Resend.com (transactional) | — |
 | AI | Anthropic Claude Haiku 4.5 | `claude-haiku-4-5-20251001` |
 | CI/CD | GitHub Actions → DockerHub → VPS SSH | — |
 | Proxy | nginx-proxy + acme-companion (jwilder) | shared |
-| Deploy path | `/var/www/wxr-nuviax/` pe VPS | — |
+| Deploy path | `/var/www/wxr-nuviax/` on VPS | — |
+
+**Infrastructure keys status (as of 2026-03-29):**
+- `ANTHROPIC_API_KEY` — ✅ Configured (GitHub Secrets + `.env`)
+- `RESEND_API_KEY` — ✅ Configured (GitHub Secrets + `.env`)
+- `EMAIL_FROM` — ✅ `noreply@nuviax.app`
+- ⚠️ **Action required:** Rotate both API keys — real values were accidentally committed in `.env.example` (commits 76166c2, f678ae9). Revoke old keys on Anthropic Console and Resend Dashboard, generate new ones, update GitHub Secrets and VPS `.env`.
 
 ---
 
 ## 3. Model Selection
 
-| Task | Model recomandat |
-|------|-----------------|
-| Implementare cod, bugfix, refactoring de rutină | **Claude Sonnet** |
-| Decizii arhitecturale, review critic, design sistem nou | **Claude Opus** |
-| Rename, format, editări mici sub 20 linii | **Claude Haiku** |
+| Task | Recommended model |
+|------|------------------|
+| Code implementation, bugfix, routine refactoring | **Claude Sonnet** |
+| Architectural decisions, critical review, new system design | **Claude Opus** |
+| Rename, format, small edits under 20 lines | **Claude Haiku** |
 
-**Regulă:** Pornește întotdeauna cu **Sonnet**. Treci la Opus doar dacă ești blocat pe ceva arhitectural complex.
-
----
-
-## 4. Starea Curentă
-
-**Versiune:** `10.4.2` | **Sprint activ:** Sprint 3
-
-| Categorie | Status |
-|-----------|--------|
-| Framework REV 5.6 (40 componente) | ✅ 40/40 complet |
-| P0 Gaps (stress test) | ✅ 5/5 rezolvate (v10.1) |
-| P1 Gaps (stress test) | ✅ 11/12 — G-12 rămâne |
-| Bug-uri B-2—B-11 | ✅ Toate rezolvate (v10.2) |
-| AI Claude Haiku | ✅ Implementat (v10.2) |
-| Email Resend | ✅ Implementat (v10.3) |
-| Forgot/Reset parolă | ✅ Implementat (v10.3) |
-| G-11 Behavior Model | ✅ Implementat (v10.4.2) |
-| Traduceri EN/RU | ❌ Neimplementat |
-| Monetizare Stripe | 📅 Planificat Sprint 4 |
+**Rule:** Always start with **Sonnet**. Switch to Opus only if blocked on something architecturally complex.
 
 ---
 
-## 5. Sprint Curent — Sprint 3
+## 4. Current State
 
-### Task-uri în ordine de prioritate
+**Version:** `10.4.2` | **Active sprint:** Sprint 3
 
-**G-11 — Behavior Model dominance** ✅ COMPLET (v10.4.2)
-- ✅ Câmp nou: `dominant_behavior_model VARCHAR(20)` pe `global_objectives`
+| Category | Status |
+|----------|--------|
+| Framework REV 5.6 (40 components) | ✅ 40/40 complete |
+| P0 Gaps (stress test) | ✅ 5/5 resolved (v10.1) |
+| P1 Gaps (stress test) | ✅ 12/12 complete (v10.4.0 + v10.4.2) |
+| Bugs B-2—B-11 | ✅ All resolved (v10.2) |
+| AI Claude Haiku | ✅ Implemented (v10.2) — key configured |
+| Email Resend | ✅ Implemented (v10.3) — key configured |
+| Forgot/Reset password | ✅ Implemented (v10.3) |
+| G-11 Behavior Model | ✅ Implemented (v10.4.2) — migration 011 |
+| Admin panel | ✅ Implemented — manual admin account setup needed on VPS |
+| Translations EN/RU | ❌ Not implemented — **next task** |
+| Stripe monetization | 📅 Planned Sprint 4 |
+
+---
+
+## 5. Current Sprint — Sprint 3
+
+### Tasks in priority order
+
+**G-11 — Behavior Model dominance** ✅ COMPLETE (v10.4.2)
+- ✅ New field: `dominant_behavior_model VARCHAR(20)` on `global_objectives`
 - ✅ Migration: `011_behavior_model.sql`
-- ✅ `level5_growth.go`: ApplyEvolveOverride() pentru GO hibride
-- ✅ `handlers.go`: CreateGoal cu dominant_behavior_model opțional
-- ✅ Models, DB queries: dominant_behavior_model support
+- ✅ `level5_growth.go`: `ApplyEvolveOverride()` for hybrid GOs (ANALYTIC/STRATEGIC/TACTICAL/REACTIVE)
+- ✅ `handlers.go`: `CreateGoal` accepts optional `dominant_behavior_model`
+- ✅ Models, DB queries: full `dominant_behavior_model` support
 
-**Traduceri i18n EN + RU** ← URMĂTOR
-- Creează `lib/i18n.ts` cu `useTranslation()` hook
-- Detectare limbă din `settings.language` (câmp JSONB pe `users`)
-- Fișiere: `public/locales/ro.json`, `en.json`, `ru.json`
-- Migrează mai întâi doar `today/page.tsx` ca proof of concept
+**i18n Translations EN + RU** ← NEXT
+- See prompt: `PROMPTS.md → Sprint 3 — Task 1`
+- Create `frontend/app/lib/i18n.ts` with `useTranslation()` hook
+- Language detection from `settings.language` (JSONB field on `users`)
+- Files: `frontend/app/public/locales/ro.json`, `en.json`, `ru.json`
+- Migrate only `today/page.tsx` first as proof of concept
 
-**Onboarding AI îmbunătățit**
-- La clasificare GO nouă → Claude Haiku sugerează categoria
-- Inspiră-te din patternul existent: `backend/internal/ai/ai.go`
-- Fallback: dacă Haiku nu răspunde în 2s → utilizatorul alege manual
+**Improved AI Onboarding**
+- See prompt: `PROMPTS.md → Sprint 3 — Task 2`
+- At new GO classification step → Claude Haiku suggests category
+- Pattern: `backend/internal/ai/ai.go`
+- Fallback: if Haiku doesn't respond in 2s → user picks manually
 
-### Sprint 4 (mai târziu)
-- Stripe: subscripție Pro ($9.99/lună) + Free tier limits + Trial 14 zile
-- PWA + Notificări push
-- Export PDF raport lunar
-- Statistici avansate heatmap
+**Personal activity statistics heatmap**
+- See prompt: `PROMPTS.md → Sprint 3 — Task 3`
+- GitHub-style activity calendar in `/profile`
+- Data from `daily_metrics` table
 
----
+**Dark/Light theme toggle**
+- See prompt: `PROMPTS.md → Sprint 3 — Task 4`
+- Button in navigation; saved in `localStorage` + `settings.theme`
 
-## 6. Workflow Dezvoltare
-
-```powershell
-# Start sesiune
-git checkout -b claude/feature-name-XXXXX
-
-# Final sesiune
-git add [fișiere specifice — NU git add .]
-git commit -m "feat/fix/docs: descriere clară"
-git push -u origin claude/feature-name-XXXXX
-# → deschide PR spre main pe GitHub
-```
-
-**Convenții commit:**
-```
-feat:     funcționalitate nouă
-fix:      corectare bug
-docs:     documentație
-refactor: restructurare fără funcționalitate nouă
-chore:    configurare, dependențe
-```
-
-**NU comite niciodată:** `.env`, `.env.*`, `.keys/`, `node_modules/`, `vendor/`
+### Sprint 4 (later)
+- Stripe: Pro subscription ($9.99/month) + Free tier limits + 14-day trial
+- PWA + Push notifications
+- Monthly PDF report export
 
 ---
 
-## 7. Regula README.md
-
-> **OBLIGATORIU:** Actualizează `README.md` la FIECARE sesiune care modifică:
-
-| Eveniment | Ce actualizezi |
-|-----------|---------------|
-| Versiune nouă | Linia `**Versiune curentă:**` + tabelul Changelog |
-| Funcționalitate nouă | Secțiunea API Endpoints |
-| Migration nouă | Secțiunea Database (număr migrări, tabele) |
-| Job scheduler nou | Tabelul Scheduler Jobs |
-| Endpoint nou/eliminat | Secțiunea API Endpoints |
-| Structură modificată | Secțiunea Structura Proiectului |
-| Env variable nouă | Secțiunea Environment Variables |
-
-```powershell
-# Verificare rapidă la finalul sesiunii
-Select-String "Versiune curentă" README.md
-Select-String "Versiune curentă" CLAUDE.md
-# Trebuie să coincidă
-```
-
----
-
-## 8. Deployment rapid
-
-**Flow:** push pe `main` → GitHub Actions → DockerHub → SSH VPS → health check
+## 6. Development Workflow
 
 ```bash
-# Health check după deploy
+# Start session
+git checkout -b claude/feature-name-XXXXX
+
+# End session
+git add [specific files — NOT git add .]
+git commit -m "feat/fix/docs: clear description"
+git push -u origin claude/feature-name-XXXXX
+# → open PR to main on GitHub
+```
+
+**Commit conventions:**
+```
+feat:     new functionality
+fix:      bug fix
+docs:     documentation
+refactor: restructure without new functionality
+chore:    config, dependencies
+```
+
+**NEVER commit:** `.env`, `.env.*`, `.keys/`, `node_modules/`, `vendor/`
+**NEVER put real keys in `.env.example`** — use placeholder values like `CHANGE_ME` or `sk-ant-...EXAMPLE`
+
+---
+
+## 7. README.md Rule
+
+> **MANDATORY:** Update `README.md` at EVERY session that modifies:
+
+| Event | What to update |
+|-------|---------------|
+| New version | `**Current version:**` line + Changelog table |
+| New functionality | API Endpoints section |
+| New migration | Database section (migration count, tables) |
+| New scheduler job | Scheduler Jobs table |
+| New/removed endpoint | API Endpoints section |
+| Modified structure | Project Structure section |
+| New env variable | Environment Variables section |
+
+```bash
+# Quick check at end of session
+grep "Current version" README.md
+grep "Current version" CLAUDE.md
+# Must match
+```
+
+---
+
+## 8. Quick Deployment
+
+**Flow:** push to `main` → GitHub Actions → DockerHub → SSH VPS → health check
+
+```bash
+# Health check after deploy
 curl https://api.nuviax.app/health
 # Expected: {"status":"ok","db":true,"redis":true}
 ```
 
-**Detalii complete:** `docs/deployment.md`
+**Full details:** `docs/deployment.md`
 
 ---
 
-## 9. Reguli Critice
+## 9. Critical Rules
 
 ```
-NICIODATĂ nu expune în API:
+NEVER expose in API:
 ❌ drift, chaos_index, continuity, weights, factors, penalties
-❌ thresholds (0.25, 0.40, 0.60), formule, componente scor
+❌ thresholds (0.25, 0.40, 0.60), formulas, score components
 
-EXPUNE DOAR:
+EXPOSE ONLY:
 ✅ Progress % (0-100)
 ✅ Grade (A+, A, B, C, D)
 ✅ Ceremony (tier, message, badge)
 ✅ Achievements (ID, name, icon)
 ```
 
-**Admin 404:** panel-ul admin returnează 404 (nu 403) pentru non-admini.
-**Timing-safe:** `forgot-password` returnează mereu 200.
-**Graceful degradation:** AI și Email funcționează fără cheile respective.
+**Admin 404:** admin panel returns 404 (not 403) for non-admins.
+**Timing-safe:** `forgot-password` always returns 200.
+**Graceful degradation:** AI and Email work without their respective keys.
+**No real secrets in git:** `.env.example` must contain only placeholder values.
 
 ---
 
-## 10. Referințe
+## 10. References
 
-| Resursă | Locație |
-|---------|---------|
-| Structura repo + design system | `docs/project-structure.md` |
-| Schema DB completă + migrări | `docs/database-reference.md` |
-| AI (Haiku) + Email (Resend) | `docs/integrations.md` |
+| Resource | Location |
+|----------|---------|
+| Repo structure + design system | `docs/project-structure.md` |
+| Full DB schema + migrations | `docs/database-reference.md` |
+| AI (Haiku) + Email (Resend) details | `docs/integrations.md` |
 | VPS, Docker, CI/CD, secrets | `docs/deployment.md` |
-| Bug-uri + gap-uri stress test | `docs/history-bugs-gaps.md` |
-| Formule framework (C1-C40) | `FORMULAS_QUICK_REFERENCE.md` |
-| Plan dezvoltare | `ROADMAP.md` |
-| Changelog detaliat | `CHANGES.md` |
+| Bug history + stress test gaps | `docs/history-bugs-gaps.md` |
+| Framework formulas (C1-C40) | `FORMULAS_QUICK_REFERENCE.md` |
+| Development roadmap | `ROADMAP.md` |
+| Detailed changelog | `CHANGES.md` |
 | GitHub Secrets guide | `infra/GITHUB_SECRETS.md` |
+| **Implementation prompts (session-ready)** | **`PROMPTS.md`** |
+| Client action items | `CLIENT_TODO.md` |
 
 ---
 
-*Ultima actualizare: 2026-03-29 — v10.4.2 — G-11 Behavior Model dominance completat, migration 011*
+*Last updated: 2026-03-29 — v10.4.2 — G-11 complete, all API keys configured, PROMPTS.md added*

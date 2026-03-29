@@ -2,26 +2,27 @@
 
 > Acest document reflectă starea curentă a proiectului și pașii următori în ordine de prioritate.
 > Se actualizează la fiecare versiune majoră.
-> **Ultima actualizare:** v10.4.0 — 2026-03-26
+> **Ultima actualizare:** v10.4.2 — 2026-03-29
 
 ---
 
-## Stare Curentă: v10.4.0
+## Stare Curentă: v10.4.2
 
 | Categorie | Status |
 |-----------|--------|
 | Backend Go — NUViaX Framework (40 componente) | ✅ 40/40 complet |
 | Admin Panel (backend + frontend) | ✅ Funcțional — link nav condiționat per rol |
 | Critical Gaps Stress Test (P0) | ✅ 5/5 rezolvate |
-| Medium Gaps Stress Test (P1) | ✅ 10/12 implementate — **G-9, G-11 rămase** |
+| Medium Gaps Stress Test (P1) | ✅ 12/12 implementate — **toate complete** |
 | Bug-uri UI/UX B-2—B-11 | ✅ Toate rezolvate (v10.2.0) |
-| Integrare AI (Claude Haiku 4.5) | ✅ Implementat + graceful fallback |
-| Integrare Email (Resend) | ✅ Implementat (v10.3): welcome + reset + sprint |
+| Integrare AI (Claude Haiku 4.5) | ✅ Implementat + key configurat |
+| Integrare Email (Resend) | ✅ Implementat (v10.3) + key configurat |
 | Forgot/Reset parolă | ✅ Implementat (v10.3): endpoint + pagini frontend |
+| G-11 Behavior Model dominance | ✅ Implementat (v10.4.2): migration 011 |
 | Tema Light CSS | ✅ Implementat (variabile + bloc light) |
 | Structura proiect curată | ✅ Fișiere duplicate/outdated șterse (v10.3.1) |
-| Traduceri EN/RU | ❌ Neimplementat |
-| Monetizare (Stripe) | 📅 Planificat târziu |
+| Traduceri EN/RU | ❌ Neimplementat — **următor în Sprint 3** |
+| Monetizare (Stripe) | 📅 Planificat Sprint 4 |
 
 ---
 
@@ -85,33 +86,35 @@ Valori de referință (din simulare):
 | G-8 | Sprint score formula completă — 40/25/25/10 în `computeSprintInternal` | `level2_execution.go` | ✅ Implementat |
 | G-9 | Annual Relevance Recalibration + Chaos Index storage în go_metrics | `scheduler.go` | ✅ Implementat |
 | G-10 | Future Vault — max 3 active, goal nou → WAITING automat | `level4_regulatory.go`, `handlers.go` | ✅ Implementat |
-| G-11 | Behavior Model dominance — EVOLVE override GO hibride | `engine.go` | ⏳ P2 — necesită câmp DB |
+| G-11 | Behavior Model dominance — EVOLVE override GO hibride | `level5_growth.go`, `handlers.go`, `migrations/011_behavior_model.sql` | ✅ Implementat (v10.4.2) |
 | G-12 | SRM flow complet — L2: confirmare user, L3: confirmare dublă | `srm.go`, `server.go` | ✅ Implementat |
 
-**Migrație nouă:** `010_p1_gaps.sql` — tabele `srm_events`, `reactivation_protocols`, `stagnation_events`
+**Migrații:** `010_p1_gaps.sql` — tabele `srm_events`, `reactivation_protocols`, `stagnation_events` | `011_behavior_model.sql` — câmp `dominant_behavior_model` pe `global_objectives`
 
 ---
 
-## Sprint 3 — Traduceri + UX Completare + G-11
+## Sprint 3 — Traduceri + UX Completare ← ACTIV
 
 *Obiectiv: aplicație utilizabilă internațional, experiență utilizator completă*
 
 ### Prioritate înaltă
 
-- [ ] **G-11: Behavior Model dominance** — EVOLVE override GO hibride; necesită câmp `dominant_behavior_model VARCHAR(20)` pe `global_objectives`; `level5_growth.go` + migration 011
-- [ ] **Traduceri EN** — framework i18n: toate textele interfață RO → EN; `lib/i18n.ts` cu `useTranslation()` hook; detectare limbă din `settings.language`
-- [ ] **Traduceri RU** — același framework, RO → RU
+- [x] **G-11: Behavior Model dominance** ✅ COMPLET (v10.4.2) — `dominant_behavior_model VARCHAR(20)` pe `global_objectives`; `ApplyEvolveOverride()` în `level5_growth.go`; migration 011
+- [ ] **Traduceri EN** — framework i18n: toate textele interfață; `frontend/app/lib/i18n.ts` cu `useTranslation()` hook; detectare limbă din `settings.language`; proof of concept pe `today/page.tsx`
+- [ ] **Traduceri RU** — același framework, aceleași fișiere locale
 
 ### Prioritate medie
 
-- [ ] **Onboarding îmbunătățit** — la pasul de clasificare GO, Claude Haiku sugerează categoria (SMART analysis) → utilizatorul confirmă sau corectează
+- [ ] **Onboarding îmbunătățit** — la pasul de clasificare GO, Claude Haiku sugerează categoria (SMART analysis) → utilizatorul confirmă sau corectează; fallback 2s
 - [ ] **Statistici personale avansate** — calendar activitate tip GitHub heatmap în `/profile`; date din `daily_metrics`
-- [ ] **Notificări push PWA** — `manifest.json` + service worker; web push pentru remindere zilnice (opt-in din `settings`)
+- [ ] **Dark/Light theme toggle** — buton în navigare; salvat în `localStorage` + `settings.theme`
 
 ### Prioritate scăzută
 
 - [ ] **Export PDF raport lunar** — `/recap` → PDF cu progres lunar (bibliotecă `pdf-lib` sau similar)
-- [ ] **Dark/Light theme toggle** — buton în navigare; salvat în `localStorage` + `settings.theme`
+- [ ] **Notificări push PWA** — `manifest.json` + service worker; web push pentru remindere zilnice (opt-in din `settings`)
+
+> **Prompts sesiune gata:** Vezi `PROMPTS.md` pentru context complet per task.
 
 ---
 
@@ -130,7 +133,7 @@ Valori de referință (din simulare):
 
 ### Backend
 
-- [ ] **Migration 011** (sau mai târziu) — `users.subscription_status ENUM`, `users.stripe_customer_id`, `users.trial_ends_at`
+- [ ] **Migration 012** — `users.subscription_status ENUM`, `users.stripe_customer_id`, `users.trial_ends_at`
 - [ ] **GitHub Secret nou** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ---

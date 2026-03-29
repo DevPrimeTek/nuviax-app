@@ -384,11 +384,12 @@ func (h *Handlers) GetGoals(c *fiber.Ctx) error {
 }
 
 type createGoalReq struct {
-	Name        string `json:"name" validate:"required,min=3,max=200"`
-	Description string `json:"description" validate:"omitempty,max=1000"`
-	StartDate   string `json:"start_date" validate:"required"`
-	EndDate     string `json:"end_date" validate:"required"`
-	WaitingList bool   `json:"waiting_list"`
+	Name                    string `json:"name" validate:"required,min=3,max=200"`
+	Description             string `json:"description" validate:"omitempty,max=1000"`
+	StartDate               string `json:"start_date" validate:"required"`
+	EndDate                 string `json:"end_date" validate:"required"`
+	WaitingList             bool   `json:"waiting_list"`
+	DominantBehaviorModel   *string `json:"dominant_behavior_model" validate:"omitempty,oneof=ANALYTIC STRATEGIC TACTICAL REACTIVE"`
 }
 
 func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
@@ -441,6 +442,12 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	goal, err := db.CreateGoal(c.Context(), h.db, userID, req.Name, desc, status, startDate, endDate)
 	if err != nil {
 		return serverError(c, err)
+	}
+
+	// G-11: Set dominant behavior model if provided
+	if req.DominantBehaviorModel != nil {
+		_ = db.SetGoalBehaviorModel(c.Context(), h.db, goal.ID, userID, req.DominantBehaviorModel)
+		goal.DominantBehaviorModel = req.DominantBehaviorModel
 	}
 
 	// Dacă e activ, creează Sprint 1 + checkpoint-uri + sarcini pentru azi

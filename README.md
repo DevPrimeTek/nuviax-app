@@ -2,7 +2,7 @@
 
 Platformă SaaS de management al obiectivelor personale și profesionale, bazată pe **NUViaX Growth Framework REV 5.6** — sistem proprietar cu 40 de componente matematice (C1–C40) distribuite pe 5 niveluri.
 
-**Versiune curentă:** `10.4.1` | **Status:** Production Ready
+**Versiune curentă:** `10.4.2` | **Status:** Production Ready
 
 ---
 
@@ -208,6 +208,7 @@ EMAIL_FROM=noreply@nuviax.app
 
 | Versiune | Data | Descriere |
 |---------|------|-----------|
+| v10.4.2 | 2026-03-29 | G-11 Behavior Model dominance; migration 011; ApplyEvolveOverride |
 | v10.4.1 | 2026-03-29 | Restructurare docs/, CLAUDE.md optimizat, CLIENT_TODO |
 | v10.4.0 | 2026-03-26 | P1 Gaps G-1—G-10, G-12 (10/12); migration 010 |
 | v10.3.0 | 2026-03-25 | Email Resend: welcome + sprint + forgot/reset parolă |

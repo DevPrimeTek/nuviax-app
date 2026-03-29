@@ -190,6 +190,49 @@ Nu adăuga niciun text în afara JSON-ului.`
 	return result.NeedsClarification, q, h, nil
 }
 
+// SuggestionResult holds the category suggestion returned by SuggestGOCategory.
+type SuggestionResult struct {
+	Category   string  `json:"category"`
+	Confidence float64 `json:"confidence"`
+	Reasoning  string  `json:"reasoning"`
+}
+
+// SuggestGOCategory asks Claude Haiku to classify a goal into one category.
+// Valid categories: HEALTH, CAREER, FINANCE, RELATIONSHIPS, LEARNING, CREATIVITY, OTHER.
+// Hard timeout: 2 seconds — user is waiting in the onboarding flow.
+// Returns empty SuggestionResult (not an error) on timeout or API failure.
+func (c *Client) SuggestGOCategory(title, description string) SuggestionResult {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	system := `You are a goal classifier. Given a goal title and description, classify it into exactly ONE of:
+HEALTH, CAREER, FINANCE, RELATIONSHIPS, LEARNING, CREATIVITY, OTHER.
+Respond ONLY with valid JSON, no extra text:
+{"category":"CAREER","confidence":0.85,"reasoning":"brief reason"}`
+
+	prompt := fmt.Sprintf("Goal: %q\nDescription: %q\nClassify:", title, description)
+
+	text, err := c.complete(ctx, system, prompt, 128)
+	if err != nil {
+		return SuggestionResult{}
+	}
+
+	var result SuggestionResult
+	if jsonErr := json.Unmarshal([]byte(text), &result); jsonErr != nil {
+		return SuggestionResult{}
+	}
+
+	// Validate category
+	valid := map[string]bool{
+		"HEALTH": true, "CAREER": true, "FINANCE": true,
+		"RELATIONSHIPS": true, "LEARNING": true, "CREATIVITY": true, "OTHER": true,
+	}
+	if !valid[result.Category] {
+		return SuggestionResult{}
+	}
+	return result
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // parseLines splits multi-line text into at most maxCount non-empty lines.

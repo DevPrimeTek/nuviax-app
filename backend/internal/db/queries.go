@@ -59,17 +59,23 @@ func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id uuid.UUID) (*models
 	u := &models.User{}
 	err := pool.QueryRow(ctx, `
 		SELECT id, email_encrypted, email_hash, password_hash, salt,
-		       full_name, locale, avatar_url, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
+		       full_name, locale, COALESCE(theme, 'dark'), avatar_url, mfa_secret, mfa_enabled, is_active, is_admin, created_at, updated_at
 		FROM users WHERE id = $1 AND is_active = TRUE
 	`, id).Scan(
 		&u.ID, &u.EmailEncrypted, &u.EmailHash, &u.PasswordHash, &u.Salt,
-		&u.FullName, &u.Locale, &u.AvatarURL, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
+		&u.FullName, &u.Locale, &u.Theme, &u.AvatarURL, &u.MFASecret, &u.MFAEnabled, &u.IsActive, &u.IsAdmin,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	return u, err
+}
+
+func UpdateUserTheme(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, theme string) error {
+	_, err := pool.Exec(ctx,
+		`UPDATE users SET theme=$1, updated_at=NOW() WHERE id=$2`, theme, userID)
+	return err
 }
 
 func UpdateUserMFA(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, secret string, enabled bool) error {

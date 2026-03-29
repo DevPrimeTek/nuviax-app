@@ -2,7 +2,7 @@
 
 Platformă SaaS de management al obiectivelor personale și profesionale, bazată pe **NUViaX Growth Framework REV 5.6** — sistem proprietar cu 40 de componente matematice (C1–C40) distribuite pe 5 niveluri.
 
-**Versiune curentă:** `10.4.2` | **Status:** Production Ready
+**Versiune curentă:** `10.5.0` | **Status:** Production Ready
 
 ---
 
@@ -98,9 +98,13 @@ POST   /api/v1/auth/reset-password
 GET    /api/v1/dashboard
 GET    /api/v1/goals                    # {goals:[], waiting:[]}
 POST   /api/v1/goals
+POST   /api/v1/goals/analyze            # AI GO validation (SMART check)
+POST   /api/v1/goals/suggest-category   # AI category suggestion (Sprint 3)
 GET    /api/v1/goals/:id
 GET    /api/v1/goals/:id/progress
 GET    /api/v1/goals/:id/visualize      # Level 5 charts
+
+GET    /api/v1/profile/activity         # 365-day activity data for heatmap (Sprint 3)
 
 GET    /api/v1/today
 POST   /api/v1/today/complete/:id
@@ -208,6 +212,7 @@ EMAIL_FROM=noreply@nuviax.app
 
 | Versiune | Data | Descriere |
 |---------|------|-----------|
+| v10.5.0 | 2026-03-29 | Sprint 3 complete: i18n EN/RU (today PoC), AI category onboarding, activity heatmap, theme persistence (migration 012) |
 | v10.4.2 | 2026-03-29 | G-11 Behavior Model dominance; migration 011; ApplyEvolveOverride |
 | v10.4.1 | 2026-03-29 | Restructurare docs/, CLAUDE.md optimizat, CLIENT_TODO |
 | v10.4.0 | 2026-03-26 | P1 Gaps G-1—G-10, G-12 (10/12); migration 010 |

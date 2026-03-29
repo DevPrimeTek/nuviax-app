@@ -108,9 +108,10 @@ func NewServer(cfg Config) *fiber.App {
 
 	p.Get("/dashboard", h.GetDashboard)
 
-	p.Get("/goals",               h.GetGoals)
-	p.Post("/goals",              h.CreateGoal)
-	p.Post("/goals/analyze",      h.AnalyzeGO)
+	p.Get("/goals",                   h.GetGoals)
+	p.Post("/goals",                  h.CreateGoal)
+	p.Post("/goals/analyze",          h.AnalyzeGO)
+	p.Post("/goals/suggest-category", h.SuggestCategory)
 	p.Get("/goals/:id",           h.GetGoal)
 	p.Patch("/goals/:id",         h.UpdateGoal)
 	p.Delete("/goals/:id",        h.ArchiveGoal)
@@ -142,6 +143,8 @@ func NewServer(cfg Config) *fiber.App {
 	p.Get("/settings/sessions",        h.GetSessions)
 	p.Delete("/settings/sessions/:id", h.RevokeSession)
 	p.Get("/settings/export",          h.ExportData)
+
+	p.Get("/profile/activity", h.GetProfileActivity)
 
 	// ── Level 4 & 5 endpoints ──────────────────────────────────
 	// Ceremonies (Level 5 — C38)

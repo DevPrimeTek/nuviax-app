@@ -84,7 +84,7 @@ git branch --show-current
 
 ## 4. Current State
 
-**Version:** `10.4.2` | **Active sprint:** Sprint 3
+**Version:** `10.5.0` | **Active sprint:** Sprint 4
 
 | Category | Status |
 |----------|--------|
@@ -97,7 +97,10 @@ git branch --show-current
 | Forgot/Reset password | ✅ Implemented (v10.3) |
 | G-11 Behavior Model | ✅ Implemented (v10.4.2) — migration 011 |
 | Admin panel | ✅ Implemented — manual admin account setup needed on VPS |
-| Translations EN/RU | ❌ Not implemented — **next task** |
+| Translations EN/RU | ✅ Implemented (v10.5.0) — today page PoC |
+| AI Category Suggestion (Onboarding) | ✅ Implemented (v10.5.0) — 2s timeout, fallback |
+| Activity Heatmap (/profile) | ✅ Implemented (v10.5.0) — 52-week GitHub-style grid |
+| Dark/Light Theme (persistence) | ✅ Implemented (v10.5.0) — localStorage + backend (migration 012) |
 | Stripe monetization | 📅 Planned Sprint 4 |
 
 ---
@@ -113,29 +116,30 @@ git branch --show-current
 - ✅ `handlers.go`: `CreateGoal` accepts optional `dominant_behavior_model`
 - ✅ Models, DB queries: full `dominant_behavior_model` support
 
-**i18n Translations EN + RU** ← NEXT
-- See prompt: `PROMPTS.md → Sprint 3 — Task 1`
-- Create `frontend/app/lib/i18n.ts` with `useTranslation()` hook
-- Language detection from `settings.language` (JSONB field on `users`)
-- Files: `frontend/app/public/locales/ro.json`, `en.json`, `ru.json`
-- Migrate only `today/page.tsx` first as proof of concept
+**i18n Translations EN + RU** ✅ COMPLETE (v10.5.0)
+- ✅ `frontend/app/lib/i18n.ts` — `useTranslation()` hook, no external lib
+- ✅ `public/locales/ro.json`, `en.json`, `ru.json` — all keys for today page
+- ✅ `today/page.tsx` migrated as proof of concept
+- Language detection: `localStorage('nv_lang')` → 'ro' default
 
-**Improved AI Onboarding**
-- See prompt: `PROMPTS.md → Sprint 3 — Task 2`
-- At new GO classification step → Claude Haiku suggests category
-- Pattern: `backend/internal/ai/ai.go`
-- Fallback: if Haiku doesn't respond in 2s → user picks manually
+**Improved AI Onboarding** ✅ COMPLETE (v10.5.0)
+- ✅ `ai.go`: `SuggestGOCategory()` — 2s hard timeout, returns empty on failure
+- ✅ `handlers.go`: `SuggestCategory` — POST /goals/suggest-category
+- ✅ `onboarding/page.tsx`: debounced auto-suggest + category pill selector
+- Categories: HEALTH, CAREER, FINANCE, RELATIONSHIPS, LEARNING, CREATIVITY, OTHER
 
-**Personal activity statistics heatmap**
-- See prompt: `PROMPTS.md → Sprint 3 — Task 3`
-- GitHub-style activity calendar in `/profile`
-- Data from `daily_metrics` table
+**Personal activity statistics heatmap** ✅ COMPLETE (v10.5.0)
+- ✅ `handlers.go`: `GetProfileActivity` — GET /profile/activity (last 365 days)
+- ✅ `ActivityHeatmap.tsx` — pure CSS grid, 52 weeks, color scale, hover tooltip
+- ✅ `profile/page.tsx` — heatmap section added below preferences
 
-**Dark/Light theme toggle**
-- See prompt: `PROMPTS.md → Sprint 3 — Task 4`
-- Button in navigation; saved in `localStorage` + `settings.theme`
+**Dark/Light theme toggle** ✅ COMPLETE (v10.5.0)
+- ✅ `AppShell.tsx`: toggle button already present (sun/moon icon)
+- ✅ `layout.tsx`: anti-flash inline script already present
+- ✅ `handlers.go`: `UpdateSettings` now accepts + persists `theme`
+- ✅ `GetSettings` returns `theme` from DB; `012_theme.sql` migration added
 
-### Sprint 4 (later)
+### Sprint 4 (next)
 - Stripe: Pro subscription ($9.99/month) + Free tier limits + 14-day trial
 - PWA + Push notifications
 - Monthly PDF report export

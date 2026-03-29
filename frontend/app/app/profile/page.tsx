@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/components/layout/AppShell'
+import ActivityHeatmap from '@/components/ActivityHeatmap'
 
 type Lang = 'ro'|'en'|'ru'
 
@@ -185,6 +186,14 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Activity Heatmap */}
+        <div className="sg-group" style={{marginTop:8}}>
+          <div className="sg-lbl">Activitate (ultimele 52 săptămâni)</div>
+          <div style={{padding:'14px 4px 4px'}}>
+            <ActivityHeatmap />
           </div>
         </div>
 

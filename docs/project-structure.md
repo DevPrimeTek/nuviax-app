@@ -5,7 +5,7 @@
 
 ---
 
-## Structura Repo (v10.4.1)
+## Structura Repo (v10.5.0)
 
 ```
 nuviax-app/
@@ -56,6 +56,8 @@ nuviax-app/
 │   │   ├── 008_avatar.sql           # users.avatar_url
 │   │   ├── 009_password_reset.sql   # password_reset_tokens (forgot-password flow)
 │   │   ├── 010_p1_gaps.sql          # srm_events, reactivation_protocols, stagnation_events
+│   │   ├── 011_behavior_model.sql   # dominant_behavior_model on global_objectives (G-11)
+│   │   ├── 012_theme.sql            # users.theme (dark/light preference persistence)
 │   │   └── apply_all.sql            # Script aplicare toate migrările (idempotent)
 │   ├── pkg/
 │   │   ├── crypto/crypto.go         # AES-256-GCM, PBKDF2, bcrypt, SHA256, RandomHex
@@ -86,13 +88,20 @@ nuviax-app/
 │   │   │   ├── layout.tsx           # Root layout cu fonturi
 │   │   │   └── page.tsx             # Redirect → /dashboard sau /auth/login
 │   │   ├── components/
-│   │   │   ├── layout/AppShell.tsx  # Nav + link Admin condiționat (is_admin)
+│   │   │   ├── layout/AppShell.tsx  # Nav + link Admin condiționat (is_admin) + dark/light toggle
+│   │   │   ├── ActivityHeatmap.tsx  # GitHub-style 52-week activity grid (Sprint 3)
 │   │   │   ├── CeremonyModal.tsx    # Modal ceremonie sprint (BRONZE/SILVER/GOLD/PLATINUM)
 │   │   │   ├── DashboardClientLayer.tsx
 │   │   │   ├── GoalTabs.tsx         # Tabs Prezentare / Progres
 │   │   │   ├── ProgressCharts.tsx   # LineChart + BarChart (Recharts)
 │   │   │   └── SRMWarning.tsx       # Bannere SRM L1/L2/L3
-│   │   ├── lib/api.ts               # API client helpers
+│   │   ├── lib/
+│   │   │   ├── api.ts               # API client helpers
+│   │   │   └── i18n.ts              # useTranslation() hook (EN/RU/RO, no external lib)
+│   │   ├── public/locales/
+│   │   │   ├── ro.json              # Traduceri română (sursă de adevăr)
+│   │   │   ├── en.json              # Traduceri English
+│   │   │   └── ru.json              # Переводы Русский
 │   │   ├── middleware.ts            # Auth middleware Next.js
 │   │   └── styles/globals.css       # Design system: CSS vars, dark/light theme
 │   └── landing/                     # Landing page → nuviaxapp.com
@@ -176,4 +185,4 @@ localStorage.getItem('nv_lang')    // ro / en / ru
 
 ---
 
-*Actualizat: v10.4.1 — 2026-03-26*
+*Actualizat: v10.5.0 — 2026-03-29 — Sprint 3 complete: i18n EN/RU, AI onboarding, activity heatmap, theme persistence, migration 012*

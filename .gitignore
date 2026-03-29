@@ -1,46 +1,7 @@
-# Environment
-.env
-.env.*
-!.env.example
+# deploy/.gitignore
+# Backup-urile locale nu merg pe GitHub
+backups/
 
-# Keys
-.keys/
-*.pem
-
-# Dependencies
-node_modules/
-vendor/
-
-# Build artifacts
-bin/
-dist/
-.next/
-out/
-
-# Logs
-*.log
-logs/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
+# Fișiere temporare Windows
+*.tmp
 Thumbs.db
-
-# Testing
-coverage.out
-coverage.html
-*.test
-
-# Temporary
-tmp/
-temp/
-
-# ── Deploy folder (exclude complet) ──
-deploy/
-deploy/*
-!deploy/.gitkeep

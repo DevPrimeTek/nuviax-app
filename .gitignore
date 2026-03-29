@@ -5,3 +5,4 @@ backups/
 # Fișiere temporare Windows
 *.tmp
 Thumbs.db
+deploy/

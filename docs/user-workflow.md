@@ -360,7 +360,53 @@
 
 ### CURRENT SYSTEM (REALITY)
 
+**Scheduler trigger chain:**
+- ✅ `jobCloseExpiredSprints` (00:01 UTC) — sets `sprints.status = 'COMPLETED'` correctly
+- ✅ `jobDetectEvolutionSprints` (01:00 UTC) — evaluates delta, inserts into `evolution_sprints` (idempotent)
+- ✅ G-11 override (`ApplyEvolveOverride()`) — ANALYTIC/TACTICAL/STRATEGIC/REACTIVE thresholds applied
+- ✅ `jobGenerateCeremonies` (01:05 UTC) — generates ceremony per closed sprint (idempotent)
+
+**Achievement award:**
+- ❌ `fn_award_achievement_if_earned()` exists in migration 006 but NEVER called from Go (SA-2)
+- ❌ `achievement_badges` table always empty for real users
+- ❌ `GET /achievements` always returns `[]` — badges only appear via direct DB insert
+
+**Ceremony:**
+- ✅ `engine.GenerateCompletionCeremony()` assigns tier (BRONZE/SILVER/GOLD/PLATINUM) correctly
+- ✅ Stored in `completion_ceremonies`; generated exactly once per sprint (`ON CONFLICT DO NOTHING`)
+- ✅ `GET /ceremonies/:goalId` returns ceremony with `viewed` flag
+- ✅ `POST /ceremonies/:id/view` marks as seen — modal not re-shown
+
+**Frontend:**
+- ✅ `CeremonyModal.tsx` renders on login when `viewed = false`; dismissal works
+- ✅ `/achievements` page renders empty grid without error when `achievements: []`
+- ✅ `GET /achievements/progress` returns progress bars from `get_achievement_progress()`
+
+---
+
 ### TARGET SYSTEM (FRAMEWORK)
+
+**Scheduler trigger chain:**
+- ✅ `jobCloseExpiredSprints` → calls `fn_award_achievement_if_earned(user_id, sprint_id)` per closed sprint
+- ✅ `jobDetectEvolutionSprints` → calls `fn_award_achievement_if_earned()` when evolution detected
+- ✅ `jobGenerateCeremonies` → ceremony + badge award run in sequence after sprint close
+
+**Achievement award:**
+- ✅ `fn_award_achievement_if_earned()` wired to scheduler — `achievement_badges` populated automatically
+- ✅ `GET /achievements` returns non-empty badge array after sprint close
+- ✅ Badge types earned based on sprint performance, streaks, evolution detection
+
+**Ceremony:**
+- ✅ Same tier logic (BRONZE/SILVER/GOLD/PLATINUM) — score opaque, never exposed
+- ✅ PLATINUM only on `score >= 0.90` AND `isEvolution = true`
+- ✅ `CeremonyModal.tsx` displays on next login; one-time view enforced
+
+**Frontend:**
+- ✅ `/achievements` badge grid populated after each sprint close
+- ✅ Progress bars reflect real advancement toward each badge type
+- ✅ `/profile` links to `/achievements`; heatmap and badge system remain separate
+
+---
 
 ### 5.1 Achievement Trigger Conditions
 

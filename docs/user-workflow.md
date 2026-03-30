@@ -227,7 +227,56 @@
 
 ### CURRENT SYSTEM (REALITY)
 
+**Trigger detection:**
+- ❌ L1 auto-trigger NOT IMPLEMENTED (SA-3) — `jobDetectStagnation` writes to `stagnation_events` only; `srm_events` never populated; `GET /srm/status` always returns `NONE` after 5+ inactive days
+- ❌ `jobRecalibrateRelevance` cron expression `*/90` is invalid — job never fires; chaos_index threshold for L2 never evaluated (SA-7)
+
+**L1 — Automatic intensity reduction:**
+- ❌ NOT IMPLEMENTED — no `srm_events` row created; no task intensity reduction triggered
+
+**L2 — Structural recalibration:**
+- ✅ `POST /srm/confirm-l2` stamps `confirmed_at` on `srm_events`
+- ❌ `CreateContextAdjustment(AdjEnergyLow)` NOT called — next-day task count unchanged (SA-4)
+- ❌ `SRMWarning.tsx` L2 confirm button absent in UI (SA-5)
+
+**L3 — Strategic reset:**
+- ✅ `POST /srm/confirm-l3` pauses goal (`status = 'PAUSED'`)
+- ✅ `FreezeExpectedTrajectory()` runs — drift loop paradox prevented (GAP #20)
+- ✅ `frozen_expected` computed from elapsed time / total duration
+
+**Status endpoint:**
+- ✅ `GET /srm/status/:goalId` returns `srm_level`, `ali_current`, `ali_projected`
+- ✅ `velocity_control_on: true` when `ALI_projected > 1.15`
+
+---
+
 ### TARGET SYSTEM (FRAMEWORK)
+
+**Trigger detection (C32–C34):**
+- ✅ L1: after 5 consecutive days with 0 MAIN task completions → `jobCheckDailyProgress` inserts `srm_events (srm_level='L1')` → task intensity auto-reduced
+- ✅ L2: `chaos_index ≥ 0.40` evaluated by `jobRecalibrateRelevance` (weekly) → `srm_events (srm_level='L2')` inserted
+- ✅ L3: `chaos_index ≥ 0.60` OR unresolved L2 after N days → `srm_events (srm_level='L3')` inserted
+
+**L1 — Automatic intensity reduction (C32):**
+- ✅ No user action required
+- ✅ Task count reduced automatically via `CreateContextAdjustment(AdjEnergyLow)`
+- ✅ Banner: informational only, no confirm button
+
+**L2 — Structural recalibration (C33–C34):**
+- ✅ User confirms via `SRMWarning.tsx` confirm button
+- ✅ `ConfirmSRML2()` stamps `confirmed_at` AND calls `CreateContextAdjustment(AdjEnergyLow)` → next-day task count reduced
+- ✅ Goal remains `ACTIVE`
+
+**L3 — Strategic reset (C35–C36):**
+- ✅ Goal paused; trajectory frozen; stabilization mode active
+- ✅ Reactivation proposed by scheduler after 7 days
+- ✅ Unconfirmed L3 after timeout → `jobCheckSRMTimeouts` applies fallback state (SA-6)
+
+**ALI Velocity Control:**
+- ✅ `ALI_projected > 1.15` → `velocity_control_on: true` in status response
+- ✅ Ambition buffer zone `1.0–1.15` → warning only, no SRM escalation
+
+---
 
 ### 4.1 Input (User Action)
 

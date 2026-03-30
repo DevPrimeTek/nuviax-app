@@ -6,6 +6,10 @@
 
 ## 1. User Journey (End-to-End)
 
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
+
 ### 1.1 Registration & Onboarding
 
 1. User submits `POST /auth/register` (name, email, password)
@@ -81,6 +85,10 @@
 
 ## 2. Goal Creation Flow
 
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
+
 ### 2.1 Input (User Action)
 
 - User submits: `name`, `start_date`, `end_date` (YYYY-MM-DD), optional `description`, optional `dominant_behavior_model`, optional `waiting_list: true`
@@ -137,6 +145,10 @@
 ---
 
 ## 3. Daily Execution Flow
+
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
 
 ### 3.1 Input (User Action)
 
@@ -212,6 +224,10 @@
 ---
 
 ## 4. SRM Flow (L1–L3)
+
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
 
 ### 4.1 Input (User Action)
 
@@ -293,6 +309,10 @@
 
 ## 5. Achievement Flow
 
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
+
 ### 5.1 Achievement Trigger Conditions
 
 Achievements and ceremonies are evaluated **after sprint close only** — not on individual task completion.
@@ -369,6 +389,10 @@ Tier assignment in `engine.GenerateCompletionCeremony()` (`level5_growth.go:185`
 ---
 
 ## 6. Visualization Flow
+
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
 
 ### 6.1 Data Source: `growth_trajectories`
 
@@ -466,6 +490,10 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 ---
 
 ## 7. Test Scenarios
+
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
 
 ---
 
@@ -683,6 +711,10 @@ Allowed fields: `progress_pct` (0–100), `grade` (A+/A/B/C/D), `actual_pct`, `e
 
 ## 8. Critical Checkpoints
 
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
+
 ### 8.1 Server-Side Calculation Enforcement
 
 **What must never break:** All score computation runs in Go engine only. No formula, weight, factor, or threshold may appear in any API response.
@@ -792,6 +824,10 @@ curl -X POST https://api.nuviax.app/api/v1/auth/forgot-password \
 
 ## 9. Roadmap Test Mapping
 
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
+
 Maps Sprint 3.1 System Alignment fixes (SA-1 through SA-7) to the test scenarios that verify them.
 
 | Fix | Description | Verified By | Priority |
@@ -865,6 +901,10 @@ Maps Sprint 3.1 System Alignment fixes (SA-1 through SA-7) to the test scenarios
 ---
 
 ## 10. Post-Fix Validation Checklist
+
+### CURRENT SYSTEM (REALITY)
+
+### TARGET SYSTEM (FRAMEWORK)
 
 Run after all SA-1 through SA-7 fixes are deployed. All items must pass before Sprint 3.1 is closed.
 

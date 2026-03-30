@@ -235,6 +235,7 @@ EXPOSE ONLY:
 
 | Resource | Location |
 |----------|---------|
+| **User workflow + test scenarios** | **`docs/user-workflow.md`** |
 | Repo structure + design system | `docs/project-structure.md` |
 | Full DB schema + migrations | `docs/database-reference.md` |
 | AI (Haiku) + Email (Resend) details | `docs/integrations.md` |
@@ -249,4 +250,67 @@ EXPOSE ONLY:
 
 ---
 
-*Last updated: 2026-03-29 — v10.4.2 — G-11 complete, all API keys configured, PROMPTS.md added*
+## 11. User Workflow & Testing (MANDATORY)
+
+> `docs/user-workflow.md` is the **source of truth** for all feature validation.
+> A feature that is not covered by a passing test scenario does not exist.
+
+---
+
+### Before implementing any feature
+
+1. Open `docs/user-workflow.md`
+2. Identify the relevant flow section (Sections 2–6)
+3. Identify the related test scenarios (Section 7, TS-xx)
+4. Confirm the implementation will satisfy the inputs, DB changes, API response, and frontend behavior defined in that section
+
+```
+# Example — implementing SRM L2 intensity reduction:
+# → Read Section 4 (SRM Flow)
+# → Read TS-05
+# → Verify: ConfirmSRML2 creates context adjustment + task count drops next day
+```
+
+---
+
+### After implementing any feature
+
+State explicitly which test scenarios should now pass:
+
+```
+# Example commit message or session close note:
+# "SA-4 fix complete — TS-05 should pass: L2 confirm creates ENERGY_LOW
+#  context adjustment; next-day task count reduced."
+```
+
+Do not close a session without naming the test scenarios the implementation covers.
+
+---
+
+### Hard rules
+
+```
+NEVER implement a feature without first reading its flow in user-workflow.md
+NEVER mark a task complete if its TS-xx scenario would still fail
+NEVER assume a feature works — identify the exact DB change and API response
+NEVER ship a fix for SA-1 through SA-7 without running its mapped test scenario
+```
+
+---
+
+### Quick lookup
+
+| Task type | Where to look first |
+|---|---|
+| New feature | Section matching the flow (2–6) → nearest TS-xx |
+| Bug fix | TS-xx that reproduces the bug → Critical Checkpoints (8) |
+| Scheduler job | Section 6.1 (trajectories) or Section 5.1 (achievements) |
+| SRM change | Section 4 → TS-04, TS-05, TS-06 |
+| API response change | Section 8.1–8.2 (opaque API rules) → TS-12 |
+| Auth/security change | Section 8.3–8.6 |
+
+**Reference:** `docs/user-workflow.md` — Sections 9–10 map all Sprint 3.1 fixes (SA-1 through SA-7) to their test scenarios.
+
+---
+
+*Last updated: 2026-03-30 — v10.5.0 — user-workflow.md complete, Section 11 added*

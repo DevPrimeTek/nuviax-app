@@ -1,6 +1,6 @@
 # docs/user-workflow.md — NuviaX User Workflow
 
-> Version: 10.5.0 | Last updated: 2026-03-30
+> Version: 10.5.0 | Last updated: 2026-03-30 | Validated & corrected against real implementation
 
 ---
 
@@ -40,9 +40,9 @@
 1. User opens `/today` → `GET /today` returns energy level + main tasks + personal tasks
 2. User sets energy level (1–5) for the day
 3. Task list rendered from active sprint's generated tasks
-4. User completes tasks → `POST /tasks/:id/complete`
+4. User completes tasks → `POST /today/complete/:id`
 5. Each completion triggers server-side score recalculation (Level 2 engine, C19–C25)
-6. End-of-day: scheduler runs daily check-in job; missed tasks recorded as regression events (`level2_execution.go`)
+6. End-of-day: scheduler runs daily check-in job; dashboard cache invalidated, checkpoint statuses updated ⚠️ regression event recording NOT IMPLEMENTED (see SA-3, Sprint 3.1)
 
 ### 1.5 Progress Review
 
@@ -65,8 +65,8 @@
 1. Level 5 engine (`level5_growth.go`) evaluates achievement conditions post-score-update
 2. Sprint close (scheduler cron) → `ApplyEvolveOverride()` runs for hybrid GO behavior models
 3. Ceremony assigned: BRONZE / SILVER / GOLD / PLATINUM based on sprint performance
-4. `GET /ceremonies/latest` returns unviewed ceremony → `CeremonyModal.tsx` displayed on next login
-5. `POST /ceremonies/:id/viewed` marks ceremony as seen
+4. `GET /ceremonies/:goalId` returns latest ceremony for goal → `CeremonyModal.tsx` displayed on next login
+5. `POST /ceremonies/:id/view` marks ceremony as seen
 6. Achievements stored in `achievements` table; `GET /achievements` returns full badge grid
 
 ### 1.8 Growth & Visualization
@@ -161,12 +161,12 @@
 3. `low` / `high` → `db.CreateContextAdjustment()` with `adjType = AdjEnergyLow / AdjEnergyHigh`, active from today to tomorrow
 4. Today's Redis task cache invalidated → next load regenerates with adjusted intensity
 
-**Completing a task (`POST /tasks/:id/complete`):**
+**Completing a task (`POST /today/complete/:id`):**
 1. `db.CompleteTask()` — sets `completed = TRUE`, records timestamp
 2. Both today-tasks and dashboard Redis caches invalidated
 3. No immediate score recalculation — score computed on-demand via `engine.ComputeGoalScore()`
 
-**Adding a personal task (`POST /tasks/personal`):**
+**Adding a personal task (`POST /today/personal`):**
 1. Max 2 personal tasks/day enforced via `db.CountPersonalTasksToday()`
 2. Active sprint resolved from first ACTIVE goal
 3. `db.CreateTask()` inserts with `task_type = PERSONAL`
@@ -197,14 +197,14 @@
 }
 ```
 
-**`POST /tasks/:id/complete`:** `200` + `{ "message": "Activitate bifată." }`
+**`POST /today/complete/:id`:** `200` + `{ "message": "Activitate bifată." }`
 
 **`POST /context/energy` (low/high):** `200` + `{ "message": "...Activitățile de mâine vor fi adaptate." }`
 
 ### 3.5 Frontend Behavior
 
 1. `/today` renders main tasks + personal tasks in separate lists
-2. Checkbox tap → optimistic UI update → `POST /tasks/:id/complete`
+2. Checkbox tap → optimistic UI update → `POST /today/complete/:id`
 3. Energy selector: 3 options (low / normal / high); selection calls `POST /context/energy`; no page reload
 4. "Add personal task" button disabled after 2 tasks/day (client enforced + server enforced)
 5. Streak counter and checkpoint banner update on each page load (no real-time push)
@@ -231,17 +231,15 @@
    - Ambition buffer zone: `ALI_projected` between 1.0–1.15 → Velocity Control warning
    - `velocity_control_on: true` if `ALI_projected > 1.15`
 
-**L1 — Automatic adjustment (no user action required):**
-- Triggered by `level4_regulatory.go` during scheduler run
-- Task intensity reduced automatically
-- No user confirmation needed
-- `srm_events` row inserted with `srm_level = 'L1'`
+**L1 — Automatic adjustment (no user action required):** ⚠️ NOT IMPLEMENTED (see SA-3, Sprint 3.1)
+- Intended: triggered by `level4_regulatory.go` during scheduler run; task intensity reduced automatically; `srm_events` row inserted with `srm_level = 'L1'`
+- Actual: `jobDetectStagnation` inserts into `stagnation_events` only — no `srm_events` row is created; `GET /srm/status` returns `NONE` even after 5+ inactive days
 
 **L2 — Structural recalibration (`POST /srm/confirm-l2/:goalId`):**
 1. Verifies access: `db.GetGoalByID()` — returns `404` if not owner
 2. `UPDATE srm_events SET confirmed_at = NOW(), confirmed_by = $2` on most recent unconfirmed L2
 3. If no active unconfirmed L2 event → `404`
-4. Task intensity adjusted; sprint structure recalibrated by engine
+4. ⚠️ Task intensity adjustment NOT IMPLEMENTED (see SA-4, Sprint 3.1) — `ConfirmSRML2` stamps `confirmed_at` only; no `CreateContextAdjustment` call; next-day task count is unchanged
 5. Goal status remains `ACTIVE`
 
 **L3 — Strategic reset (`POST /srm/confirm-l3/:goalId`):**
@@ -280,7 +278,7 @@
 }
 ```
 
-**`POST /srm/confirm-l2`:** `200` + message + `next_step`
+**`POST /srm/confirm-l2`:** `200` + message + `next_step` ⚠️ intensity reduction NOT IMPLEMENTED (SA-4)
 
 **`POST /srm/confirm-l3`:** `200` + `new_status: PAUSED` + `frozen_expected` percentage + `next_step`
 
@@ -299,7 +297,7 @@
 
 Achievements and ceremonies are evaluated **after sprint close only** — not on individual task completion.
 
-**Trigger chain (scheduler, daily at 01:00–01:05 UTC):**
+**Trigger chain (scheduler, nightly UTC):**
 
 1. `jobCloseExpiredSprints` (00:01 UTC) — sets `sprints.status = 'COMPLETED'` for sprints past their `end_date`
 2. `jobDetectEvolutionSprints` (01:00 UTC) — queries sprints completed yesterday; calls `engine.MarkEvolutionSprint()` per sprint
@@ -312,7 +310,7 @@ Achievements and ceremonies are evaluated **after sprint close only** — not on
    - Evolution detected → INSERT into `evolution_sprints` (idempotent via `ON CONFLICT sprint_id DO NOTHING`)
 3. `jobGenerateCeremonies` (01:05 UTC) — queries sprints completed yesterday with no existing ceremony; calls `engine.GenerateCompletionCeremony()`
 
-**⚠ SA-2 known gap:** `fn_award_achievement_if_earned()` exists in migration 006 but is never called from Go. `achievement_badges` is not populated by the scheduler. Badges only appear if inserted directly via DB. This is an open CRITICAL fix in Sprint 3.1.
+**⚠️ NOT IMPLEMENTED — Achievement auto-award (see SA-2, Sprint 3.1):** `fn_award_achievement_if_earned()` exists in migration 006 but is never called from Go. `achievement_badges` is not populated by the scheduler. `GET /achievements` always returns `[]` for real users. Badges only appear if inserted directly via DB.
 
 ### 5.2 Ceremony Tiers
 
@@ -359,9 +357,9 @@ Tier assignment in `engine.GenerateCompletionCeremony()` (`level5_growth.go:185`
 3. Fetches `GET /achievements/progress` → renders progress bars per badge type
 
 **Ceremony modal (`CeremonyModal.tsx`):**
-1. Dashboard checks `GET /ceremonies/latest` on each login
+1. Dashboard checks `GET /ceremonies/:goalId` on each login per active goal
 2. If `viewed = false` → `CeremonyModal` rendered with tier (BRONZE/SILVER/GOLD/PLATINUM) and message
-3. User dismisses → `POST /ceremonies/:id/viewed` → `viewed = true` in DB → modal not shown again
+3. User dismisses → `POST /ceremonies/:id/view` → `viewed = true` in DB → modal not shown again
 4. Colors/icons vary by tier — defined in `CeremonyModal.tsx` component
 
 **`/profile` page:**
@@ -391,7 +389,7 @@ Tier assignment in `engine.GenerateCompletionCeremony()` (`level5_growth.go:185`
 
 ### 6.2 Fallback Logic (Single Snapshot)
 
-When `growth_trajectories` is empty for a goal, `GenerateProgressVisualization()` (`level5_growth.go:82`) computes a live synthetic snapshot:
+When `growth_trajectories` is empty for a goal, `GenerateProgressVisualization()` (`level5_growth.go:82`) attempts to compute a live synthetic snapshot:
 
 ```
 elapsed = now - goal.start_date
@@ -402,7 +400,7 @@ delta        = -expected_pct
 trend        = "ON_TRACK"
 ```
 
-Returns array with exactly 1 entry. `trajectory` is never null or empty — this is guaranteed by the fallback.
+**⚠️ Known bug:** The fallback query at `level5_growth.go:85` reads `FROM goals` but the actual table is `global_objectives`. The query silently returns no rows → fallback snapshot is never inserted → `trajectory` is `null` in the API response. **TS-08 currently fails in production.** Fix: change `FROM goals` → `FROM global_objectives` in `GenerateProgressVisualization()`.
 
 ### 6.3 Trajectory Freeze (SRM L3)
 
@@ -480,7 +478,7 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 4. Navigate to `/onboarding` → type goal title → wait for AI suggestion (`POST /goals/suggest-category`)
 5. Select category → `POST /goals` with `start_date`, `end_date` (30-day range)
 6. `GET /today` → assert `main_tasks` array is non-empty, `day_number = 1`
-7. `POST /tasks/:id/complete` on first task → assert `200`
+7. `POST /today/complete/:id` on first task → assert `200`
 8. `GET /today` again → assert `done_count = 1`
 9. `GET /goals/:id` → assert `progress_pct > 0`, `grade` is non-empty string
 
@@ -531,14 +529,16 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 
 **Steps:**
 1. Create active goal
-2. Miss all main tasks for 5 consecutive days (do not call `POST /tasks/:id/complete` on any `MAIN` task)
+2. Miss all main tasks for 5 consecutive days (do not call `POST /today/complete/:id` on any `MAIN` task)
 3. Simulate `jobDetectStagnation` run (scheduler job at 23:58 UTC)
 4. `GET /srm/status/:goalId`
 
-**Expected result:** `srm_level = "L1"`, `message = "Ajustare automată activă. Ritmul a fost redus ușor."`. `stagnation_events` has row with `inactive_days >= 5`.
+**Expected result (post SA-3 fix):** `srm_level = "L1"`, `message = "Ajustare automată activă. Ritmul a fost redus ușor."`. `stagnation_events` has row with `inactive_days >= 5`. `srm_events` has row with `srm_level = 'L1'`.
+
+**Current behavior:** `jobDetectStagnation` populates `stagnation_events` correctly but does NOT write to `srm_events`. `GET /srm/status` returns `"NONE"`. ⚠️ SA-3 NOT IMPLEMENTED.
 
 **Failure indicator:**
-- `srm_level = "NONE"` after 5 inactive days → `jobDetectStagnation` not running or threshold check failing
+- `srm_level = "NONE"` after 5 inactive days → expected until SA-3 is applied
 - `srm_level = "L2"` immediately → L2 chaos index threshold reached before L1; verify `chaos_index < 0.40`
 
 ---
@@ -553,11 +553,13 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 5. `POST /srm/confirm-l2/:goalId`
 6. `GET /today` next day → compare task count vs pre-L2 baseline
 
-**Expected result:** L2 confirmed; `confirmed_at` stamped on `srm_events`. Next day's task count is reduced (engine applies lower intensity). Goal status remains `ACTIVE`.
+**Expected result (post SA-4 fix):** L2 confirmed; `confirmed_at` stamped on `srm_events`; `CreateContextAdjustment(AdjEnergyLow)` called; next day's task count is reduced. Goal status remains `ACTIVE`.
+
+**Current behavior (pre-fix):** `confirmed_at` is stamped but no context adjustment is created. Task count is unchanged the next day. ⚠️ SA-4 NOT IMPLEMENTED.
 
 **Failure indicator:**
 - `404` on `POST /srm/confirm-l2` → no active unconfirmed L2 event found
-- Task count unchanged after L2 confirmation → engine not applying intensity reduction
+- Task count unchanged after L2 confirmation → SA-4 not yet applied
 - Goal status becomes `PAUSED` → L2 incorrectly escalating to L3 behavior
 
 ---
@@ -571,7 +573,7 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 4. `GET /goals/:id` → check `status`
 5. `GET /goals/:id/visualization` → check `frozen_expected` is a fixed value
 
-**Expected result:** `201` → `new_status: "PAUSED"`, `frozen_expected` is a float between 0–1. `global_objectives.status = 'PAUSED'` in DB. `sprint_trajectories` frozen (drift loop prevented, GAP #20).
+**Expected result:** `200` → `new_status: "PAUSED"`, `frozen_expected` is a float between 0–1. `global_objectives.status = 'PAUSED'` in DB. `sprint_trajectories` frozen (drift loop prevented, GAP #20).
 
 **Failure indicator:**
 - Goal status still `ACTIVE` → L3 confirm not updating `global_objectives`
@@ -584,15 +586,17 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 **Steps:**
 1. Create goal; complete sprint (30 days of tasks OR manually close sprint via `POST /goals/:id/sprint/close`)
 2. Simulate scheduler run: `jobDetectEvolutionSprints` (01:00 UTC) then `jobGenerateCeremonies` (01:05 UTC)
-3. `GET /ceremonies/latest` → assert ceremony present with `tier` field (BRONZE/SILVER/GOLD/PLATINUM)
-4. `GET /achievements` → assert non-empty badge array
-5. `POST /ceremonies/:id/viewed` → assert `200`
-6. `GET /ceremonies/latest` → assert no unviewed ceremony returned
+3. `GET /ceremonies/:goalId` → assert ceremony present with `tier` field (BRONZE/SILVER/GOLD/PLATINUM)
+4. `GET /achievements` → assert non-empty badge array ⚠️ will return `[]` until SA-2 is implemented
+5. `POST /ceremonies/:id/view` → assert `200`
+6. `GET /ceremonies/:goalId` → assert returned ceremony has `viewed = true`
 
-**Expected result:** Sprint closure generates ceremony. `CeremonyModal.tsx` shows on next login. Achievements recorded. `viewed` flag correctly prevents re-display.
+**Expected result (post SA-2 fix):** Sprint closure generates ceremony. `CeremonyModal.tsx` shows on next login. Achievements recorded. `viewed` flag correctly prevents re-display.
+
+**Current behavior (pre-fix):** Ceremony is generated correctly. `GET /achievements` returns `[]` — `fn_award_achievement_if_earned()` is never called (SA-2 NOT IMPLEMENTED).
 
 **Failure indicator:**
-- `GET /ceremonies/latest` returns `404` after sprint close → `jobGenerateCeremonies` not running or sprint close not setting `status = 'COMPLETED'`
+- `GET /ceremonies/:goalId` returns `404` after sprint close → `jobGenerateCeremonies` not running or sprint close not setting `status = 'COMPLETED'`
 - `tier` missing from ceremony → `engine.GenerateCompletionCeremony()` failing silently
 
 ---
@@ -603,10 +607,12 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 1. Create active goal
 2. Immediately call `GET /goals/:id/visualization` (before any scheduler run)
 
-**Expected result:** `trajectory` array has exactly 1 entry (live snapshot). `actual_pct: 0`, `expected_pct > 0` (time-based fraction), `trend: "ON_TRACK"`.
+**Expected result (post table-name bugfix):** `trajectory` array has exactly 1 entry (live snapshot). `actual_pct: 0`, `expected_pct > 0` (time-based fraction), `trend: "ON_TRACK"`.
+
+**Current behavior:** `trajectory: null` — fallback query uses `FROM goals` (wrong table); fix is `FROM global_objectives` in `level5_growth.go:85`. ⚠️ This test will fail until that bug is fixed.
 
 **Failure indicator:**
-- `trajectory: []` or `trajectory: null` → live snapshot fallback in `GenerateProgressVisualization` not executing
+- `trajectory: null` → table name bug not yet fixed
 - `expected_pct = 0` on a goal started 1+ days ago → start/end date computation broken
 
 ---
@@ -614,9 +620,9 @@ Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade ba
 ### TS-09 — Personal Task Limit Enforced
 
 **Steps:**
-1. `POST /tasks/personal` → task 1 created → assert `201`
-2. `POST /tasks/personal` → task 2 created → assert `201`
-3. `POST /tasks/personal` → task 3 attempt → assert `422` with error message
+1. `POST /today/personal` → task 1 created → assert `201`
+2. `POST /today/personal` → task 2 created → assert `201`
+3. `POST /today/personal` → task 3 attempt → assert `422` with error message
 
 **Expected result:** Third personal task rejected with `"Poți adăuga maxim 2 activități personale pe zi."`.
 
@@ -802,7 +808,7 @@ Maps Sprint 3.1 System Alignment fixes (SA-1 through SA-7) to the test scenarios
 
 ### SA-1 → TS-03, TS-08
 
-**Fix:** Add call to `fn_compute_growth_trajectory(goal_id, today)` inside `jobComputeDailyScore` after `db.UpsertGoalScore()`.
+**Fix:** Add call to `fn_compute_growth_trajectory(goal_id, today)` inside `jobComputeDailyScore` (23:50 UTC) after `db.UpsertGoalScore()`.
 
 **TS-03 verifies:** After 2 scheduler runs, `GET /goals/:id/visualize` returns ≥2 trajectory entries.
 

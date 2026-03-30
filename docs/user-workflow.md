@@ -81,34 +81,215 @@
 
 ## 2. Goal Creation Flow
 
-### 2.1 Onboarding Goal Wizard
-### 2.2 AI Category Suggestion
-### 2.3 Manual Category Selection
-### 2.4 Behavior Model Selection (G-11)
-### 2.5 Goal Submission & Validation
-### 2.6 Initial Score Calculation
+### 2.1 Input (User Action)
+
+- User submits: `name`, `start_date`, `end_date` (YYYY-MM-DD), optional `description`, optional `dominant_behavior_model`, optional `waiting_list: true`
+- Source: `/onboarding` wizard or `/goals` create form
+
+### 2.2 Backend Processing (`handlers.go` → `CreateGoal`)
+
+1. **Date validation:** `end_date > start_date`; max duration 365 days — returns `400` on failure
+2. **G-10 capacity check:** `engine.ValidateGoalActivation()` — max 3 active goals
+   - If at capacity and `waiting_list: false` → goal auto-routed to `WAITING` (`vaulted: true` in response)
+   - If `waiting_list: true` → status set to `WAITING` directly
+3. **DB insert:** `db.CreateGoal()` → row in `global_objectives`
+4. **G-11 behavior model:** if `dominant_behavior_model` provided → `db.SetGoalBehaviorModel()` updates `global_objectives.dominant_behavior_model`
+5. **Sprint creation (ACTIVE goals only):**
+   - Sprint 1 end = `start_date + 30 days` (capped at `end_date`)
+   - `db.CreateSprint()` → row in `sprints`
+   - 3 checkpoints created: `"Fundament: <name>"`, `"Progres: <name>"`, `"Consolidare: <name>"`
+   - `engine.GenerateDailyTasks()` called immediately (no waiting for midnight scheduler)
+6. **Cache:** `cache.InvalidateDashboard()` clears Redis dashboard cache for user
+
+### 2.3 DB Changes
+
+| Table | Operation |
+|---|---|
+| `global_objectives` | INSERT — new goal row with status ACTIVE / WAITING |
+| `global_objectives` | UPDATE `dominant_behavior_model` (if G-11 provided) |
+| `sprints` | INSERT Sprint 1 (ACTIVE goals only) |
+| `checkpoints` | INSERT × 3 (ACTIVE goals only) |
+| `daily_tasks` | INSERT tasks for today (ACTIVE goals only, via engine) |
+
+### 2.4 API Response
+
+**ACTIVE goal (standard):** `201` + goal object
+
+**Auto-vaulted to WAITING (G-10):**
+```json
+{
+  "goal": { ... },
+  "message": "Ai deja 3 obiective active. Obiectivul a fost adăugat în Vault-ul viitor...",
+  "status": "WAITING",
+  "vaulted": true
+}
+```
+
+**Validation error:** `400` / `422` + `{ "error": "..." }`
+
+### 2.5 Frontend Behavior
+
+1. On success (ACTIVE): redirect → `/today`; dashboard cache busted → fresh load
+2. On `vaulted: true`: show vault notice banner; stay on `/goals`
+3. On `422`: display inline error; no redirect
+4. AI category suggestion (`POST /goals/suggest-category`) runs debounced on title input before form submit — result pre-fills category pill; no block if timeout (2s fallback)
 
 ---
 
 ## 3. Daily Execution Flow
 
-### 3.1 Today Page Overview
-### 3.2 Task List Rendering
-### 3.3 Task Completion
-### 3.4 Daily Check-in
-### 3.5 Score Recalculation Trigger
-### 3.6 Progress Feedback (Grade, %)
+### 3.1 Input (User Action)
+
+- User opens `/today`
+- User sets energy level (low / normal / high)
+- User completes tasks
+- User optionally adds personal tasks (max 2/day)
+
+### 3.2 Backend Processing (`handlers.go` → `GetTodayTasks`, `CompleteTask`, `SetEnergy`)
+
+**Loading today's tasks (`GET /today`):**
+1. Redis cache checked first (`cache.GetTodayTasks`) — returns immediately on hit
+2. On miss: `db.GetTodayTasks()` for today's date
+3. If DB returns empty: `engine.GenerateDailyTasks()` called on-demand (fallback to scheduler)
+4. Tasks split into `MAIN` (sprint-generated) and `PERSONAL` (user-added)
+5. Streak days, current checkpoint (status `IN_PROGRESS`), day-in-sprint number all fetched
+6. Response cached in Redis
+
+**Setting energy (`POST /context/energy`):**
+1. Frontend label normalized: `mid → normal`, `hi → high`
+2. `normal` energy → no DB action, returns `200` immediately
+3. `low` / `high` → `db.CreateContextAdjustment()` with `adjType = AdjEnergyLow / AdjEnergyHigh`, active from today to tomorrow
+4. Today's Redis task cache invalidated → next load regenerates with adjusted intensity
+
+**Completing a task (`POST /tasks/:id/complete`):**
+1. `db.CompleteTask()` — sets `completed = TRUE`, records timestamp
+2. Both today-tasks and dashboard Redis caches invalidated
+3. No immediate score recalculation — score computed on-demand via `engine.ComputeGoalScore()`
+
+**Adding a personal task (`POST /tasks/personal`):**
+1. Max 2 personal tasks/day enforced via `db.CountPersonalTasksToday()`
+2. Active sprint resolved from first ACTIVE goal
+3. `db.CreateTask()` inserts with `task_type = PERSONAL`
+4. Today-tasks cache invalidated
+
+### 3.3 DB Changes
+
+| Table | Operation |
+|---|---|
+| `daily_tasks` | UPDATE `completed = TRUE` on task completion |
+| `context_adjustments` | INSERT energy adjustment (low/high only) |
+| `daily_tasks` | INSERT personal task |
+
+### 3.4 API Response
+
+**`GET /today`:**
+```json
+{
+  "date": "2026-03-30T00:00:00Z",
+  "goal_name": "...",
+  "day_number": 14,
+  "main_tasks": [ { "id": "...", "text": "...", "completed": false } ],
+  "personal_tasks": [ ... ],
+  "done_count": 2,
+  "total_count": 5,
+  "streak_days": 7,
+  "checkpoint": { "id": "...", "name": "Progres: ...", "status": "IN_PROGRESS" }
+}
+```
+
+**`POST /tasks/:id/complete`:** `200` + `{ "message": "Activitate bifată." }`
+
+**`POST /context/energy` (low/high):** `200` + `{ "message": "...Activitățile de mâine vor fi adaptate." }`
+
+### 3.5 Frontend Behavior
+
+1. `/today` renders main tasks + personal tasks in separate lists
+2. Checkbox tap → optimistic UI update → `POST /tasks/:id/complete`
+3. Energy selector: 3 options (low / normal / high); selection calls `POST /context/energy`; no page reload
+4. "Add personal task" button disabled after 2 tasks/day (client enforced + server enforced)
+5. Streak counter and checkpoint banner update on each page load (no real-time push)
 
 ---
 
 ## 4. SRM Flow (L1–L3)
 
-### 4.1 SRM Entry Points
-### 4.2 L1 — Daily Review
-### 4.3 L2 — Weekly Review
-### 4.4 L3 — Monthly Review
-### 4.5 SRM Submission
-### 4.6 Score Impact After SRM
+### 4.1 Input (User Action)
+
+- SRM is **engine-triggered**, not user-initiated
+- User confirms L2 or L3 when banner is shown
+- Entry points: dashboard SRM warning banner (`SRMWarning.tsx`), goal detail page
+- Endpoints: `GET /srm/status/:goalId`, `POST /srm/confirm-l2/:goalId`, `POST /srm/confirm-l3/:goalId`
+
+### 4.2 Backend Processing (`srm.go` + `level4_regulatory.go`)
+
+**SRM Status (`GET /srm/status/:goalId`):**
+1. Queries `srm_events` for most recent non-revoked event
+2. Returns `srm_level: NONE / L1 / L2 / L3`
+3. Computes ALI breakdown (current + projected): `computeALIBreakdown()`
+   - `ALI_current` = tasks completed / expected by now
+   - `ALI_projected` = if current pace continues to sprint end
+   - Ambition buffer zone: `ALI_projected` between 1.0–1.15 → Velocity Control warning
+   - `velocity_control_on: true` if `ALI_projected > 1.15`
+
+**L1 — Automatic adjustment (no user action required):**
+- Triggered by `level4_regulatory.go` during scheduler run
+- Task intensity reduced automatically
+- No user confirmation needed
+- `srm_events` row inserted with `srm_level = 'L1'`
+
+**L2 — Structural recalibration (`POST /srm/confirm-l2/:goalId`):**
+1. Verifies access: `db.GetGoalByID()` — returns `404` if not owner
+2. `UPDATE srm_events SET confirmed_at = NOW(), confirmed_by = $2` on most recent unconfirmed L2
+3. If no active unconfirmed L2 event → `404`
+4. Task intensity adjusted; sprint structure recalibrated by engine
+5. Goal status remains `ACTIVE`
+
+**L3 — Strategic reset (`POST /srm/confirm-l3/:goalId`):**
+1. Verifies goal ownership
+2. `UPDATE global_objectives SET status = 'PAUSED'`
+3. `INSERT INTO srm_events` with `srm_level = 'L3'`, trigger_reason = `'user_confirmed_stabilization'`
+4. `engine.FreezeExpectedTrajectory(sprint.ID)` — freezes projected trajectory to prevent drift loop paradox (GAP #20)
+5. `frozen_expected` percentage computed from elapsed time / total goal duration
+
+### 4.3 DB Changes
+
+| Table | Operation | When |
+|---|---|---|
+| `srm_events` | INSERT new event | L1/L2/L3 trigger |
+| `srm_events` | UPDATE `confirmed_at` | L2 user confirmation |
+| `srm_events` | INSERT with `trigger_reason` | L3 user confirmation |
+| `global_objectives` | UPDATE `status = 'PAUSED'` | L3 only |
+| `sprint_trajectories` | UPDATE frozen flag | L3 only (GAP #20) |
+
+### 4.4 API Response
+
+**`GET /srm/status/:goalId`:**
+```json
+{
+  "goal_id": "...",
+  "srm_level": "L2",
+  "message": "Ajustare structurală în curs. Am recalibrat obiectivele.",
+  "ali": {
+    "ali_current": 0.72,
+    "ali_projected": 0.68,
+    "in_ambition_buffer": false,
+    "velocity_control_on": false,
+    "goal_breakdown": [ ... ],
+    "note": "ali_current = progres realizat până acum. ali_projected = proiecție la finalul sprintului."
+  }
+}
+```
+
+**`POST /srm/confirm-l2`:** `200` + message + `next_step`
+
+**`POST /srm/confirm-l3`:** `200` + `new_status: PAUSED` + `frozen_expected` percentage + `next_step`
+
+### 4.5 Frontend Behavior
+
+1. `SRMWarning.tsx` banner displayed on dashboard when `srm_level ≠ NONE`
+2. L1: informational banner only — no action button
+3. L2: banner shows "Confirm recalibration" button → calls `POST /srm/confirm-l2`; on success banner dismissed
+4. L3: banner shows "Activate stabilization mode" button → calls `POST /srm/confirm-l3`; on success goal card shows `PAUSED` badge; reactivation proposed after 7 days (scheduler)
 
 ---
 

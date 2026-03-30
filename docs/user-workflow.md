@@ -441,7 +441,60 @@ Tier assignment in `engine.GenerateCompletionCeremony()` (`level5_growth.go:185`
 
 ### CURRENT SYSTEM (REALITY)
 
+**`growth_trajectories` population:**
+- ❌ `fn_compute_growth_trajectory()` exists in migration 006 but is NEVER called from Go — table empty for all users (SA-1)
+- ❌ `jobComputeDailyScore` does NOT call the trajectory function after `UpsertGoalScore()`
+
+**Fallback (Day 1 snapshot):**
+- ❌ `GenerateProgressVisualization()` (`level5_growth.go:85`) queries `FROM goals` — wrong table; actual table is `global_objectives` — query returns no rows silently
+- ❌ `trajectory: null` in API response on Day 1 — TS-08 fails in production
+
+**Trajectory freeze (SRM L3):**
+- ✅ `FreezeExpectedTrajectory(sprint.ID)` sets `expected_pct_frozen = TRUE` + stores `frozen_expected_pct`
+- ✅ `computeProgressVsExpected()` respects freeze flag — `expected_pct` stops advancing during stabilization
+
+**Progress bar & grade (`GET /goals/:id`):**
+- ✅ `progress_pct` (0–100) returned from `engine.ComputeProgressPct()`
+- ✅ `grade` (A+/A/B/C/D) returned — opaque; no internal components exposed
+- ✅ `days_left` computed from sprint `end_date` (B-3 fix)
+
+**Activity heatmap:**
+- ✅ `GET /profile/activity` returns 365-day data
+- ✅ `ActivityHeatmap.tsx` — 52×7 CSS grid, color scale, hover tooltip
+
+**Frontend charts:**
+- ✅ `ProgressCharts.tsx` renders LineChart + BarChart from `GET /goals/:id/visualize`
+- ❌ LineChart renders single dot when trajectory empty (expected degraded state until SA-1 fixed)
+
+---
+
 ### TARGET SYSTEM (FRAMEWORK)
+
+**`growth_trajectories` population:**
+- ✅ `jobComputeDailyScore` (22:00 UTC) calls `fn_compute_growth_trajectory(goal_id, today)` after each `UpsertGoalScore()`
+- ✅ One row per day per ACTIVE goal → N days = N data points → charts meaningful
+
+**Fallback (Day 1 snapshot):**
+- ✅ `GenerateProgressVisualization()` queries `FROM global_objectives` correctly
+- ✅ Returns exactly 1 synthetic entry: `actual_pct: 0`, `expected_pct > 0` (time-linear), `trend: "ON_TRACK"`
+- ✅ `trajectory` never null or empty — TS-08 passes
+
+**Trajectory freeze (SRM L3):**
+- ✅ `expected_pct` frozen at confirmed-L3 moment; drift loop paradox prevented (GAP #20)
+- ✅ `UnfreezeExpectedTrajectory()` called on goal reactivation — expected_pct resumes advancing
+
+**Progress bar & grade:**
+- ✅ All score components (drift, chaos_index, weights, thresholds) server-only — never in response
+- ✅ `grade_label` localized per user language (not hardcoded `"ro"`)
+
+**Activity heatmap:**
+- ✅ Completion rate per day drives color scale; empty days distinct from missing data
+
+**Frontend charts:**
+- ✅ ≥2 trajectory points → LineChart shows divergence between `actual_pct` and `expected_pct`
+- ✅ BarChart shows per-sprint score evolution across sprint history
+
+---
 
 ### 6.1 Data Source: `growth_trajectories`
 

@@ -2,11 +2,11 @@
 
 > Acest document reflectă starea curentă a proiectului și pașii următori în ordine de prioritate.
 > Se actualizează la fiecare versiune majoră.
-> **Ultima actualizare:** v10.4.2 — 2026-03-29
+> **Ultima actualizare:** v10.5.0 — 2026-03-30
 
 ---
 
-## Stare Curentă: v10.4.2
+## Stare Curentă: v10.5.0
 
 | Categorie | Status |
 |-----------|--------|
@@ -115,6 +115,94 @@ Valori de referință (din simulare):
 - [ ] **Notificări push PWA** — `manifest.json` + service worker; web push pentru remindere zilnice (opt-in din `settings`)
 
 > **Prompts sesiune gata:** Vezi `PROMPTS.md` pentru context complet per task.
+
+---
+
+## 🔧 Sprint 3.1 — System Alignment Fixes (CRITICAL)
+
+*Audit arhitectural 2026-03-30 — gaps descoperite între framework REV 5.6 și implementare reală*
+
+---
+
+#### SA-1 — Populare `growth_trajectories` din scheduler
+
+- **Problemă:** `fn_compute_growth_trajectory()` există în migration 006 dar nu e niciodată apelată din Go. `growth_trajectories` rămâne goală → `ProgressCharts.tsx` afișează un singur punct sintetic cu `actual_pct=0`, graficele sunt inutilizabile.
+- **Fișiere:** `backend/internal/scheduler/scheduler.go`
+- **Tip:** Scheduler
+- **Complexitate:** Low
+- **Prioritate:** CRITICAL
+
+---
+
+#### SA-2 — Acordare badge-uri achievements (C39)
+
+- **Problemă:** `fn_award_achievement_if_earned()` există în migration 006 dar nu e apelată niciodată din Go. `achievement_badges` rămâne goală pentru toți utilizatorii. Pagina `/achievements` afișează listă goală.
+- **Fișiere:** `backend/internal/scheduler/scheduler.go`
+- **Tip:** Scheduler
+- **Complexitate:** Low
+- **Prioritate:** HIGH
+
+---
+
+#### SA-3 — Trigger automat SRM L1
+
+- **Problemă:** SRM L2 și L3 au triggere implementate. SRM L1 nu e declanșat niciodată din niciun job sau handler. `CheckAndRecordRegressionEvent()` există în `level2_execution.go` dar nu e apelată. Cascada L1→L2→L3 este ruptă la primul nivel.
+- **Fișiere:** `backend/internal/scheduler/scheduler.go` (`jobCheckDailyProgress`)
+- **Tip:** Scheduler
+- **Complexitate:** Medium
+- **Prioritate:** CRITICAL
+
+---
+
+#### SA-4 — SRM L2: aplicare efectivă intensitate redusă (backend)
+
+- **Problemă:** `ConfirmSRML2` marchează evenimentul ca confirmat dar nu creează nicio ajustare de context (`ENERGY_LOW`). Intensitatea zilei următoare rămâne nemodificată. Mesajul "Intensitatea sarcinilor va fi ajustată" este fals.
+- **Fișiere:** `backend/internal/api/handlers/srm.go` (`ConfirmSRML2`)
+- **Tip:** Backend
+- **Complexitate:** Low
+- **Prioritate:** CRITICAL
+
+---
+
+#### SA-5 — SRM L2: buton confirmare în frontend
+
+- **Problemă:** `SRMWarning.tsx` afișează warning L2 dar nu are buton de confirmare. `POST /srm/confirm-l2/:goalId` există ca endpoint dar nu poate fi apelat din UI. Confirmarea L2 este imposibilă pentru utilizator.
+- **Fișiere:** `frontend/app/components/SRMWarning.tsx`
+- **Tip:** Frontend
+- **Complexitate:** Low
+- **Prioritate:** CRITICAL
+
+---
+
+#### SA-6 — SRM timeout fallback: implementare efectivă (C33)
+
+- **Problemă:** `jobCheckSRMTimeouts` rulează orar, detectează timeout-uri L3 și calculează fallback-ul (L2/L1/PAUSE), dar nu aplică nicio schimbare de stare: `// TODO: engine.ApplySRMFallback(ctx, goalID, fallback)`. Goal-urile cu L3 neconfirmat rămân blocate indefinit.
+- **Fișiere:** `backend/internal/scheduler/scheduler.go` (`jobCheckSRMTimeouts`)
+- **Tip:** Scheduler + Backend
+- **Complexitate:** Medium
+- **Prioritate:** HIGH
+
+---
+
+#### SA-7 — Fix cron `jobRecalibrateRelevance` (G-9)
+
+- **Problemă:** Expresia cron `"0 2 */90 * *"` — `*/90` în câmpul zi-a-lunii este invalid (lunile au max 31 zile). Job-ul nu rulează niciodată → Chaos Index și SRM L2 auto-trigger din G-9 nu funcționează.
+- **Fișiere:** `backend/internal/scheduler/scheduler.go`
+- **Tip:** Scheduler
+- **Complexitate:** Low
+- **Prioritate:** HIGH
+
+---
+
+| # | Task | Tip | Complexitate | Prioritate |
+|---|------|-----|-------------|-----------|
+| SA-1 | Populare `growth_trajectories` din scheduler | Scheduler | Low | CRITICAL |
+| SA-2 | Acordare achievements (C39) | Scheduler | Low | HIGH |
+| SA-3 | Trigger automat SRM L1 | Scheduler | Medium | CRITICAL |
+| SA-4 | SRM L2 aplicare intensitate (backend) | Backend | Low | CRITICAL |
+| SA-5 | SRM L2 buton confirmare (frontend) | Frontend | Low | CRITICAL |
+| SA-6 | SRM timeout fallback efectiv (C33) | Scheduler | Medium | HIGH |
+| SA-7 | Fix cron `jobRecalibrateRelevance` | Scheduler | Low | HIGH |
 
 ---
 

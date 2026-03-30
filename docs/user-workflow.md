@@ -296,19 +296,174 @@
 ## 5. Achievement Flow
 
 ### 5.1 Achievement Trigger Conditions
-### 5.2 Ceremony Tiers (Tier 1–3)
-### 5.3 Badge Award & Display
-### 5.4 Achievement History (/profile)
+
+Achievements and ceremonies are evaluated **after sprint close only** — not on individual task completion.
+
+**Trigger chain (scheduler, daily at 01:00–01:05 UTC):**
+
+1. `jobCloseExpiredSprints` (00:01 UTC) — sets `sprints.status = 'COMPLETED'` for sprints past their `end_date`
+2. `jobDetectEvolutionSprints` (01:00 UTC) — queries sprints completed yesterday; calls `engine.MarkEvolutionSprint()` per sprint
+   - Evolution condition: `current_sprint_score - prev_sprint_score >= 0.05` (delta threshold)
+   - G-11 override: if `dominant_behavior_model` set, `ApplyEvolveOverride()` applies model-specific thresholds:
+     - `ANALYTIC`: requires consistency >= 0.75 in addition to delta
+     - `TACTICAL`: delta threshold lowered to 0.02 (more responsive to quick wins)
+     - `STRATEGIC`: standard delta threshold (0.05)
+     - `REACTIVE`: adaptive threshold based on recent performance volatility
+   - Evolution detected → INSERT into `evolution_sprints` (idempotent via `ON CONFLICT sprint_id DO NOTHING`)
+3. `jobGenerateCeremonies` (01:05 UTC) — queries sprints completed yesterday with no existing ceremony; calls `engine.GenerateCompletionCeremony()`
+
+**⚠ SA-2 known gap:** `fn_award_achievement_if_earned()` exists in migration 006 but is never called from Go. `achievement_badges` is not populated by the scheduler. Badges only appear if inserted directly via DB. This is an open CRITICAL fix in Sprint 3.1.
+
+### 5.2 Ceremony Tiers
+
+Tier assignment in `engine.GenerateCompletionCeremony()` (`level5_growth.go:185`):
+
+| Tier | Condition |
+|---|---|
+| `BRONZE` | `score < 0.75` (any sprint) |
+| `SILVER` | `score >= 0.75` |
+| `GOLD` | `score >= 0.90` AND not an evolution sprint |
+| `PLATINUM` | `score >= 0.90` AND `isEvolution = true` |
+
+- Score = `engine.ComputeSprintScore()` — opaque value; never exposed raw
+- `isEvolution` flag passed from `jobGenerateCeremonies` query via `evolution_sprints` join
+- Ceremony stored in `completion_ceremonies`: `sprint_id`, `go_id`, `ceremony_tier`, `viewed = false`
+- On conflict (`ON CONFLICT sprint_id DO NOTHING`) — ceremony generated exactly once per sprint
+
+### 5.3 Badge Storage and Award
+
+**Tables involved:**
+- `achievement_badges` — awarded badges: `id`, `user_id`, `badge_type`, `go_id`, `sprint_id`, `awarded_at`
+- `completion_ceremonies` — sprint ceremonies: `id`, `sprint_id`, `go_id`, `ceremony_tier`, `viewed`, `generated_at`
+- `evolution_sprints` — evolution markers: `sprint_id`, `evolution_score`, `delta_performance`, `consistency_weight`
+
+**Read path (`GET /achievements`):**
+1. Handler calls `engine.GetUserAchievements(ctx, userID)`
+2. Query: `SELECT ... FROM achievement_badges WHERE user_id = $1 ORDER BY awarded_at DESC`
+3. Returns `[]models.AchievementBadge` — never null, empty array `[]` on no badges (nil guard in handler)
+
+**Progress path (`GET /achievements/progress`):**
+1. Handler calls DB function directly: `SELECT * FROM get_achievement_progress($1)`
+2. Returns progress toward each badge type (from migration 006)
+
+**`fn_award_achievement_if_earned()` — when it should be called:**
+- After each `jobCloseExpiredSprints` for the closed sprint
+- After `jobDetectEvolutionSprints` when evolution is detected
+- Currently not called (SA-2 gap) — must be wired to scheduler in Sprint 3.1
+
+### 5.4 Frontend Display
+
+**`/achievements` page (`achievements/page.tsx`):**
+1. Fetches `GET /achievements` → renders badge grid from `achievements` array
+2. Empty state: `achievements: []` → renders empty grid (no error shown)
+3. Fetches `GET /achievements/progress` → renders progress bars per badge type
+
+**Ceremony modal (`CeremonyModal.tsx`):**
+1. Dashboard checks `GET /ceremonies/latest` on each login
+2. If `viewed = false` → `CeremonyModal` rendered with tier (BRONZE/SILVER/GOLD/PLATINUM) and message
+3. User dismisses → `POST /ceremonies/:id/viewed` → `viewed = true` in DB → modal not shown again
+4. Colors/icons vary by tier — defined in `CeremonyModal.tsx` component
+
+**`/profile` page:**
+- Does not show achievement history directly; links to `/achievements`
+- Shows activity heatmap (`ActivityHeatmap.tsx`) and stats — separate from badge system
 
 ---
 
 ## 6. Visualization Flow
 
-### 6.1 Progress Bar & Grade Display
-### 6.2 Activity Heatmap (52-week)
-### 6.3 Goal Progress Cards
-### 6.4 Profile Stats Overview
-### 6.5 Dark/Light Theme Rendering
+### 6.1 Data Source: `growth_trajectories`
+
+**Table schema (migration 006):**
+- `go_id`, `snapshot_date`, `actual_pct`, `expected_pct`, `delta`, `trend`
+- `trend` values: `ON_TRACK`, `AHEAD`, `BEHIND`, `CRITICAL`
+
+**Population (SA-1 known gap):**
+- `fn_compute_growth_trajectory()` SQL function exists in migration 006
+- Currently **not called** from any Go scheduler job → table remains empty for all users
+- Fix required in Sprint 3.1: call from `jobComputeDailyScore` (22:00 UTC) after `UpsertGoalScore()`
+
+**Expected flow (post SA-1 fix):**
+- `jobComputeDailyScore` runs daily at 22:00 UTC
+- For each ACTIVE goal: computes score, upserts `go_scores`, then calls `fn_compute_growth_trajectory(goal_id, today)`
+- One row inserted per day per goal into `growth_trajectories`
+- After N days: N data points in trajectory → charts become meaningful
+
+### 6.2 Fallback Logic (Single Snapshot)
+
+When `growth_trajectories` is empty for a goal, `GenerateProgressVisualization()` (`level5_growth.go:82`) computes a live synthetic snapshot:
+
+```
+elapsed = now - goal.start_date
+total   = goal.end_date - goal.start_date
+expected_pct = elapsed / total  (time-linear)
+actual_pct   = 0
+delta        = -expected_pct
+trend        = "ON_TRACK"
+```
+
+Returns array with exactly 1 entry. `trajectory` is never null or empty — this is guaranteed by the fallback.
+
+### 6.3 Trajectory Freeze (SRM L3)
+
+When SRM L3 is confirmed (`POST /srm/confirm-l3`):
+- `FreezeExpectedTrajectory(sprint.ID)` sets `sprints.expected_pct_frozen = TRUE`, `frozen_expected_pct = <current_elapsed_ratio>`
+- During visualization, `computeProgressVsExpected()` reads freeze flag: if frozen → uses stored `frozen_expected_pct` instead of real-time elapsed ratio
+- Effect: `expected_pct` stops advancing while user is in stabilization mode
+- Prevents drift loop paradox: score does not worsen while protocol is followed correctly
+- Unfreeze: `UnfreezeExpectedTrajectory(sprint.ID)` called on reactivation
+
+### 6.4 API Contract
+
+**Endpoint:** `GET /api/v1/goals/:id/visualize`
+
+**Auth:** JWT required; returns `404` if goal doesn't belong to caller.
+
+**Response:**
+```json
+{
+  "goal_id": "uuid",
+  "trajectory": [
+    {
+      "date": "2026-03-28T00:00:00Z",
+      "actual_pct": 0.42,
+      "expected_pct": 0.45,
+      "delta": -0.03,
+      "trend": "ON_TRACK"
+    }
+  ]
+}
+```
+
+**Never exposed:** raw score, drift, chaos_index, weights, thresholds — only `actual_pct`, `expected_pct`, `delta`, `trend`.
+
+### 6.5 Progress Bar and Grade Display
+
+**`GET /goals/:id`** returns:
+- `progress_pct`: 0–100 integer (from `engine.ComputeProgressPct()`)
+- `grade`: opaque string: `A+`, `A`, `B`, `C`, `D`
+- `grade_label`: localized string (currently always Romanian: `auth.GradeLabel(grade, "ro")`)
+- `days_left`: computed from current sprint `end_date` (not goal `end_date`) — B-3 fix
+
+Frontend `GoalTabs.tsx` renders progress bar width from `progress_pct`, grade badge from `grade`.
+
+### 6.6 Activity Heatmap
+
+**Endpoint:** `GET /api/v1/profile/activity` — returns 365-day activity data.
+
+**`ActivityHeatmap.tsx`:**
+- Pure CSS grid, 52 columns (weeks) × 7 rows (days)
+- Color scale based on completion rate per day (0 tasks → lightest, all tasks → darkest)
+- Hover tooltip shows date + task count
+- Rendered on `/profile` page below preferences section
+
+### 6.7 Frontend Chart Component
+
+**`ProgressCharts.tsx`** (Recharts library):
+- `LineChart`: `actual_pct` vs `expected_pct` over time — shows trajectory divergence
+- `BarChart`: per-sprint score comparison — shows evolution across sprints
+- If trajectory has 1 point (fallback state): line chart renders as a single dot — not an error, expected until SA-1 is fixed
+- Chart data fed from `GET /goals/:id/visualize` response; no client-side computation
 
 ---
 
@@ -523,8 +678,198 @@ Allowed fields: `progress_pct` (0–100), `grade` (A+/A/B/C/D), `actual_pct`, `e
 ## 8. Critical Checkpoints
 
 ### 8.1 Server-Side Calculation Enforcement
+
+**What must never break:** All score computation runs in Go engine only. No formula, weight, factor, or threshold may appear in any API response.
+
+**How to verify:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" https://api.nuviax.app/api/v1/goals/$GOAL_ID | \
+  jq 'keys'
+# Must NOT contain: drift, chaos_index, continuity, weights, factors,
+#                   penalties, score_components, thresholds
+```
+
+**Allowed response keys:** `progress_pct`, `grade`, `grade_label`, `score` (opaque float 0–1), `actual_pct`, `expected_pct`, `delta`, `trend`, `tier`, `badge_type`.
+
+**Failure looks like:** Any of the forbidden fields present in JSON response body. Immediate fix required — do not deploy.
+
+---
+
 ### 8.2 Opaque API Response Validation
+
+**What must never break:** Clients receive only grades (A+/A/B/C/D) and percentages. The numeric computation chain (C1–C40) is internal.
+
+**How to verify:** Run TS-12 — inspect all goal, visualization, and SRM status responses. Use `jq 'to_entries[] | .key'` to enumerate all keys.
+
+**Failure looks like:** `chaos_index: 0.42` or `weight_c7: 0.33` appearing in any API response. Even a logging endpoint must not expose these.
+
+---
+
 ### 8.3 JWT Auth on All Protected Routes
+
+**What must never break:** Every route except `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, and `/health` requires a valid JWT RS256 access token.
+
+**How to verify:**
+```bash
+# Should return 401
+curl https://api.nuviax.app/api/v1/goals
+curl https://api.nuviax.app/api/v1/today
+curl https://api.nuviax.app/api/v1/achievements
+```
+
+**Token behavior:** Access token expires in 15 minutes. Frontend proxy (`api/proxy/[...path]`) auto-refreshes using refresh token cookie. If refresh token expired → redirect to `/auth/login`.
+
+**Failure looks like:** Any protected route returning `200` without `Authorization` header. Or `500` instead of `401` on missing token.
+
+---
+
 ### 8.4 Admin 404 (Non-Admin Access)
-### 8.5 Graceful Degradation (AI / Email Down)
+
+**What must never break:** Admin panel returns `404` — not `403` — for non-admin users. The existence of the admin route must not be detectable.
+
+**How to verify:**
+```bash
+# With a regular user token
+curl -H "Authorization: Bearer $REGULAR_TOKEN" \
+  https://api.nuviax.app/api/v1/admin/stats
+# Must return 404, not 403 or 401
+```
+
+**Enforced by:** `middleware/admin.go` — checks `is_admin = TRUE` on `users` table; calls `notFound(c)` on failure (returns 404 body identical to other 404 responses).
+
+**Failure looks like:** `403 Forbidden` (reveals route exists), or `401` (reveals route is protected). Any non-404 response is a disclosure failure.
+
+---
+
+### 8.5 Graceful Degradation (AI + Email Down)
+
+**What must never break:** If Anthropic API is unreachable, onboarding continues — AI suggestion silently returns empty. If Resend is unreachable, registration succeeds — welcome email silently fails.
+
+**How to verify (AI):**
+```bash
+# With ANTHROPIC_API_KEY unset or invalid
+curl -X POST https://api.nuviax.app/api/v1/goals/suggest-category \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"goal_name":"Learn piano"}'
+# Must return 200 with empty/null suggestion within 2 seconds
+```
+
+**How to verify (Email):**
+- Set `RESEND_API_KEY=invalid` → `POST /auth/register` → must still return `201`
+
+**Timeout enforcement:** `SuggestGOCategory()` has a 2-second hard context timeout. Response must arrive within that window regardless of Anthropic upstream latency.
+
+**Failure looks like:** `500` error on registration when email fails. Or onboarding hanging >3 seconds when AI is down. Or `400/500` from suggest-category endpoint.
+
+---
+
 ### 8.6 Timing-Safe Forgot Password
+
+**What must never break:** `POST /auth/forgot-password` always returns `200` with a neutral message, regardless of whether the email exists in the DB. Response time must not differ between known and unknown emails.
+
+**How to verify:**
+```bash
+# With known email
+curl -X POST https://api.nuviax.app/api/v1/auth/forgot-password \
+  -d '{"email":"real@user.com"}'
+# → 200 {"message":"..."}
+
+# With unknown email
+curl -X POST https://api.nuviax.app/api/v1/auth/forgot-password \
+  -d '{"email":"nobody@nowhere.com"}'
+# → 200 {"message":"..."} — identical response
+```
+
+**Failure looks like:** `404` or `422` when email not found (user enumeration). Or measurably different response time between the two cases (timing side-channel).
+
+---
+
+## 9. Roadmap Test Mapping
+
+Maps Sprint 3.1 System Alignment fixes (SA-1 through SA-7) to the test scenarios that verify them.
+
+| Fix | Description | Verified By | Priority |
+|---|---|---|---|
+| SA-1 | `growth_trajectories` populated by scheduler | TS-03, TS-08 | CRITICAL |
+| SA-2 | `fn_award_achievement_if_earned()` called from Go | TS-07 | HIGH |
+| SA-3 | SRM L1 auto-trigger wired in `jobCheckDailyProgress` | TS-04 | CRITICAL |
+| SA-4 | SRM L2 confirm creates `ENERGY_LOW` context adjustment | TS-05 | CRITICAL |
+| SA-5 | `SRMWarning.tsx` L2 confirm button present in UI | TS-05 (frontend) | CRITICAL |
+| SA-6 | `jobCheckSRMTimeouts` applies fallback state change | TS-06 | HIGH |
+| SA-7 | `jobRecalibrateRelevance` cron `*/90` → `*/7` fix | TS-04 (indirect) | HIGH |
+
+---
+
+### SA-1 → TS-03, TS-08
+
+**Fix:** Add call to `fn_compute_growth_trajectory(goal_id, today)` inside `jobComputeDailyScore` after `db.UpsertGoalScore()`.
+
+**TS-03 verifies:** After 2 scheduler runs, `GET /goals/:id/visualize` returns ≥2 trajectory entries.
+
+**TS-08 verifies:** On Day 1 (before any scheduler run), live fallback returns exactly 1 entry — not empty.
+
+---
+
+### SA-2 → TS-07
+
+**Fix:** Call `fn_award_achievement_if_earned(user_id, sprint_id)` inside `jobGenerateCeremonies` after each successful `GenerateCompletionCeremony()`.
+
+**TS-07 verifies:** `GET /achievements` returns non-empty array after sprint close. `achievement_badges` has row for the user.
+
+---
+
+### SA-3 → TS-04
+
+**Fix:** In `jobCheckDailyProgress` — after regression detection loop — call `engine.CheckAndRecordRegressionEvent()` and insert into `srm_events` with `srm_level = 'L1'` when regression detected.
+
+**TS-04 verifies:** After 5 consecutive missed days, `GET /srm/status/:goalId` returns `srm_level = "L1"`.
+
+---
+
+### SA-4 → TS-05 (backend)
+
+**Fix:** In `ConfirmSRML2()` (`srm.go`) — after stamping `confirmed_at` — call `db.CreateContextAdjustment()` with `adjType = AdjEnergyLow` starting tomorrow, to actually reduce next-day task intensity.
+
+**TS-05 verifies:** Task count the day after L2 confirmation is lower than baseline day.
+
+---
+
+### SA-5 → TS-05 (frontend)
+
+**Fix:** In `SRMWarning.tsx` — add conditional confirm button when `srm_level === 'L2'`; on click call `POST /srm/confirm-l2/:goalId`; on success refresh SRM status.
+
+**TS-05 verifies:** L2 banner has actionable button; confirmation dismisses banner without page reload.
+
+---
+
+### SA-6 → TS-06
+
+**Fix:** Replace `// TODO: engine.ApplySRMFallback(ctx, goalID, fallback)` with actual state application — insert `srm_events` row with computed fallback level; if fallback = `L1`, reduce intensity without pausing.
+
+**TS-06 verifies:** Goal with unconfirmed L3 after timeout does not remain blocked indefinitely.
+
+---
+
+### SA-7 → TS-04 (indirect)
+
+**Fix:** Change cron expression `"0 2 */90 * *"` → `"0 2 * * 0"` (weekly Sunday at 02:00 UTC) or `"0 2 */7 * *"` — `*/90` is invalid in day-of-month field.
+
+**TS-04 indirect:** `jobRecalibrateRelevance` must run for `CheckChaosIndex()` to evaluate L2 threshold. Without this fix, L2 auto-trigger (which TS-05 depends on) never fires.
+
+---
+
+## 10. Post-Fix Validation Checklist
+
+Run after all SA-1 through SA-7 fixes are deployed. All items must pass before Sprint 3.1 is closed.
+
+- [ ] **TS-03** — `GET /goals/:id/visualize` returns ≥2 trajectory entries after 2 scheduler runs
+- [ ] **TS-04** — `GET /srm/status/:goalId` returns `srm_level: "L1"` after 5 consecutive missed days
+- [ ] **TS-05** — SRM L2 banner has confirm button; after confirm, next-day task count is reduced
+- [ ] **TS-06** — L3 unconfirmed >N hours → fallback applied; goal not stuck indefinitely
+- [ ] **TS-07** — Sprint close → `GET /achievements` returns ≥1 badge; `GET /ceremonies/latest` returns ceremony with correct tier
+- [ ] **TS-08** — Day 1 visualization returns exactly 1 entry; `trajectory` never null or empty
+- [ ] **TS-12** — Zero internal fields (`drift`, `chaos_index`, `weights`, thresholds) in any API response
+- [ ] **8.3** — All protected routes return `401` without Authorization header
+- [ ] **8.4** — Admin routes return `404` for non-admin users
+- [ ] **8.6** — `POST /auth/forgot-password` returns `200` for both known and unknown emails
+- [ ] **Cron fix (SA-7)** — `jobRecalibrateRelevance` runs without error; verify via scheduler logs

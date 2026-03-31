@@ -47,18 +47,19 @@
 
 **Steps:**
 1. Create an active goal (Day 1)
-2. Simulate scheduler run: trigger `jobComputeDailyScore` (or wait 24h in prod)
+2. Simulate scheduler run: trigger `jobComputeDailyScore` (cron: `50 23 * * *` — runs at **23:50 UTC**; or wait 24h in prod)
 3. Complete at least one task on Day 1
-4. Simulate Day 2: trigger daily score job again
-5. `GET /goals/:id/visualization`
+4. Simulate Day 2: trigger daily score job again (second 23:50 UTC run)
+5. `GET /api/v1/goals/:id/visualize`
 
-**Expected result:** `trajectory` array contains ≥2 entries, each with `date`, `actual_pct`, `expected_pct`, `delta`, `trend`.
+**Expected result (post SA-1 fix):** `trajectory` array contains ≥2 entries, each with `date`, `actual_pct`, `expected_pct`, `delta`, `trend`.
 
-**Fallback behavior to verify:** If only 1 day has passed (trajectory = 0 DB rows), `GenerateProgressVisualization` returns a single live-computed snapshot — `actual_pct: 0`, `expected_pct > 0`, `trend: "ON_TRACK"`. Not a failure; verify array is never null/empty.
+**Fallback behavior to verify:** If only 1 day has passed (trajectory = 0 DB rows), `GenerateProgressVisualization` returns a single live-computed snapshot — `actual_pct: 0`, `expected_pct > 0`, `trend: "ON_TRACK"`. Not a failure; verify array is never null/empty. ⚠️ Fallback currently broken — see TS-08.
 
 **Failure indicator:**
-- `trajectory: null` or `trajectory: []` → live snapshot fallback also failing
+- `trajectory: null` or `trajectory: []` → SA-1 not applied, or live snapshot fallback failing (CE-1 bug)
 - Missing `expected_pct` field → engine returning internal weight data (critical rules violation)
+- `404` on endpoint → wrong URL used; route is `/visualize` not `/visualization`
 
 ---
 
@@ -104,37 +105,56 @@
 ### TS-06 — SRM L3 Pauses Goal and Freezes Trajectory
 
 **Steps:**
-1. Trigger active L3 SRM condition (via manual `INSERT INTO srm_events` with `srm_level = 'L3'` for testing, or via L2 escalation)
-2. `GET /srm/status/:goalId` → assert `srm_level = "L3"`
-3. `POST /srm/confirm-l3/:goalId`
-4. `GET /goals/:id` → check `status`
-5. `GET /goals/:id/visualization` → check `frozen_expected` is a fixed value
+1. Trigger active L3 SRM condition (via manual `INSERT INTO srm_events (id, go_id, srm_level, triggered_at) VALUES (gen_random_uuid(), $goalId, 'L3', NOW())` for testing, or via L2 escalation)
+2. `GET /api/v1/srm/status/:goalId` → assert `srm_level = "L3"`
+3. `POST /api/v1/srm/confirm-l3/:goalId`
+4. Check step 3 response body for `new_status` and `frozen_expected` fields
+5. `GET /api/v1/goals/:id` → assert `status = "PAUSED"` in goal object
+6. `GET /api/v1/goals/:id/visualize` → assert `expected_pct` is a fixed value (does not advance on subsequent calls)
 
-**Expected result:** `200` → `new_status: "PAUSED"`, `frozen_expected` is a float between 0–1. `global_objectives.status = 'PAUSED'` in DB. `sprint_trajectories` frozen (drift loop prevented, GAP #20).
+**Expected result:** Step 3 returns `200` with body:
+```json
+{
+  "goal_id": "...",
+  "new_status": "PAUSED",
+  "frozen_expected": <float 0–1>,
+  "message": "SRM Level 3 confirmat...",
+  "next_step": "Reactivarea automată va fi propusă după 7 zile de stabilitate."
+}
+```
+`global_objectives.status = 'PAUSED'` in DB. Sprint `expected_pct_frozen = TRUE` in `sprints` table (drift loop prevented, GAP #20).
+
+⚠️ **CE-7 — frozen_expected divergence:** `frozen_expected` in the API response (step 3) is computed using `goal.StartDate/goal.EndDate`. The value stored in `sprints.frozen_expected_pct` (used by trajectory engine) is computed using `sprint.StartDate/goal.EndDate`. These values will differ for any goal past Sprint 1. Do not assert both values are equal — test them separately if needed.
 
 **Failure indicator:**
-- Goal status still `ACTIVE` → L3 confirm not updating `global_objectives`
-- `frozen_expected = 0` when goal is partway through → trajectory freeze not computing elapsed time correctly
+- Step 3 returns `201` → wrong; actual code returns `200` (no explicit status set)
+- `new_status` missing from step 3 response → handler changed
+- Goal status still `ACTIVE` after step 5 → L3 confirm not updating `global_objectives`
+- `frozen_expected = 0` in step 3 when goal started >0 days ago → elapsed time computation broken (check `goal.StartDate`)
+- `expected_pct` still advancing in visualize response → `FreezeExpectedTrajectory()` not called or sprint freeze flag not set
 
 ---
 
 ### TS-07 — Achievement Unlocks and Ceremony Appears
 
 **Steps:**
-1. Create goal; complete sprint (30 days of tasks OR manually close sprint via `POST /goals/:id/sprint/close`)
+1. Create goal; complete sprint (30 days of tasks OR manually close sprint via `POST /api/v1/sprints/:sprintId/close` — requires **sprint ID**, not goal ID)
 2. Simulate scheduler run: `jobDetectEvolutionSprints` (01:00 UTC) then `jobGenerateCeremonies` (01:05 UTC)
-3. `GET /ceremonies/:goalId` → assert ceremony present with `tier` field (BRONZE/SILVER/GOLD/PLATINUM)
-4. `GET /achievements` → assert non-empty badge array ⚠️ will return `[]` until SA-2 is implemented
-5. `POST /ceremonies/:id/view` → assert `200`
-6. `GET /ceremonies/:goalId` → assert returned ceremony has `viewed = true`
+3. `GET /api/v1/ceremonies/:goalId` → assert ceremony present with `ceremony_tier` field = `BRONZE`, `SILVER`, `GOLD`, or `PLATINUM`
+4. `GET /api/v1/achievements` → assert response contains `achievements` array ⚠️ will return `{"achievements":[]}` until SA-2 is implemented
+5. `POST /api/v1/ceremonies/:ceremonyId/view` → assert `200` with `{"message":"Ceremonie marcată ca vizualizată."}`
+6. `GET /api/v1/ceremonies/:goalId` again → assert `ceremony_tier` is still present (viewed flag lives in DB; endpoint returns latest ceremony regardless)
 
-**Expected result (post SA-2 fix):** Sprint closure generates ceremony. `CeremonyModal.tsx` shows on next login. Achievements recorded. `viewed` flag correctly prevents re-display.
+**Expected result (post SA-2 fix):** Sprint closure generates ceremony. `CeremonyModal.tsx` shows on next login via `GET /ceremonies/unviewed`. Achievements recorded. `viewed` flag prevents re-display in modal.
 
-**Current behavior (pre-fix):** Ceremony is generated correctly. `GET /achievements` returns `[]` — `fn_award_achievement_if_earned()` is never called (SA-2 NOT IMPLEMENTED).
+**Current behavior (pre-fix):** Ceremony generated correctly, `ceremony_tier` populated. `GET /achievements` returns `{"achievements":[]}` — `fn_award_achievement_if_earned()` never called. ⚠️ SA-2 NOT IMPLEMENTED.
 
 **Failure indicator:**
-- `GET /ceremonies/:goalId` returns `404` after sprint close → `jobGenerateCeremonies` not running or sprint close not setting `status = 'COMPLETED'`
-- `tier` missing from ceremony → `engine.GenerateCompletionCeremony()` failing silently
+- `GET /ceremonies/:goalId` returns `404` after sprint close → `jobGenerateCeremonies` not running, or sprint not closed with `status = 'COMPLETED'`
+- `ceremony_tier` missing from response → `engine.GenerateCompletionCeremony()` failing silently
+- `POST /sprints/:id/close` returns `404` → wrong ID used (must be sprint UUID, not goal UUID)
+- `achievements` key missing from `GET /achievements` response → handler changed (currently wraps in `{"achievements":[...]}`)
+- Step 5 returns `500` → `mark_ceremony_viewed()` DB function missing or failing
 
 ---
 
@@ -142,15 +162,26 @@
 
 **Steps:**
 1. Create active goal
-2. Immediately call `GET /goals/:id/visualization` (before any scheduler run)
+2. Immediately call `GET /api/v1/goals/:id/visualize` (before any scheduler run)
 
-**Expected result (post table-name bugfix):** `trajectory` array has exactly 1 entry (live snapshot). `actual_pct: 0`, `expected_pct > 0` (time-based fraction), `trend: "ON_TRACK"`.
+**Expected result (post CE-1 bugfix):** Response contains a `trajectory` array with exactly 1 entry (live snapshot):
+```json
+{
+  "trajectory": [
+    { "actual_pct": 0, "expected_pct": <float > 0>, "delta": <negative float>, "trend": "ON_TRACK" }
+  ]
+}
+```
 
-**Current behavior:** `trajectory: null` — fallback query uses `FROM goals` (wrong table); fix is `FROM global_objectives` in `level5_growth.go:85`. ⚠️ This test will fail until that bug is fixed.
+⚠️ **CURRENTLY FAILS — CE-1 (production bug):** Fallback query in `level5_growth.go:85` reads `FROM goals` but table is `global_objectives`. Query silently returns no rows → fallback snapshot not inserted → API returns `trajectory: null`. This is a code bug, not a missing feature.
+
+**Fix required:** Change `FROM goals` → `FROM global_objectives` at `level5_growth.go:85`. This is independent of SA-1.
 
 **Failure indicator:**
-- `trajectory: null` → table name bug not yet fixed
-- `expected_pct = 0` on a goal started 1+ days ago → start/end date computation broken
+- `trajectory: null` → CE-1 table name bug not yet fixed (`level5_growth.go:85`)
+- `trajectory: []` → fallback returns empty array instead of nil; acceptable after fix if at least 1 entry expected
+- `expected_pct = 0` on a goal started 1+ days ago → start/end date computation broken in fallback
+- `404` on request → wrong URL used; route is `/visualize` not `/visualization`
 
 ---
 
@@ -204,17 +235,51 @@
 ### TS-12 — Opaque API — No Internal Data Exposed
 
 **Steps:**
-1. Call `GET /goals/:id` on any active goal
-2. Call `GET /goals/:id/visualization`
-3. Call `GET /srm/status/:goalId`
-4. Inspect all response bodies
+1. `GET /api/v1/goals/:id` on any active goal — pipe through `jq 'keys'`
+2. `GET /api/v1/goals/:id/visualize` — pipe through `jq '.trajectory[0] | keys'`
+3. `GET /api/v1/srm/status/:goalId` — pipe through `jq 'keys'`
+4. `GET /api/v1/goals/:id/progress` — pipe through `jq 'keys'`
+5. Inspect all response keys
 
-**Expected result:** None of the following fields appear anywhere in any response: `drift`, `chaos_index`, `continuity`, `weights`, `factors`, `penalties`, `score_components`, numeric thresholds (0.25, 0.40, 0.60).
+**Expected result:** None of the following fields appear in any response: `drift`, `chaos_index`, `continuity`, `weights`, `factors`, `penalties`, `score_components`, numeric thresholds (0.25, 0.40, 0.60).
 
-Allowed fields: `progress_pct` (0–100), `grade` (A+/A/B/C/D), `actual_pct`, `expected_pct`, `trend`, `tier`, `badge`.
+```bash
+# Quick check
+curl -s -H "Authorization: Bearer $TOKEN" https://api.nuviax.app/api/v1/goals/$GOAL_ID \
+  | jq '[keys[] | select(. == "drift" or . == "chaos_index" or . == "weights")]'
+# Must return: []
+```
+
+⚠️ **CE-8 — `score` field conflict:** Checkpoint 8.1 lists `score (opaque float 0–1)` as an allowed key. CLAUDE.md "EXPOSE ONLY" list does not include a raw float score — only `Progress %`, `Grade`, `Ceremony`, `Achievements`. `GET /goals/:id/progress` currently returns `{"score": <float>, "grade": ..., "progress_pct": ...}`. Whether the `score` float violates CLAUDE.md is **unresolved** — treat any raw score float in a goal response as a flag for review.
 
 **Failure indicator:**
-- Any internal computation field present in response → critical rules violation; security fix required immediately
+- Any of the forbidden fields present → critical rules violation; do not deploy; fix immediately
+- `score` float appears in `GET /goals/:id` main response → review against CLAUDE.md critical rules
+- `404` on step 2 → wrong URL used; route is `/visualize` not `/visualization`
+
+---
+
+### TS-13 — WAITING Goal Promoted to ACTIVE Has Tasks Available Same Day
+
+**Context:** This tests scheduler-driven promotion only. Manual activation via `POST /api/v1/goals/:id/activate` is unaffected — that handler already calls `GenerateDailyTasks()` immediately.
+
+**Steps:**
+1. Create a 4th goal when 3 are already active → assert response has `"vaulted": true`, `"status": "WAITING"`
+2. Archive one active goal (`DELETE /api/v1/goals/:id`) to free a slot
+3. Simulate `activateWaitingGoal` scheduler run (nightly job) — or wait for midnight UTC
+4. `GET /api/v1/goals` → assert the previously-WAITING goal now appears in `goals` array with `status = "ACTIVE"`
+5. `GET /api/v1/today` → assert `main_tasks` is non-empty on the same calendar day as promotion
+
+**Expected result (post M-2 fix):** Promoted goal's Sprint 1 is created and `main_tasks` are generated within the same scheduler run. `GET /today` returns tasks immediately — no 24-hour gap.
+
+⚠️ **CURRENTLY FAILS — M-2 (known gap):** `activateWaitingGoal` creates the sprint but does NOT call `engine.GenerateDailyTasks()`. Tasks will not appear until the next 00:00 UTC cycle (~24 hour gap). Manual activation via `POST /goals/:id/activate` works correctly.
+
+**Fix required:** Add `engine.GenerateDailyTasks(ctx, userID, today)` inside `activateWaitingGoal` in `scheduler.go` after sprint creation.
+
+**Failure indicator:**
+- Step 5: `main_tasks: []` after scheduler promotion → M-2 gap not yet fixed
+- Step 5: `main_tasks` non-empty after manual `POST /goals/:id/activate` → confirms manual path works, only scheduler path broken
+- Step 4: goal still shows `status = "WAITING"` → slot not freed or scheduler not run
 
 ---
 
@@ -232,9 +297,14 @@ curl -H "Authorization: Bearer $TOKEN" https://api.nuviax.app/api/v1/goals/$GOAL
 #                   penalties, score_components, thresholds
 ```
 
-**Allowed response keys:** `progress_pct`, `grade`, `grade_label`, `score` (opaque float 0–1), `actual_pct`, `expected_pct`, `delta`, `trend`, `tier`, `badge_type`.
+**Allowed response keys:** `progress_pct`, `grade`, `grade_label`, `actual_pct`, `expected_pct`, `delta`, `trend`, `tier`, `badge_type`.
 
-**Failure looks like:** Any of the forbidden fields present in JSON response body. Immediate fix required — do not deploy.
+⚠️ **CE-8 — Unresolved conflict on `score` field:** `GET /goals/:id/progress` currently returns `score` (opaque float 0–1). CLAUDE.md "EXPOSE ONLY" list specifies: Progress %, Grade, Ceremony, Achievements — no raw float. Until this is resolved:
+- Do NOT add new endpoints that return raw `score` floats
+- Existing `score` in `/goals/:id/progress` and dashboard responses must be reviewed before Sprint 4
+- Treat any `score` float in a goal detail response (`GET /goals/:id`) as a violation
+
+**Failure looks like:** Any of the explicitly forbidden fields (`drift`, `chaos_index`, `continuity`, `weights`, `factors`, `penalties`) present in any API response body. Immediate fix required — do not deploy.
 
 ---
 

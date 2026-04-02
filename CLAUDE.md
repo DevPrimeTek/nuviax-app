@@ -313,4 +313,37 @@ NEVER ship a fix for SA-1 through SA-7 without running its mapped test scenario
 
 ---
 
+## 12. Prompt Optimization Rule (MANDATORY)
+
+> Before starting any task from PROMPTS.md, Claude MUST:
+
+### Step 1 — Read only what's needed
+Based on the prompt's "Files to read (max 3)" list, read EXACTLY those files.
+Do NOT explore additional files unless a file is missing (then ask the owner).
+
+### Step 2 — Validate before coding
+Answer these questions from the files read:
+- Does the function/line referenced in the prompt actually exist?
+- If a function is missing, create it as specified — do not skip.
+- If a line number is wrong, find the correct location and proceed.
+
+### Step 3 — One change at a time
+Make changes in the exact order listed in the prompt.
+After each change, grep to verify (as specified in the prompt's Verification block).
+Do NOT proceed to the next change if grep shows unexpected results — report to owner.
+
+### Step 4 — Close the session correctly
+- State which TS-xx scenarios are now satisfied
+- Update CLAUDE.md section 4 status
+- Update docs/testing/test-plan.md gap status
+- Commit with exact message format from prompt
+- Do NOT add extra files to the commit unless the prompt specifies them
+
+### Why this rule exists
+Context windows are expensive. A session that reads 10 files instead of 3
+uses 3× the tokens for the same output. Every file read beyond the prompt's
+list must be justified by a missing reference — not curiosity or "just in case".
+
 *Last updated: 2026-03-30 — v10.5.0 — user-workflow.md complete, Section 11 added*
+
+*Last updated: 2026-04-02 — v10.5.1 — Prompt Optimization Rule, Section 12 added*

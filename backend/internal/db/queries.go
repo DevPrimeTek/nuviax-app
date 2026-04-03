@@ -501,6 +501,14 @@ func UpsertGoalScore(ctx context.Context, pool *pgxpool.Pool,
 	return err
 }
 
+func ComputeGrowthTrajectory(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID, date time.Time) error {
+	_, err := pool.Exec(ctx,
+		"SELECT fn_compute_growth_trajectory($1, $2)",
+		goalID, date.UTC().Truncate(24*time.Hour),
+	)
+	return err
+}
+
 func GetLatestGoalScore(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID) (*models.GoalScore, error) {
 	gs := &models.GoalScore{}
 	err := pool.QueryRow(ctx, `

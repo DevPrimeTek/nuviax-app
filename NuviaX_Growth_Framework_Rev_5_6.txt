@@ -1,13 +1,21 @@
-﻿
-
-
-
 NUViaX Growth Framework(tm)
 Revizia 5.6
 Ediție Consolidată - Documentul Complet Integrat
 
 
-Versiune5.6 - Ediție ConsolidatăBazăRev. 5.3 (text original integrat) + ajustări 5.4, 5.5, 5.6Componente40 (C1-C40, inclusiv C39 și C40 introduse în Rev. 5.5)ArhitecturăLayer 0 + Level 1-5, 8 niveluriPatch 5.6SEASONAL_PAUSE integrat în C3, C19, C38LimbăRomână
+Versiune
+5.6 - Ediție Consolidată
+Bază
+Rev. 5.3 (text original integrat) + ajustări 5.4, 5.5, 5.6
+Componente
+40 (C1-C40, inclusiv C39 și C40 introduse în Rev. 5.5)
+Arhitectură
+Layer 0 + Level 1-5, 8 niveluri
+Patch 5.6
+SEASONAL_PAUSE integrat în C3, C19, C38
+Limbă
+Română
+
 
 IDENTITATEA SISTEMULUI
 NUViaX Growth Framework(tm) este un sistem proprietar de organizare strategică anuală a progresului uman, bazat pe limitarea controlată a focusului, clasificarea formală a tipurilor de transformare, execuție ciclică fixă, control matematic al deviației și capacității, și reglare contextuală adaptivă.
@@ -22,27 +30,201 @@ Scopul sistemului este:
 PRINCIPIUL FUNDAMENTAL
 Framework-ul este Rigid Structural - Flexibil Operațional. Acesta reprezintă principiul arhitectural central prin care elementele fundamentale ale sistemului sunt invariabile, iar parametrii operaționali pot fi ajustați contextual fără a altera structura metodologică.
 
-CE ÎNSEAMNĂ RIGID STRUCTURALCE ÎNSEAMNĂ FLEXIBIL OPERAȚIONALRigiditatea structurală reprezintă ansamblul elementelor arhitecturale care: - nu pot fi modificate de utilizator - nu pot fi ajustate contextual - nu se schimbă în funcție de tipul obiectivului - definesc identitatea sistemuluiFlexibilitatea operațională reprezintă capacitatea sistemului de a adapta (fără a altera structura): - intensitatea acțiunilor - estimarea efortului și ritmul de execuție - contextul de aplicare - fragmentarea și sensibilitatea
-RIGIDUL - protejează SISTEMULFLEXIBILUL - protejează UTILIZATORUL- protejează sistemul - previne haosul - menține coerența- protejează utilizatorul - previne rigiditatea excesivă - menține umanitatea
-ELEMENTE RIGID STRUCTURALEELEMENTE FLEXIBILE OPERAȚIONALEMaximum 3 Global Objectives active simultanConținutul concret al GOExact 1 Behavior Model dominant per GOValoarea numerică a targetuluiSprint fix de 30 zileEstimarea Sprint Load80% Probability Rule aplicată la Sprint DesignNumărul de Milestone (max 5)Dynamic Drift calculat prin Expected(t)=t/30Ordinea milestone-urilorChaos definit ca metrică globalăDaily Stack specificALI ca mecanism numeric de limitareActivarea Pause / activarea Crisis ModeClamp universal al tuturor metricilor în [0,1]Intensitatea Velocity ControlInterdicția de a crea Behavior Models noiParametrii temporari ai Context EngineInterdicția de a modifica arhitectura pentru cazuri speciale-
+CE ÎNSEAMNĂ RIGID STRUCTURAL
+CE ÎNSEAMNĂ FLEXIBIL OPERAȚIONAL
+Rigiditatea structurală reprezintă ansamblul elementelor arhitecturale care: - nu pot fi modificate de utilizator - nu pot fi ajustate contextual - nu se schimbă în funcție de tipul obiectivului - definesc identitatea sistemului
+Flexibilitatea operațională reprezintă capacitatea sistemului de a adapta (fără a altera structura): - intensitatea acțiunilor - estimarea efortului și ritmul de execuție - contextul de aplicare - fragmentarea și sensibilitatea
 
+RIGIDUL - protejează SISTEMUL
+FLEXIBILUL - protejează UTILIZATORUL
+- protejează sistemul - previne haosul - menține coerența
+- protejează utilizatorul - previne rigiditatea excesivă - menține umanitatea
+
+ELEMENTE RIGID STRUCTURALE
+ELEMENTE FLEXIBILE OPERAȚIONALE
+Maximum 3 Global Objectives active simultan
+Conținutul concret al GO
+Exact 1 Behavior Model dominant per GO
+Valoarea numerică a targetului
+Sprint fix de 30 zile
+Estimarea Sprint Load
+80% Probability Rule aplicată la Sprint Design
+Numărul de Milestone (max 5)
+Dynamic Drift calculat prin Expected(t)=t/30
+Ordinea milestone-urilor
+Chaos definit ca metrică globală
+Daily Stack specific
+ALI ca mecanism numeric de limitare
+Activarea Pause / activarea Crisis Mode
+Clamp universal al tuturor metricilor în [0,1]
+Intensitatea Velocity Control
+Interdicția de a crea Behavior Models noi
+Parametrii temporari ai Context Engine
+Interdicția de a modifica arhitectura pentru cazuri speciale
+-
 SUMAR MODIFICĂRI - REV. 5.4 → 5.5 → 5.6
 Aceasta este ediția consolidată a NUViaX Growth Framework. Toate ajustările introduse în reviziile 5.4, 5.5 și 5.6 sunt integrate direct în corpul componentelor - fără secțiuni separate de versiune. Această pagină oferă indexul complet de referință față de Rev. 5.3 (textul de bază).
 
 Rev. 5.4 - Stabilitate Operațională
 Rev. 5.4 a adresat incoerențe operaționale identificate în testarea Rev. 5.3. Modificările vizează determinismul numeric, limitele de capacitate și prioritizarea protocoalelor.
 
-C#ModificareRațiuneC5t = integer 1..30 explicit, Drift 1×/ziElimină nedeterminismul la granițele temporale.C6Context_disruption = min(1.0, n/3) - hibridMetrici de alertă rămân neclamped pentru a semnaliza amplitudinea reală.C8Auto-rezoluție când Σ(weight) > 7Mecanism activ, nu pasiv - GO cu Relevance minimă reduce weight automat.C11Recalibrare post-Sprint1 silențioasăFără întrerupere dacă < 50% zile lucrate; trigger automat check_priority_balance().C20Sprint_Target_realist = brut × 0.80 explicitFactorul 80% integrat explicit în calcul, nu implicit.C24Regression Event → SRM L1 IMEDIATExcepție de la regula de 3 zile - regresul măsurabil este semnal de urgență.C27Stagnation ESB threshold: 5 → 10 zileEvitare false-positive în perioadele de șoc extern.C28Drift_comp = max(|Drift|) nu medieCel mai slab GO determină alerta - principiu conservativ.C32Retroactive Pause: max 48h retroactiv, max 3/sprintLimite anti-abuz retrospectiv.C34C34 > C18 dacă GO cu status SUSPENDEDStabilization Review are prioritate față de recalibrarea anuală.C35Expected(t) înghețat în Core StabilizationPrevine loop paradoxal: Stabilization → Drift negativ → SRM L1 imediat.C37Zile ESB și Retroactive Pause excluse din ConsistencyZilele de pauză legitimă nu penalizează scorul de consistență.C38Sprinturi SUSPENDED excluse complet din GORINu 0, nu medie - excluse, ca și cum nu ar fi existat.
+C#
+Modificare
+Rațiune
+C5
+t = integer 1..30 explicit, Drift 1×/zi
+Elimină nedeterminismul la granițele temporale.
+C6
+Context_disruption = min(1.0, n/3) - hibrid
+Metrici de alertă rămân neclamped pentru a semnaliza amplitudinea reală.
+C8
+Auto-rezoluție când Σ(weight) > 7
+Mecanism activ, nu pasiv - GO cu Relevance minimă reduce weight automat.
+C11
+Recalibrare post-Sprint1 silențioasă
+Fără întrerupere dacă < 50% zile lucrate; trigger automat check_priority_balance().
+C20
+Sprint_Target_realist = brut × 0.80 explicit
+Factorul 80% integrat explicit în calcul, nu implicit.
+C24
+Regression Event → SRM L1 IMEDIAT
+Excepție de la regula de 3 zile - regresul măsurabil este semnal de urgență.
+C27
+Stagnation ESB threshold: 5 → 10 zile
+Evitare false-positive în perioadele de șoc extern.
+C28
+Drift_comp = max(|Drift|) nu medie
+Cel mai slab GO determină alerta - principiu conservativ.
+C32
+Retroactive Pause: max 48h retroactiv, max 3/sprint
+Limite anti-abuz retrospectiv.
+C34
+C34 > C18 dacă GO cu status SUSPENDED
+Stabilization Review are prioritate față de recalibrarea anuală.
+C35
+Expected(t) înghețat în Core Stabilization
+Previne loop paradoxal: Stabilization → Drift negativ → SRM L1 imediat.
+C37
+Zile ESB și Retroactive Pause excluse din Consistency
+Zilele de pauză legitimă nu penalizează scorul de consistență.
+C38
+Sprinturi SUSPENDED excluse complet din GORI
+Nu 0, nu medie - excluse, ca și cum nu ar fi existat.
+
 
 Rev. 5.5 - 26 Ajustări Structurale (A1-D3)
 Rev. 5.5 a introdus 2 componente noi (C39, C40) și a rezolvat 17 din 18 gap-uri identificate în Mega Stress Test. Ajustările sunt clasificate după severitate: P0 Fatal, P1 Critical, P2 Major, P3 Minor.
 
-PrioritateCodComp.DescriereP0 - FatalA1C9, C23Physical Delta Safety Signal: domain=Sănătate_fizică + REDUCE + delta > 25% → SINGLE_QUESTION_FLAG. Mesaj unic la activare + conector specialist Sprint1 M1.P0 - FatalA2C39 NOUEngagement Signal: 3 proxy-uri motivaționale monitorizate în background. Dacă 2/3 negative ≥ 7 zile → o singură întrebare. Zero interfață vizibilă în mod normal.P0 - FatalA3C23, C37Temporal Validity: completări > 48h = Late Completion → Progress YES, Consistency NO. Bulk > 5 acțiuni în < 10 min → C39 Proxy 1 flag.P0 - FatalA4C33SRM L3 Timeout Protocol: 24h neconfirmat → auto-aplicare L2. 72h → re-propune L3. 7 zile → auto-SUSPEND cu opțiune reactivare.P0 - FatalA5C9, C10GO_REJECTED_LOGICAL_CONTRADICTION: categorie nouă pentru BM opuse pe aceeași metrică. 3 opțiuni predefinite. Timeout 7 zile → Vault.P1 - CriticalB1C8Priority Balance Universal: check_priority_balance() apelat automat după ORICE modificare de status GO.P1 - CriticalB2C33SRM Ierarhie Formală: L3 > L2 > L1. Un singur nivel activ simultan. Sprint Target recalculat o singură dată.P1 - CriticalB3C38GORI Continuity Factor: GORI_final = GORI_calculat × (sprinturi_active / sprinturi_totale_eligibile).P1 - CriticalB4C29Focus Rotation: Σ(weights) exclusiv pe GO cu status=ACTIVE. SUSPENDED exclus complet din normalizare.P1 - CriticalB5C36, C33Reactivation Immunity: SRM L1 dezactivat pe durata Reactivation. Threshold SRM L2 crescut la 0.60.P1 - CriticalB6C7Relevance round(score, 2) înainte de orice mapping - elimină nedeterminismul floating-point la granițe.P1 - CriticalB7C11, C8C11 Recalibration declanșează automat check_priority_balance() - sincronizare completă.P2 - MajorC1C16Capacity Validation Gate: C_daily < 0.5h sau > 14h → avertisment informativ (nu blocare structurală).P2 - MajorC2C13Minimum Relevance Floor 0.30: GO cu Relevance < 0.30 → Vault automat, indiferent de alte condiții.P2 - MajorC3C19execution_windows: GO sezoniere cu ferestre active definite. Expected(t) înghețat în perioadele inactive.P2 - MajorC4C9, C10Reformulation Queue: cereri de clarificare strict secvențiale, una câte una. Timeout 48h → Vault.P2 - MajorC5C38GORI Variance Penalty: GORI × (1 − Variance(Sprint_Scores) × 0.25). Maxim 25% penalizare.P2 - MajorC6C20Sprint Target Plafon: compensația ≤ 1.5× target inițial/sprint. 3+ Regression consecutive → reducere target anual.P2 - MajorC7C40 NOUSprint Reflection Gate: 3 întrebări opționale la tranziția dintre sprinturi. Zero impact pe niciun scor.P3 - MinorD1C5t = integer. Drift calculat o dată/zi la finalul zilei t.P3 - MinorD2C28Context_disruption = min(1.0, nr_eventi/3).P3 - MinorD3C22Milestone ordered flag: true/false opțional per sprint.
+Prioritate
+Cod
+Comp.
+Descriere
+P0 - Fatal
+A1
+C9, C23
+Physical Delta Safety Signal: domain=Sănătate_fizică + REDUCE + delta > 25% → SINGLE_QUESTION_FLAG. Mesaj unic la activare + conector specialist Sprint1 M1.
+P0 - Fatal
+A2
+C39 NOU
+Engagement Signal: 3 proxy-uri motivaționale monitorizate în background. Dacă 2/3 negative ≥ 7 zile → o singură întrebare. Zero interfață vizibilă în mod normal.
+P0 - Fatal
+A3
+C23, C37
+Temporal Validity: completări > 48h = Late Completion → Progress YES, Consistency NO. Bulk > 5 acțiuni în < 10 min → C39 Proxy 1 flag.
+P0 - Fatal
+A4
+C33
+SRM L3 Timeout Protocol: 24h neconfirmat → auto-aplicare L2. 72h → re-propune L3. 7 zile → auto-SUSPEND cu opțiune reactivare.
+P0 - Fatal
+A5
+C9, C10
+GO_REJECTED_LOGICAL_CONTRADICTION: categorie nouă pentru BM opuse pe aceeași metrică. 3 opțiuni predefinite. Timeout 7 zile → Vault.
+P1 - Critical
+B1
+C8
+Priority Balance Universal: check_priority_balance() apelat automat după ORICE modificare de status GO.
+P1 - Critical
+B2
+C33
+SRM Ierarhie Formală: L3 > L2 > L1. Un singur nivel activ simultan. Sprint Target recalculat o singură dată.
+P1 - Critical
+B3
+C38
+GORI Continuity Factor: GORI_final = GORI_calculat × (sprinturi_active / sprinturi_totale_eligibile).
+P1 - Critical
+B4
+C29
+Focus Rotation: Σ(weights) exclusiv pe GO cu status=ACTIVE. SUSPENDED exclus complet din normalizare.
+P1 - Critical
+B5
+C36, C33
+Reactivation Immunity: SRM L1 dezactivat pe durata Reactivation. Threshold SRM L2 crescut la 0.60.
+P1 - Critical
+B6
+C7
+Relevance round(score, 2) înainte de orice mapping - elimină nedeterminismul floating-point la granițe.
+P1 - Critical
+B7
+C11, C8
+C11 Recalibration declanșează automat check_priority_balance() - sincronizare completă.
+P2 - Major
+C1
+C16
+Capacity Validation Gate: C_daily < 0.5h sau > 14h → avertisment informativ (nu blocare structurală).
+P2 - Major
+C2
+C13
+Minimum Relevance Floor 0.30: GO cu Relevance < 0.30 → Vault automat, indiferent de alte condiții.
+P2 - Major
+C3
+C19
+execution_windows: GO sezoniere cu ferestre active definite. Expected(t) înghețat în perioadele inactive.
+P2 - Major
+C4
+C9, C10
+Reformulation Queue: cereri de clarificare strict secvențiale, una câte una. Timeout 48h → Vault.
+P2 - Major
+C5
+C38
+GORI Variance Penalty: GORI × (1 − Variance(Sprint_Scores) × 0.25). Maxim 25% penalizare.
+P2 - Major
+C6
+C20
+Sprint Target Plafon: compensația ≤ 1.5× target inițial/sprint. 3+ Regression consecutive → reducere target anual.
+P2 - Major
+C7
+C40 NOU
+Sprint Reflection Gate: 3 întrebări opționale la tranziția dintre sprinturi. Zero impact pe niciun scor.
+P3 - Minor
+D1
+C5
+t = integer. Drift calculat o dată/zi la finalul zilei t.
+P3 - Minor
+D2
+C28
+Context_disruption = min(1.0, nr_eventi/3).
+P3 - Minor
+D3
+C22
+Milestone ordered flag: true/false opțional per sprint.
+
 
 Rev. 5.6 - Patch Sezonier (Gap rezidual Rev. 5.5)
 Rev. 5.6 rezolvă singurul gap structural identificat în Mega Stress Test Rev. 5.5: GO-urile cu execution_windows primeau Continuity Factor scăzut artificial, deoarece sprinturile inactive sezonier erau incluse în numitor. Patch-ul introduce statusul SEASONAL_PAUSE, exclus din Continuity_factor identic cu sprinturile SUSPENDED prin SRM L3.
 
-C#ModificareDescriereC3execution_windows + status SEASONAL_PAUSESprinturile din perioadele inactive ale unui GO sezonier primesc statusul distinct SEASONAL_PAUSE.C19Sprint status SEASONAL_PAUSE introdus formalLa intrarea într-o perioadă inactivă: Expected(t) înghețat, Progress conservat, Consistency neutru, ALI zero.C38Formula Continuity Factor actualizatăContinuity = sprinturi_active / (totale − seasonal_pause − suspended). Ambele tipuri excluse din numitor.
+C#
+Modificare
+Descriere
+C3
+execution_windows + status SEASONAL_PAUSE
+Sprinturile din perioadele inactive ale unui GO sezonier primesc statusul distinct SEASONAL_PAUSE.
+C19
+Sprint status SEASONAL_PAUSE introdus formal
+La intrarea într-o perioadă inactivă: Expected(t) înghețat, Progress conservat, Consistency neutru, ALI zero.
+C38
+Formula Continuity Factor actualizată
+Continuity = sprinturi_active / (totale − seasonal_pause − suspended). Ambele tipuri excluse din numitor.
+
 
 LAYER 0 - AXIOMATIC FOUNDATION
 Layer 0 - Axiomatic Foundation reprezintă setul de reguli structurale invariabile care definesc identitatea, limitele și stabilitatea matematică a NUViaX Growth Framework(tm). Este fundamentul pe care toate celelalte nivele funcționează.
@@ -55,7 +237,8 @@ Scopul acestui bloc
 
 
 LAYER 0 - Axiomatic Foundation
-C1  Structural Supremacy Principle
+C1  Structural Supremacy Principle
+
 Definiție
 Principiul prin care structura sistemului este invariabilă, iar operaționalul este ajustabil doar în interiorul acestei structuri.
 De unde vine logica
@@ -65,7 +248,8 @@ S = setul de reguli structurale
 P = setul de parametri ajustabili
 
 S ∩ P = ∅      - regulile structurale și parametrii nu se suprapun niciodată
-P ⊂ Domain(S)  - parametrii pot exista exclusiv în interiorul regulilor structurale
+P ⊂ Domain(S)  - parametrii pot exista exclusiv în interiorul regulilor structurale
+
 Explicație
 Utilizatorul poate modifica valori (timp, target, intensitate), dar nu poate modifica structura (număr GO, durată sprint, modele comportamentale). Cu alte cuvinte: ce se face este rigid - cum se face este flexibil.
 Rol
@@ -75,7 +259,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C2  Behavior Model System
+C2  Behavior Model System
+
 Definiție
 Set finit și închis de tipuri universale de transformare acceptate în sistem. Conține: CREATE, INCREASE, REDUCE, MAINTAIN, EVOLVE.
 De unde vine logica
@@ -85,9 +270,28 @@ Fie T = orice transformare
 T ∈ { CREATE, INCREASE, REDUCE, MAINTAIN, EVOLVE }
 
 |BM(GO)| = 1  - unicitate obligatorie per GO
-|T| = 5       - set finit și închis, nu există al 6-lea model permis
+|T| = 5       - set finit și închis, nu există al 6-lea model permis
+
 Cele 5 Behavior Models
-ModelDirecțieExemple tipiceCREATEConstruire din zeroLansare produs, scriere carte, fondare companie, prototip nouINCREASECreștere măsurabilăMRR, număr clienți, masă musculară, vocabular, audiențăREDUCEReducere măsurabilăGreutate corporală, timp de livrare, costuri fixe, timp ecranMAINTAINMenținere în intervalGreutate stabilă, relație activă, skill activ, nivel fitnessEVOLVETransformare calitativăSchimbare carieră, restructurare identitate, tranziție la leadership
+Model
+Direcție
+Exemple tipice
+CREATE
+Construire din zero
+Lansare produs, scriere carte, fondare companie, prototip nou
+INCREASE
+Creștere măsurabilă
+MRR, număr clienți, masă musculară, vocabular, audiență
+REDUCE
+Reducere măsurabilă
+Greutate corporală, timp de livrare, costuri fixe, timp ecran
+MAINTAIN
+Menținere în interval
+Greutate stabilă, relație activă, skill activ, nivel fitness
+EVOLVE
+Transformare calitativă
+Schimbare carieră, restructurare identitate, tranziție la leadership
+
 Explicație
 Orice schimbare pe care utilizatorul o dorește trebuie să se încadreze într-una dintre cele 5 categorii definite. Dacă un obiectiv nu poate fi încadrat în niciuna, trebuie reformulat. Nu sunt permise obiective cu 2 direcții simultane pe aceeași metrică - aceasta generează GO_REJECTED_LOGICAL_CONTRADICTION (C9).
 Rol
@@ -96,7 +300,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C3  Maximum 3 Active GO Constraint
+C3  Maximum 3 Active GO Constraint
+
 Definiție
 Numărul maxim de Global Objectives active simultan este 3. Dacă utilizatorul încearcă să adauge un al patrulea obiectiv, sistemul îl va respinge sau îl va trimite în Future Vault.
 De unde vine logica
@@ -106,18 +311,21 @@ n_active ≤ 3
 
 Cost_cognitiv ≈ n²   (interferență exponențială, nu liniară)
 
-Dacă n = 3 → orice tentativă de activare nouă → C17 Future Vault
+Dacă n = 3 → orice tentativă de activare nouă → C17 Future Vault
+
 GO Sezoniere și SEASONAL_PAUSE
 Un GO cu execution_windows definite ocupă un slot activ permanent - inclusiv în perioadele în care fereastra este inactivă. Aceasta reflectă existența sa ca intenție strategică anuală. Pe durata perioadelor inactive, statusul sprint-ului devine SEASONAL_PAUSE: Expected(t) este înghețat, acțiunile nu sunt generate, iar sarcina operațională este nulă - dar slotul este ocupat.
 SEASONAL_PAUSE este un status distinct: diferit de SUSPENDED (act al sistemului ca răspuns la instabilitate) și diferit de VAULT (niciodată activat).
-Sprinturile SEASONAL_PAUSE sunt excluse din calculul Continuity_factor în C38 - identic cu sprinturile SUSPENDED.Rol
+Sprinturile SEASONAL_PAUSE sunt excluse din calculul Continuity_factor în C38 - identic cu sprinturile SUSPENDED.
+Rol
 • Previne dispersia - menține focus strategic real.
 • Stabilizează ALI și calculele de capacitate.
 • Forțează decizia de prioritizare conștientă.
 
 
 LAYER 0 - Axiomatic Foundation
-C4  365-Day Maximum GO Duration Constraint
+C4  365-Day Maximum GO Duration Constraint
+
 Definiție
 Un GO nu poate depăși 365 de zile calendaristice de la data activării până la deadline.
 De unde vine logica
@@ -126,7 +334,8 @@ Reprezentare formală
 deadline − start_date ≤ 365 zile
 
 Deadline_sugerat = start + Benchmark_domeniu × Amplitudine
-Interval acceptat de utilizator: [1, 365] zile
+Interval acceptat de utilizator: [1, 365] zile
+
 Rol
 • Forțează concretizarea - obiectivele vagi sau nelimitate temporal sunt respinse.
 • Permite calculul GORI anual complet și comparabil.
@@ -134,7 +343,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C5  30-Day Fixed Sprint Constraint
+C5  30-Day Fixed Sprint Constraint
+
 Definiție
 Sprintul are durată fixă de exact 30 de zile calendaristice. Variabila temporală t este un integer în intervalul [1, 30]. Drift-ul se calculează o singură dată pe zi, la finalul zilei.
 De unde vine logica
@@ -149,7 +359,8 @@ Exemplu: ziua 15 → 15/30 = 0.50 → 50% progres așteptat
 Drift calculat: 1 dată/zi, la finalul zilei t
 
 Late completion (> 48h):  → Progress_comp YES  /  Consistency_comp NO
-SEASONAL_PAUSE: Expected(t) înghețat - t nu avansează în perioade inactive
+SEASONAL_PAUSE: Expected(t) înghețat - t nu avansează în perioade inactive
+
 Rol
 • Permite calcul standardizat și determinist al Drift.
 • Permite comparabilitate istorică între sprinturi și între GO-uri.
@@ -157,7 +368,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C6  Normalization Rule - Clamp [0,1]
+C6  Normalization Rule - Clamp [0,1]
+
 Definiție
 Toate valorile de progres și performanță sunt limitate în intervalul [0, 1] prin funcția clamp. Metricile de alertă și monitorizare nu sunt clamped - ele trebuie să poată semnaliza orice magnitudine de deviere.
 De unde vine logica
@@ -171,7 +383,8 @@ Aplicate clamp:   Real_Progress, Sprint_Score, GORI, Focus_weights
 Neclamped:        Drift, ALI, Chaos_Index (pot depăși 1.0)
 
 Hibrid (plafonat explicit):
-  Context_disruption = min(1.0, nr_eventi_majori / 3)
+  Context_disruption = min(1.0, nr_eventi_majori / 3)
+
 Explicație
 Indiferent ce valoare rezultă din calcule: dacă este negativă → devine 0; dacă este mai mare de 100% → devine 1.0; dacă este între 0 și 1 → rămâne neschimbată. Această regulă previne erorile matematice și valorile imposibile care ar destabiliza engine-urile de evaluare.
 Rol
@@ -181,7 +394,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C7  Priority Weight System (1-3)
+C7  Priority Weight System (1-3)
+
 Definiție
 Fiecărui GO i se atribuie un coeficient de prioritate între 1 și 3, derivat automat din scorul de Relevance strategică. Utilizatorul nu poate seta manual un weight arbitrar.
 De unde vine logica
@@ -194,7 +408,8 @@ Dacă 0.40 ≤ Relevance_adj < 0.75  → weight = 2
 Dacă Relevance_adj ≥ 0.75         → weight = 3
 
 Notă implementare: Math.round(score * 100) / 100
-- nu toFixed(2): produce string, necesită conversie suplimentară
+- nu toFixed(2): produce string, necesită conversie suplimentară
+
 De ce nu scale 1-5 sau 1-10?
 Scala prea mare creează iluzie de precizie. Scala 1-3 produce claritate decizională. Un sistem cu 3 GO poate funcționa cu weight 3+2+2=7 (sumă permisă) sau 3+2+1=6, dar nu 3+3+3=9 (depășire). Diferența între 1 și 3 este semnificativă strategic; diferența între 7 și 8 pe o scală 1-10 nu ar fi.
 Rol
@@ -204,7 +419,8 @@ Rol
 
 
 LAYER 0 - Axiomatic Foundation
-C8  Priority Balance Constraint
+C8  Priority Balance Constraint
+
 Definiție
 Limitare structurală care previne supra-încărcarea strategică prin acumularea simultană a mai multor GO cu prioritate maximă. Suma Priority Weight-urilor tuturor GO-urilor active simultan nu poate depăși 7.
 De unde vine logica
@@ -221,7 +437,8 @@ Dacă Σ > 7 → auto-rezoluție:
 
 Trigger universal - check_priority_balance() apelat după ORICE:
   activare / suspendare / reactivare GO
-  modificare Relevance (C11, C18)
+  modificare Relevance (C11, C18)
+
 Explicație
 Această regulă împiedică utilizatorul să considere toate obiectivele "critice". Suma maximă de 7 permite o configurație cu un GO dominant (w=3) și două obiective medii (w=2+2=4). Nu permite trei obiective simultane de prioritate maximă (3+3+3=9). Verificarea este continuă - după orice eveniment care poate modifica suma, nu periodic.
 Rol
@@ -257,10 +474,12 @@ Scopul acestei faze
 • prevenirea supra-extinderii
 • forțarea încadrării într-un Behavior Model
 
-Principiu Structural: Clarity Architecture NU creează obiective suplimentare. Este o fază de disciplinare, nu de expansiune.
+Principiu Structural: Clarity Architecture NU creează obiective suplimentare. Este o fază de disciplinare, nu de expansiune.
+
 
 LEVEL 1 - Phase I: Clarity Architecture
-C9  Semantic Parsing
+C9  Semantic Parsing
+
 Definiție
 Procesul prin care textul introdus de utilizator este analizat pentru extragerea elementelor structurale necesare definirii unui Global Objective valid.
 De unde vine logica
@@ -280,7 +499,8 @@ Condiții speciale detectate la parsare:
       → SINGLE_QUESTION_FLAG = TRUE
   (2) BM_opus_1 și BM_opus_2 pe aceeași metrică
       → GO_REJECTED_LOGICAL_CONTRADICTION
-  (3) Parametri insuficienți sau ambigui → Reformulation Queue
+  (3) Parametri insuficienți sau ambigui → Reformulation Queue
+
 Physical Delta Safety Signal
 Dacă domeniul este Sănătate fizică, direcția este REDUCE și delta depășește 25% din valoarea inițială, sistemul setează SINGLE_QUESTION_FLAG. La activarea GO-ului utilizatorul primește un mesaj unic care informează despre importanța consultării unui specialist - un singur mesaj, un singur buton de confirmare. Sprint 1, Milestone 1 conține obligatoriu o acțiune de tip conector specialist. Dacă acțiunea nu este bifată până la finalul Sprint 1, reapare în Sprint 3 o singură dată.
 GO_REJECTED_LOGICAL_CONTRADICTION
@@ -294,7 +514,8 @@ Rol
 
 
 LEVEL 1 - Phase I: Clarity Architecture
-C10  Behavior Model Classification
+C10  Behavior Model Classification
+
 Definiție
 Atribuirea unui singur Behavior Model dominant fiecărui GO, pe baza parametrilor extrași de Semantic Parsing.
 De unde vine logica
@@ -307,7 +528,8 @@ BM_dominant = argmax(BM_scores)
 
 confidence ≥ 0.70       → auto-select, fără interacțiune cu utilizatorul
 confidence ∈ [0.50,0.70) → Confidence Gate: clarificare utilizator
-confidence < 0.50        → returnare la C9 Reformulation Queue
+confidence < 0.50        → returnare la C9 Reformulation Queue
+
 Explicație
 Sistemul întreabă: "Acest obiectiv este în esență despre creare, creștere, reducere, menținere sau evoluție?" Dacă obiectivul încearcă să facă mai multe lucruri fundamentale simultan, sistemul îl obligă să aleagă direcția principală. EVOLVE este selectat automat când analiza detectează transformare calitativă multi-dimensională.
 Rol
@@ -317,7 +539,8 @@ Rol
 
 
 LEVEL 1 - Phase I: Clarity Architecture
-C11  Strategic Relevance Scoring
+C11  Strategic Relevance Scoring
+
 Definiție
 Evaluarea impactului real al unui GO în contextul strategic al utilizatorului în următoarele 12 luni. Relevance ∈ [0, 1], unde 0 = relevanță foarte scăzută și 1 = relevanță strategică maximă.
 De unde vine logica
@@ -332,7 +555,8 @@ Feasibility: probabilitatea de execuție cu resursele disponibile
 
 Relevance_adj = round(Relevance_brut, 2)  - înainte de orice mapping
 
-Minimum Relevance Floor: Relevance_adj < 0.30 → Vault automat
+Minimum Relevance Floor: Relevance_adj < 0.30 → Vault automat
+
 Recalibrare Post-Sprint 1
 La finalul Sprint 1, sistemul recalculează Relevance pe baza comportamentului real de execuție. Dacă utilizatorul a lucrat mai puțin de 50% din zilele Sprint 1, componentele Urgency și Feasibility sunt recalibrate descendent. Actualizarea este silențioasă - nu generează notificare și nu întrerupe fluxul utilizatorului. Orice modificare a Relevance declanșează automat check_priority_balance() prin C8.
 Interacțiuni cu alte componente
@@ -342,7 +566,8 @@ Interacțiuni cu alte componente
 
 
 LEVEL 1 - Phase I: Clarity Architecture
-C12  Resource Conflict Detection
+C12  Resource Conflict Detection
+
 Definiție
 Identificarea suprapunerii de resurse între GO-uri. Acest mecanism este un filtru informativ pre-activare și nu înlocuiește ALI Engine. Resource Conflict detectează suprapuneri calitative între obiective înainte de activare; ALI Engine efectuează ulterior evaluarea numerică a capacității reale. Cele două mecanisme sunt complementare.
 De unde vine logica
@@ -352,7 +577,8 @@ Conflict_score = Overlap(Timp) × 0.40 + Overlap(Energie) × 0.30 + Overlap(Capi
 
 Conflict_score < 0.40        → activare normală
 0.40 ≤ Conflict_score < 0.70 → AMBER: load ajustat −15%, fără blocare
-Conflict_score ≥ 0.70        → activare blocată → C17 Future Vault
+Conflict_score ≥ 0.70        → activare blocată → C17 Future Vault
+
 Explicație
 Sistemul verifică: dacă două obiective cer același timp, dacă cer aceeași energie, dacă cer același capital. Dacă suprapunerea este mare, apare avertizare sau blocare. Ajustarea AMBER (−15% load) este aplicată silențios în Daily Stack Generator - utilizatorul vede un plan mai puțin dens, fără explicație explicită.
 Rol
@@ -362,13 +588,15 @@ Rol
 
 
 LEVEL 1 - Phase I: Clarity Architecture
-C13  Top-3 Candidate Selection
+C13  Top-3 Candidate Selection
+
 Definiție
 Selectarea a maximum 3 GO cu relevanța cea mai mare, după aplicarea tuturor filtrelor anterioare.
 Reprezentare formală
 Pas 1: Filtrare  - elimină toate GO cu Relevance_adj < 0.30
 Pas 2: Sortare   - descrescător după Relevance_adj
-Pas 3: Selecție  - primele 3 → ACTIVE, restul → C17 Future Vault
+Pas 3: Selecție  - primele 3 → ACTIVE, restul → C17 Future Vault
+
 Explicație
 Obiectivele sunt ordonate după importanța lor strategică calculată. Primele trei devin active. Restul intră în Future Vault. GO-urile eliminate la Pasul 1 (Relevance < 0.30) intră în Vault cu mesajul: "Salvat pentru mai târziu - scopul acesta nu pare suficient de important în prezent." GO-urile eliminate la Pasul 3 (Relevance ≥ 0.30 dar al 4-lea sau mai jos) intră în Vault cu mesajul: "Prioritizat pentru o perioadă viitoare - ai 3 obiective active acum."
 Rol
@@ -396,7 +624,8 @@ Strategic Limitation precede: Sprint Design, ALI, Drift și Chaos. Fără limita
 
 
 LEVEL 1 - Phase II: Strategic Limitation
-C14  Global Objective Validation
+C14  Global Objective Validation
+
 Definiție
 Procesul prin care sistemul verifică dacă un GO este structural valid și eligibil pentru analiza de fezabilitate și activare. Aceasta este ultima verificare structurală înainte ca un GO să poată deveni activ.
 De unde vine logica
@@ -411,7 +640,8 @@ Valid(GO) = TRUE dacă TOATE condițiile sunt satisfăcute:
 
 Valid(GO) = FALSE dacă oricare condiție este nesatisfăcută
 → cerere de completare specifică
-→ Timeout 7 zile fără completare → Vault automat
+→ Timeout 7 zile fără completare → Vault automat
+
 Explicație
 Sistemul verifică: Are obiectivul un termen clar? Are o singură direcție principală? Poate fi măsurat progresul? Este clar în ce domeniu acționează? Dacă oricare dintre aceste condiții nu este îndeplinită, GO nu poate trece la următorul pas. Sistemul nu respinge GO-ul definitiv - îl suspendă în PENDING_VALIDATION până la completare.
 Rol
@@ -425,7 +655,8 @@ Interacțiuni cu alte componente
 
 
 LEVEL 1 - Phase II: Strategic Limitation
-C15  Behavior Dominance Enforcement
+C15  Behavior Dominance Enforcement
+
 Definiție
 Mecanismul prin care sistemul impune ca fiecare Global Objective să fie încadrat într-un singur Behavior Model dominant la intrarea în C14 Global Objective Validation.
 De unde vine logica
@@ -438,7 +669,8 @@ Condiție: |BM(GO)| = 1
 |BM(GO)| = 1  → avansare în C14 Global Objective Validation
 |BM(GO)| = 0  → returnare la C9 (parsare incompletă)
 |BM(GO)| > 1  → GO trebuie reformulat
-GO_REJECTED_LOGICAL_CONTRADICTION → blocat, așteptare rezoluție
+GO_REJECTED_LOGICAL_CONTRADICTION → blocat, așteptare rezoluție
+
 Exemplu
 "Vreau să slăbesc și să cresc masă musculară" - amestec între REDUCE și INCREASE pe metrici de compoziție corporală. Trebuie stabilit care este dominant. Dacă ambele sunt la paritate de intensitate pe aceeași metrică numerică → GO_REJECTED_LOGICAL_CONTRADICTION (C9). Dacă sunt pe metrici separate → EVOLVE poate fi potrivit.
 Rol
@@ -452,7 +684,8 @@ Interacțiuni cu alte componente
 
 
 LEVEL 1 - Phase II: Strategic Limitation
-C16  Strategic Feasibility Analysis
+C16  Strategic Feasibility Analysis
+
 Definiție
 Mecanismul prin care sistemul determină dacă un GO poate fi finalizat realist în termen de 365 zile, ținând cont de capacitatea utilizatorului și distribuția resurselor între GO-urile active.
 De unde vine logica
@@ -471,7 +704,8 @@ Load_ratio > 1.10        → capacitate insuficientă → C17 Future Vault
 
 Capacity Validation Gate:
   C_daily < 0.5 h/zi  → avertisment de subcapacitate (nu blocare)
-  C_daily > 14 h/zi   → avertisment de supracapacitate (nu blocare)
+  C_daily > 14 h/zi   → avertisment de supracapacitate (nu blocare)
+
 Explicație
 Sistemul verifică: "Poți termina acest obiectiv în 1 an cu resursele tale actuale?" Dacă obiectivul cere mai mult decât poate fi realizat, nu este activat în forma actuală. Intervalul (1.0, 1.10] este Ambition Buffer - o planificare ușor optimistă este acceptabilă. Dacă load-ul nu scade în Sprint 1, recalibrarea post-Sprint1 din C11 și C20 va ajusta organic.
 Rol
@@ -481,7 +715,8 @@ Rol
 
 
 LEVEL 1 - Phase II: Strategic Limitation
-C17  Future Vault System
+C17  Future Vault System
+
 Definiție
 Mecanismul structural prin care sistemul stochează GO care nu pot deveni active în momentul curent, fără a le elimina din sistem. Un GO poate intra în Vault din mai multe motive: depășește limita de 3 GO active, nu trece Strategic Feasibility Analysis, Relevance < 0.30, sau timeout-uri de clarificare/validare depășite.
 De unde vine logica
@@ -493,9 +728,25 @@ GO.status = VAULT dacă oricare din condițiile de intrare:
   (3) Relevance_adj < 0.30 după scoring (C11)
   (4) GO_REJECTED_LOGICAL_CONTRADICTION fără răspuns 7 zile (C9)
   (5) Reformulation Queue abandonată > 48h (C9)
-  (6) PENDING_VALIDATION > 7 zile fără completare (C14)
+  (6) PENDING_VALIDATION > 7 zile fără completare (C14)
+
 Semantica VAULT vs alte statusuri
-StatusSemnificațieReactivareVAULTNiciodată activ - așteptare strategicăCând slot disponibil sau Load_ratio ≤ 1.10SUSPENDEDA fost activ - suspendat de sistem prin SRM L3Prin C36 Reactivation Protocol, cu Relevance ≥ 0.60SEASONAL_PAUSEActiv sezonier - inactiv în fereastra curentăAutomat la intrarea în execution_window activăARCHIVEDÎnchis definitiv de utilizatorNu se reactivează
+Status
+Semnificație
+Reactivare
+VAULT
+Niciodată activ - așteptare strategică
+Când slot disponibil sau Load_ratio ≤ 1.10
+SUSPENDED
+A fost activ - suspendat de sistem prin SRM L3
+Prin C36 Reactivation Protocol, cu Relevance ≥ 0.60
+SEASONAL_PAUSE
+Activ sezonier - inactiv în fereastra curentă
+Automat la intrarea în execution_window activă
+ARCHIVED
+Închis definitiv de utilizator
+Nu se reactivează
+
 Condiții formale GO în Vault
 • GO în Vault nu este inclus în ALI.
 • GO în Vault nu are Sprint activ.
@@ -512,7 +763,8 @@ Interacțiuni cu alte componente
 
 
 LEVEL 1 - Phase II: Strategic Limitation
-C18  Annual Relevance Recalibration
+C18  Annual Relevance Recalibration
+
 Definiție
 Mecanismul prin care sistemul reevaluează periodic relevanța strategică a fiecărui Global Objective, indiferent dacă este activ sau stocat în Future Vault. Scopul este să determine dacă obiectivul rămâne strategic valid, trebuie reformulat, trebuie închis sau trebuie eliminat.
 De unde vine logica
@@ -528,7 +780,8 @@ Relevance_ratio ≥ 0.70              → GO rămâne activ fără intervenție
 Relevance_ratio < 0.40              → recomandare formală de închidere sau Vault
 
 Prioritate: dacă GO.status = SUSPENDED → C34 Stabilization Review
-            are prioritate față de C18
+            are prioritate față de C18
+
 Explicație
 Sistemul verifică: "Este acest obiectiv la fel de important ca atunci când a fost creat?" Dacă relevanța scade semnificativ (sub aproximativ 70% din importanța inițială), sistemul recomandă reformulare, închidere sau înlocuire. Recalibrarea este advisory - nu modifică automat statusul fără confirmare utilizator, cu excepția cazurilor severe (Relevance_ratio < 0.40, care generează recomandare formală).
 Rol
@@ -573,7 +826,8 @@ Execution Architecture urmează după Strategic Limitation și Strategic Feasibi
 
 
 LEVEL 2 - Execution Authority
-C19  Sprint Structuring - 30-Day Cycle
+C19  Sprint Structuring - 30-Day Cycle
+
 Definiție
 Structura ciclică fixă prin care fiecare GO este împărțit în unități de execuție de 30 zile.
 De unde vine logica
@@ -587,17 +841,20 @@ Statusuri posibile sprint:
   ACTIVE          - sprint în curs de execuție
   COMPLETED       - finalizat normal la t=30
   SUSPENDED       - GO suspendat prin SRM L3 în mijlocul sprintului
-  SEASONAL_PAUSE  - GO sezonier intrat în fereastră inactivă (patch Rev. 5.6)
+  SEASONAL_PAUSE  - GO sezonier intrat în fereastră inactivă (patch Rev. 5.6)
+
 Execution Windows și SEASONAL_PAUSE
 Un GO cu execution_windows definite (exemplu: activ noiembrie-martie pentru un obiectiv sezonier) intră automat în SEASONAL_PAUSE la ieșirea din fereastra activă. La intrarea în SEASONAL_PAUSE: Expected(t) este înghețat la valoarea curentă, progresul acumulat este conservat, Drift nu crește negativ, Stagnation Detection este dezactivat, ALI nu înregistrează ore pentru acel GO. La re-intrarea în fereastra activă: Expected(t) reia avansarea, Sprint Planning generează sprint nou cu target recalibrat.
 SEASONAL_PAUSE nu este un SUSPENDED: GO-ul nu a eșuat, nu a necesitat intervenție sistemică. Este o pauză structurală planificată, cu semantică proprie.
-Sprinturile cu status SEASONAL_PAUSE sunt excluse din Continuity_factor în GORI (C38) - identic cu SUSPENDED.Rol
+Sprinturile cu status SEASONAL_PAUSE sunt excluse din Continuity_factor în GORI (C38) - identic cu SUSPENDED.
+Rol
 • Permite progres liniar și calcul standardizat al Drift.
 • Permite comparabilitate istorică între sprinturi.
 
 
 LEVEL 2 - Execution Authority
-C20  Sprint Target Calculation
+C20  Sprint Target Calculation
+
 Definiție
 Procesul prin care este stabilit rezultatul măsurabil al fiecărui Sprint, derivat din obiectivul anual și din progresul rămas de realizat.
 De unde vine logica
@@ -610,7 +867,8 @@ Compensație după Regression Event:
   Sprint_Target_compensat ≤ Sprint_Target_inițial × 1.50  (plafon)
 
 Dacă 3+ Regression Events consecutive:
-  → propunere formală de reducere Target_anual
+  → propunere formală de reducere Target_anual
+
 Plafonul de Compensație 1.5×
 Fără plafon, un Regression Event major ar genera un Sprint Target de recuperare de 200-300% din normal - un plan imposibil care duce fie la abandon, fie la bifat mecanic. Plafonul la 1.5× produce un target ambițios dar realist, iar diferența de recuperare se distribuie pe sprinturile rămase. La 3+ Regression Events consecutive, sistemul nu penalizează utilizatorul - propune o reducere a Target-ului anual ca semnal că targetul inițial a fost supraestimat.
 Rol
@@ -619,7 +877,8 @@ Rol
 
 
 LEVEL 2 - Execution Authority
-C21  80% Probability Rule
+C21  80% Probability Rule
+
 Definiție
 Regulă prin care targetul sprintului este definit la un nivel realist de realizare - aproximativ 80% probabilitate de succes - nu la maximul teoretic.
 De unde vine logica
@@ -633,14 +892,16 @@ Pentru metrici continue (greutate, MRR, ore):
 Pentru metrici discrete (nr. clienți, nr. certificări):
   Sprint 1-2:    0-1 unitate
   Sprinturi medii: 1-2 unități/sprint
-  Sprint final:  unitățile rămase pentru target total
+  Sprint final:  unitățile rămase pentru target total
+
 Rol
 • Reduce eșecul repetitiv - stabilizează execuția pe termen lung.
 • Protejează Momentum-ul și motivația utilizatorului.
 
 
 LEVEL 2 - Execution Authority
-C22  Milestone Structuring (max 5)
+C22  Milestone Structuring (max 5)
+
 Definiție
 Fragmentarea Sprint Target în maximum 5 praguri intermediare de progres. Milestone-urile sunt subobiective intermediare verificabile - puncte de control care fac progresul vizibil în cadrul sprint-ului.
 De unde vine logica
@@ -656,14 +917,16 @@ Ordonare milestone-uri:
     înainte de M1. Bifarea out-of-order generează avertisment,
     nu blocare. Utilizatorul poate forța ordinea dacă dorește.
 
-Flag-ul ordered este opțional și se setează per sprint, nu per GO
+Flag-ul ordered este opțional și se setează per sprint, nu per GO
+
 Rol
 • Structurează progresul - permite vizualizarea etapelor intermediare.
 • Permite Sprint Score să reflecte granularitatea execuției.
 
 
 LEVEL 2 - Execution Authority
-C23  Daily Stack Generator
+C23  Daily Stack Generator
+
 Definiție
 Daily Stack este setul de acțiuni zilnice recomandate utilizatorului, compus din două componente distincte: Core Stack (structural, obligatoriu) și Optional Stack (operațional, suplimentar).
 Core Stack și Optional Stack
@@ -685,7 +948,8 @@ Bulk detection:
   > 5 acțiuni completate în < 10 minute → C39 Proxy 1 flag
 
 Physical Delta Safety - Sprint 1, Milestone 1:
-  Dacă SINGLE_QUESTION_FLAG=TRUE → acțiune obligatorie "Consultă specialist"
+  Dacă SINGLE_QUESTION_FLAG=TRUE → acțiune obligatorie "Consultă specialist"
+
 Rol
 • Traduce strategia în execuție zilnică concretă.
 • Menține coerența direcțională - fiecare acțiune derivă din Milestone activ.
@@ -694,7 +958,8 @@ Rol
 
 
 LEVEL 2 - Execution Authority
-C24  Progress Computation Engine
+C24  Progress Computation Engine
+
 Definiție
 Mecanismul prin care este calculat progresul real al Sprintului, ca rație dintre milestone-urile finalizate și milestone-urile totale.
 De unde vine logica
@@ -711,7 +976,8 @@ Regression Event:
   → Real_Progress = 0
   → regression_flag = TRUE
   → SRM L1 activat IMEDIAT (fără așteptarea a 3 zile consecutive)
-  → Sprint Target compensat ≤ 1.5× (C20)
+  → Sprint Target compensat ≤ 1.5× (C20)
+
 Notă Late Completion
 Acțiunile bifate ca Late Completion (> 48h) contribuie la Real_Progress - sunt incluse în calculul milestone_finalizate. Nu contribuie la Consistency_comp (C37). Distincția reflectă realitatea: dacă o acțiune a fost executată, valoarea sa strategică este reală chiar dacă a venit cu întârziere.
 Rol
@@ -720,7 +986,8 @@ Rol
 
 
 LEVEL 2 - Execution Authority
-C25  Execution Variance Tracker
+C25  Execution Variance Tracker
+
 Definiție
 Mecanism backend care calculează diferența dintre progresul real și progresul așteptat și o transmite Stability Control Layer. Este componenta de legătură între execuția zilnică și mecanismele de monitorizare.
 De unde vine logica
@@ -734,7 +1001,8 @@ Dacă progresul real < progresul planificat → Drift_raw negativ
 Dacă progresul real > progresul planificat → Drift_raw pozitiv
 
 Acțiunile din Optional Stack nu influențează calculul Drift
-decât dacă sunt validate ca suport direct pentru Milestone-ul activ.
+decât dacă sunt validate ca suport direct pentru Milestone-ul activ.
+
 Rol
 • Detectează deviația executivă - baza pentru intervenție timpurie.
 • Alimentează Stability Control Layer (C26, C27, C28).
@@ -764,7 +1032,8 @@ Acest sub-bloc monitorizează stabilitatea execuției. Componentele C26-C29 dete
 
 
 LEVEL 3 - Stability Control Layer
-C26  Dynamic Drift Engine
+C26  Dynamic Drift Engine
+
 Definiție
 Mecanismul care calculează deviația dintre progresul așteptat și progresul real într-un Sprint și monitorizează acumularea acestei deviații în timp.
 De unde vine logica
@@ -783,7 +1052,8 @@ Trigger SRM L1:
 Expected(t) ÎNGHEȚAT în:
   Core Stabilization (C35), Planned Pause (C32)
   External Shock Buffer (C32), Reactivation Protocol (C36)
-  SEASONAL_PAUSE (C19)
+  SEASONAL_PAUSE (C19)
+
 Explicație
 Dacă progresul real este mai mic decât cel planificat, Drift devine negativ și indică o întârziere. Dacă progresul real depășește planul, Drift devine pozitiv și indică performanță peste așteptări. Pragul de −0.15 corespunde unui decalaj de aproximativ 4-5 zile de execuție față de traiectoria liniară - semnal că GO-ul pierde ritm sistematic, nu că a avut o zi slabă.
 Acțiunile din Optional Stack nu influențează calculul Drift decât dacă sunt validate ca direct legate de Milestone-ul activ. Această regulă previne distorsionarea măsurării progresului prin activități secundare.
@@ -795,7 +1065,8 @@ Rol
 
 
 LEVEL 3 - Stability Control Layer
-C27  Stagnation Detection Engine
+C27  Stagnation Detection Engine
+
 Definiție
 Mecanismul care detectează absența progresului pe o perioadă relevantă. Spre deosebire de Drift (care măsoară decalajul față de traiectoria așteptată), Stagnation detectează platoul complet - utilizatorul a încetat să genereze orice progres.
 De unde vine logica
@@ -808,14 +1079,16 @@ Threshold standard:  5 zile consecutive de zero progres
 Threshold ESB:       10 zile consecutive (External Shock Buffer activ)
 
 DEZACTIVAT în:
-  Planned Pause, Crisis Protocol, ESB, Core Stabilization, SEASONAL_PAUSE
+  Planned Pause, Crisis Protocol, ESB, Core Stabilization, SEASONAL_PAUSE
+
 Rol
 • Previne stagnarea prelungită - poate declanșa Focus Rotation.
 • Poate activa SRM dacă stagnarea persistă după threshold.
 
 
 LEVEL 3 - Stability Control Layer
-C28  Chaos Index Engine
+C28  Chaos Index Engine
+
 Definiție
 Mecanismul care măsoară instabilitatea globală a execuției. Haosul nu este lipsa progresului, ci dezorganizarea globală. Poate exista progres cu Chaos Index ridicat.
 De unde vine logica
@@ -834,7 +1107,8 @@ Praguri intervenție:
   Chaos_Index < 0.30   → Verde: sistem stabil
   0.30-0.40            → Galben: monitorizare crescută
   0.40-0.60            → Amber: SRM L2 recomandat
-  Chaos_Index ≥ 0.60   → Roșu: SRM L3 recomandat
+  Chaos_Index ≥ 0.60   → Roșu: SRM L3 recomandat
+
 Principiul Conservativ - max() în loc de medie
 Drift_comp folosește maximul valorilor absolute ale Drift-ului per GO, nu media. Un sistem cu un GO la Drift −0.05 și un al doilea la Drift −0.80 are Drift_comp = 0.80, nu 0.425. Media ar masca problemele grave. Cel mai slab element determină sănătatea sistemului.
 Context_disruption
@@ -845,7 +1119,8 @@ Rol
 
 
 LEVEL 3 - Stability Control Layer
-C29  Focus Rotation Logic
+C29  Focus Rotation Logic
+
 Definiție
 Mecanismul prin care atenția strategică este redistribuită între GO active, balansând prioritatea strategică cu starea curentă a execuției.
 De unde vine logica
@@ -859,7 +1134,8 @@ Normalizare exclusiv pe GO cu status = ACTIVE:
 
 GO SUSPENDED, VAULT, SEASONAL_PAUSE: excluse complet din Σ
 
-Garanție minimă: min 1 acțiune/zi/GO activ, indiferent de Focus_norm
+Garanție minimă: min 1 acțiune/zi/GO activ, indiferent de Focus_norm
+
 Excluderea GO SUSPENDED din Normalizare
 Includerea unui GO SUSPENDED în normalizare ar produce o distribuție distorsionată: GO-ul ar consuma o fracție din Σ fără a genera acțiuni reale, iar celelalte GO active ar primi mai puțin decât justifică greutățile lor relative. Excluderea completă asigură că Focus Rotation reflectă realitatea operațională.
 Rol
@@ -872,7 +1148,8 @@ Acest sub-bloc reglează încărcarea anuală și ritmul de execuție. Component
 
 
 LEVEL 3 - Capacity Regulation Layer
-C30  ALI Engine - Annual Load Index
+C30  ALI Engine - Annual Load Index
+
 Definiție
 Mecanism numeric care evaluează încărcarea anuală reală comparativ cu capacitatea utilizatorului. ALI detectează supraîncărcarea reală și proiectată, nu doar estimată inițial.
 De unde vine logica
@@ -891,7 +1168,8 @@ Praguri intervenție:
   Final_ALI > 1.10         → Core Stabilization recomandat
 
 Trigger-urile ALI dezactivate în primele 14 zile de utilizare
-GO SUSPENDED sau SEASONAL_PAUSE: excluse din calculul orelor consumate
+GO SUSPENDED sau SEASONAL_PAUSE: excluse din calculul orelor consumate
+
 ALI_curent vs ALI_proiectat
 ALI_curent este o metrică retrospectivă - câtă capacitate a fost consumată până acum. ALI_proiectat este metrica de decizie - dacă utilizatorul menține ritmul actual tot anul, va depăși capacitatea? Deciziile sistemice se bazează pe ALI_proiectat. Un utilizator cu ALI_curent = 0.6 la jumătatea anului poate părea ok, dar dacă ritmul curent este intensificat, ALI_proiectat poate fi 1.2 - sistem în risc.
 Rol
@@ -900,7 +1178,8 @@ Rol
 
 
 LEVEL 3 - Capacity Regulation Layer
-C31  Velocity Control Mechanism
+C31  Velocity Control Mechanism
+
 Definiție
 Mecanismul care ajustează ritmul de execuție în funcție de capacitatea detectată de ALI Engine. Ritmul constant în condiții de supraîncărcare produce burnout.
 De unde vine logica
@@ -911,7 +1190,8 @@ Velocity_ajustat = Velocity_base × Capacity_factor
 
 Exemplu: Final_ALI = 1.08
   Capacity_factor  = 1.0 − 0.08 = 0.92
-  Velocity_ajustat = Velocity_base × 0.92  (−8% față de normal)
+  Velocity_ajustat = Velocity_base × 0.92  (−8% față de normal)
+
 Reducerea este progresivă și proporțională. La Final_ALI = 1.10 (pragul maxim al Ambition Buffer), reducerea este de 10%. Ajustarea este aplicată silențios în Daily Stack Generator - utilizatorul vede un plan mai puțin dens.
 Rol
 • Reduce intensitatea temporar - protejează sustenabilitatea execuției.
@@ -944,7 +1224,8 @@ Regulatory Authority urmează după Monitoring Authority și influențează Dail
 
 
 LEVEL 4 - Regulatory Authority
-C32  Adaptive Context Engine
+C32  Adaptive Context Engine
+
 Definiție
 Adaptive Context Engine este mecanismul care analizează contextul utilizatorului și adaptează execuția fără a modifica structura strategică. Acest engine funcționează continuu în fundal și poate ajusta ritmul execuției.
 
@@ -955,7 +1236,8 @@ Energy_Factor ∈ [0.6, 1.2]
 
 EF < 1.0 → execuție redusă (energie scăzută)
 EF = 1.0 → execuție normală
-EF > 1.0 → execuție accelerată moderat (energie ridicată)
+EF > 1.0 → execuție accelerată moderat (energie ridicată)
+
 Planned Pause Protocol
 Mecanismul prin care utilizatorul poate introduce perioade planificate de pauză fără a destabiliza sistemul. Viața reală include perioade în care execuția trebuie suspendată temporar: vacanțe, evenimente familiale, recuperare fizică.
 Pause_interval ≤ 30 zile/an (total)
@@ -965,18 +1247,21 @@ Zile de pauză excluse din Consistency_comp (C37)
 
 Retroactive Pause:
   Marcaj retroactiv - maxim 48h, maxim 3 ori/sprint
-  Limite anti-abuz retrospectiv
+  Limite anti-abuz retrospectiv
+
 Crisis Protocol
 Mecanismul activat în situații de criză majoră care afectează capacitatea utilizatorului de a executa obiectivele. Situațiile extreme pot include: accidente, pierdere financiară, probleme medicale.
 Execution_Intensity → minim stabil (0.1-0.2)
 SRM L1 și SRM L2 dezactivate
 Expected(t) înghețat
-Minim 1 acțiune/zi/GO activ (menținere contact)
+Minim 1 acțiune/zi/GO activ (menținere contact)
+
 External Shock Buffer (ESB)
 Mecanism care absoarbe impactul evenimentelor externe neprevăzute. Evenimentele externe pot afecta execuția chiar dacă utilizatorul este motivat: schimbări profesionale, probleme logistice, evenimente familiale.
 Stagnation threshold: 5 → 10 zile (extins)
 SRM L1 threshold extins: 3 → 5 zile consecutive
-Previne activarea prematură a SRM în context volatil
+Previne activarea prematură a SRM în context volatil
+
 Momentum Monitor
 Mecanism care urmărește continuitatea execuției și detectează pierderea momentum-ului. Pierderea momentum-ului este un risc major de abandon pe termen lung - mai important de detectat decât Drift-ul zilnic.
 
@@ -989,7 +1274,8 @@ Rol general Adaptive Context Engine
 
 
 LEVEL 4 - Regulatory Authority
-C33  Strategic Reset Mode - SRM (3 Levels)
+C33  Strategic Reset Mode - SRM (3 Levels)
+
 Definiție
 Strategic Reset Mode este mecanismul prin care sistemul restructurează execuția atunci când instabilitatea devine critică. Cele 3 niveluri au grade de intervenție crescând și grade de automatism descrescând. Un singur nivel SRM poate fi activ simultan per GO - nivelul mai înalt suprascrie și anulează complet nivelul inferior.
 Ierarhia SRM: L3 > L2 > L1
@@ -1008,7 +1294,8 @@ SRM L2 - Structural Adjustment (automat + notificare push):
 SRM L3 - Strategic Reset (confirmare obligatorie):
   Trigger: Chaos_Index ≥ 0.60 SAU Final_ALI > 1.10
   Acțiune: C34 Suspension + C35 Core Stabilization
-  Necesită double confirmation din partea utilizatorului.
+  Necesită double confirmation din partea utilizatorului.
+
 Timeout Protocol SRM L3
 Dacă utilizatorul nu confirmă SRM L3 în intervalele definite, sistemul aplică protecție graduală pentru a evita starea de limbo:
 • 24h fără confirmare → SRM L2 aplicat automat cu notificare: "Am ajustat temporar ritmul tău."
@@ -1020,7 +1307,8 @@ Pe durata Reactivation Protocol (C36), SRM L1 este dezactivat complet și thresh
 
 
 LEVEL 4 - Regulatory Authority
-C34  Weighted GO Suspension Logic
+C34  Weighted GO Suspension Logic
+
 Definiție
 Mecanism care permite suspendarea temporară a unui GO în funcție de prioritatea strategică. Nu toate GO au aceeași importanță - GO cu prioritate mai mică pot fi suspendate temporar pentru a proteja obiectivele critice.
 De unde vine logica
@@ -1036,14 +1324,16 @@ Consecințe SUSPENDED:
   → check_priority_balance() apelat automat (C8)
 
 C34 > C18: dacă recalibrare periodică coincide cu suspendarea,
-           Stabilization Review are prioritate față de recalibrarea anuală
+           Stabilization Review are prioritate față de recalibrarea anuală
+
 Rol
 • Protejează obiectivele dominante - reduce supraîncărcarea prin suspendare selectivă.
 • Menține coerența sistemului - GO suspendat nu mai consumă resurse operaționale.
 
 
 LEVEL 4 - Regulatory Authority
-C35  Core Stabilization Mode
+C35  Core Stabilization Mode
+
 Definiție
 Mod de execuție minimal activat în condiții de instabilitate majoră. În perioade extreme, menținerea unui progres minimal este mai importantă decât performanța maximă.
 De unde vine logica
@@ -1060,7 +1350,8 @@ Comportament componente:
   Stagnation Detection = DEZACTIVAT
 
 Durată: nelimitată - până la decizia utilizatorului sau reducerea ALI
-Ieșire: → C36 Reactivation Protocol (rampă de revenire gradată)
+Ieșire: → C36 Reactivation Protocol (rampă de revenire gradată)
+
 Prevenirea Loop-ului Paradoxal
 Înghețarea Expected(t) este critică. Fără ea, apare un loop paradoxal: Stabilization → Drift crește zilnic (Expected avansează, Progress stagnează) → SRM L1 declanșat → dar Stabilization dezactivează deja L1 → incoerență de stare. Înghețarea elimină complet această posibilitate.
 Rol
@@ -1069,7 +1360,8 @@ Rol
 
 
 LEVEL 4 - Regulatory Authority
-C36  Reactivation Protocol
+C36  Reactivation Protocol
+
 Definiție
 Mecanism care permite revenirea treptată la execuția normală după perioade de instabilitate sau Core Stabilization. Revenirea bruscă la intensitate maximă poate produce recădere.
 Reprezentare formală
@@ -1083,7 +1375,8 @@ Pe durata Reactivation:
 
 Reactivare GO SUSPENDED în cadrul Reactivation Protocol:
   Relevance GO ≥ 0.60 necesar  (față de 0.40 standard)
-  check_priority_balance() apelat automat la reactivare
+  check_priority_balance() apelat automat la reactivare
+
 Explicație
 Revenirea la execuția normală se face treptat pentru a evita recăderile. Rampa de 8 zile permite recalibrarea graduală a ritmului și a Chaos_Index fără a declanșa fals SRM L2.
 Threshold Crescut pentru GO SUSPENDED
@@ -1116,7 +1409,8 @@ Reinforcement Model este mecanismul prin care sistemul evaluează performanța �
 
 
 LEVEL 5 - Strategic Consolidation
-C37  Sprint Score Calculation
+C37  Sprint Score Calculation
+
 Definiție
 Mecanismul prin care este evaluată performanța unui sprint pe 3 dimensiuni: progresul față de target, consistența execuției zilnice și abaterea față de traiectoria planificată.
 De unde vine logica
@@ -1136,9 +1430,31 @@ Consistency_comp:
 Deviation_comp:
   1 − |Drift_final_sprint| / 0.30  (clamped [0,1])
 
-Sprint cu status SUSPENDED: EXCLUS complet - nu 0, nu medie
+Sprint cu status SUSPENDED: EXCLUS complet - nu 0, nu medie
+
 Grile Sprint Score
-IntervalCalificativInterpretare0.85-1.00S - ExcelentSprint excepțional: target depășit, execuție consistentă.0.70-0.84A - Foarte BunPerformanță solidă pe toate dimensiunile.0.55-0.69B - BunProgres real, consistență cu variabilitate acceptabilă.0.40-0.54C - SatisfăcătorProgres parțial; plan de sprint prea ambițios sau execuție neregulată.0.25-0.39D - Recalibrare TimpurieProbleme structurale; sprint-ul următor necesită ajustare semnificativă.0.00-0.24F - IntervențieExecuție minimă sau absentă; SRM L2/L3 probabil deja activ.
+Interval
+Calificativ
+Interpretare
+0.85-1.00
+S - Excelent
+Sprint excepțional: target depășit, execuție consistentă.
+0.70-0.84
+A - Foarte Bun
+Performanță solidă pe toate dimensiunile.
+0.55-0.69
+B - Bun
+Progres real, consistență cu variabilitate acceptabilă.
+0.40-0.54
+C - Satisfăcător
+Progres parțial; plan de sprint prea ambițios sau execuție neregulată.
+0.25-0.39
+D - Recalibrare Timpurie
+Probleme structurale; sprint-ul următor necesită ajustare semnificativă.
+0.00-0.24
+F - Intervenție
+Execuție minimă sau absentă; SRM L2/L3 probabil deja activ.
+
 Notă
 Acțiunile provenite din Optional Stack pot influența evaluarea calitativă a execuției, dar nu modifică scorul structural al sprintului decât dacă sunt validate ca suport direct pentru milestone-uri.
 Rol
@@ -1147,7 +1463,8 @@ Rol
 
 
 LEVEL 5 - Strategic Consolidation
-C38  GORI - Global Objective Return Index
+C38  GORI - Global Objective Return Index
+
 Definiție
 Mecanismul care consolidează performanța strategică pe termen lung prin agregarea ponderată a rezultatelor sprinturilor. Spre deosebire de Sprint Score (care evaluează un sprint izolat), GORI reflectă tendința pe termen lung și consecvența strategică anuală.
 De unde vine logica
@@ -1171,18 +1488,35 @@ Variance_penalty:
   = Variance(Sprint_Scores_active) × 0.25
   Penalizare maximă: 25%
 
-Sprinturi SUSPENDED: EXCLUSE complet din calcul (nu 0, nu medie)
+Sprinturi SUSPENDED: EXCLUSE complet din calcul (nu 0, nu medie)
+
 Interpretarea Continuity_factor
 Continuity_factor reflectă ce proporție din durata strategică planificată a GO-ului a fost executată efectiv. Un GO sezonier cu 5 luni active și 7 luni SEASONAL_PAUSE are Continuity = 5/5 = 1.0 - a executat perfect în fereastra sa activă. Același calcul fără excluderea SEASONAL_PAUSE ar produce 5/12 = 0.42, o penalizare artificială pentru arhitectura temporală a obiectivului, nu pentru performanța reală.
 Grile GORI
-IntervalClasificareAcțiune sugerată0.80-1.00ExcellentConsolidare strategică puternică. Continuă cu aceeași abordare.0.60-0.79GoodProgres consistent. Micro-ajustări opționale la recalibrare.0.45-0.59Advisory ReviewInvitație pentru reflecție. Sistemul propune C40 și C18 Recalibration.0.00-0.44Early RecalibrationIntervenție necesară. C18 accelerat, posibil Vault sau reformulare GO.
+Interval
+Clasificare
+Acțiune sugerată
+0.80-1.00
+Excellent
+Consolidare strategică puternică. Continuă cu aceeași abordare.
+0.60-0.79
+Good
+Progres consistent. Micro-ajustări opționale la recalibrare.
+0.45-0.59
+Advisory Review
+Invitație pentru reflecție. Sistemul propune C40 și C18 Recalibration.
+0.00-0.44
+Early Recalibration
+Intervenție necesară. C18 accelerat, posibil Vault sau reformulare GO.
+
 Rol
 • Consolidează progresul strategic - susține evaluarea anuală completă.
 • Contribuie la deciziile de recalibrare și la selecția GO-urilor de suspendat (C34).
 
 
 LEVEL 5 - Strategic Consolidation
-C39  Engagement Signal
+C39  Engagement Signal
+
 Definiție
 Engagement Signal monitorizează în background trei proxy-uri de motivație pentru fiecare GO activ, pentru a detecta obiectivele care au pierdut relevanța subiectivă a utilizatorului - chiar dacă scorul formal (Sprint Score, GORI) rămâne acceptabil.
 De unde vine logica
@@ -1207,7 +1541,8 @@ Engagement_Signal = WEAK dacă 2/3 proxy-uri negative ≥ 7 zile consecutive
 La WEAK:
   O singură întrebare: "Scopul acesta mai pare important pentru tine?"
   Da  → semnal resetat, monitorizare continuă
-  Nu  → C18 Recalibration accelerat pentru GO respectiv
+  Nu  → C18 Recalibration accelerat pentru GO respectiv
+
 Toleranța de design
 Sistemul de proxy-uri nu este un mecanism anti-fraudă - este o detecție de dezangajare. Un utilizator care manipulează deliberat toate cele 3 proxy-uri cheltuie mai mult efort manipulând sistemul decât executând GO-ul - problema se auto-rezolvă. Pragul de 2/3 proxy-uri negative reduce semnificativ false positive-urile datorate variabilității normale.
 Integrare cu C40
@@ -1215,7 +1550,8 @@ Dacă la Sprint Reflection Gate (C40) utilizatorul răspunde cu un scor de vital
 
 
 LEVEL 5 - Strategic Consolidation
-C40  Sprint Reflection Gate
+C40  Sprint Reflection Gate
+
 Definiție
 Sprint Reflection Gate este o oprire opțională la tranziția dintre sprinturi - după calculul Sprint Score (C37) și înainte de Sprint Planning pentru sprint-ul următor. Scopul este reflexiv, nu evaluativ.
 De unde vine logica
@@ -1234,7 +1570,8 @@ Cele 3 întrebări (toate opționale, skippable în orice moment):
 Consecințe directe:
   Răspunsurile Q1/Q2 → context opțional în Sprint Planning următor
   Q3 ≤ 5             → C39 Engagement Signal activat preventiv
-  Sprint Skipped      → Sprint Planning continuă normal, fără penalizare
+  Sprint Skipped      → Sprint Planning continuă normal, fără penalizare
+
 Zero Impact pe Scor
 Sprint Reflection Gate nu modifică Sprint Score calculat, nu alimentează GORI și nu declanșează SRM. Este singurul mecanism din NUViaX care are acces direct la starea subiectivă a utilizatorului. Designul intenționat: dacă reflecția ar modifica scoruri, utilizatorul ar fi stimulat să răspundă strategic (pozitiv) în loc de sincer.
 Integrarea cu Sprint Planning

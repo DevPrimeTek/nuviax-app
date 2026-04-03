@@ -873,3 +873,31 @@ func MarkPasswordResetTokenUsed(ctx context.Context, pool *pgxpool.Pool, tokenHa
 		`UPDATE password_reset_tokens SET used_at=NOW() WHERE token_hash=$1`, tokenHash)
 	return err
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SRM EVENTS
+// ═══════════════════════════════════════════════════════════════
+
+// GetActiveSRMLevel returns the most recent non-revoked SRM level for a goal,
+// or an empty string if none exists.
+func GetActiveSRMLevel(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID) (string, error) {
+	var level string
+	err := pool.QueryRow(ctx, `
+		SELECT srm_level FROM srm_events
+		WHERE go_id = $1 AND revoked_at IS NULL
+		ORDER BY triggered_at DESC LIMIT 1
+	`, goalID).Scan(&level)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return level, err
+}
+
+// InsertSRMEvent records a new SRM event for a goal.
+func InsertSRMEvent(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID, level, reason string) error {
+	_, err := pool.Exec(ctx, `
+		INSERT INTO srm_events (id, go_id, srm_level, trigger_reason)
+		VALUES (gen_random_uuid(), $1, $2, $3)
+	`, goalID, level, reason)
+	return err
+}

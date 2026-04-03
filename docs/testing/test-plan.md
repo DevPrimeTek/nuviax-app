@@ -1,13 +1,11 @@
 # docs/testing/test-plan.md — NuviaX Master Test Plan (Unit + Integration)
 
-> Version: 11.1.0  
+> Version: 11.0.0  
 > Last updated: 2026-04-03
 
 ---
 
 ## 1) Obiectiv
-
-**Prerequisite pentru orice task de testare:** pornește din `CLAUDE.md` pentru a selecta exact fișierele relevante și a evita context inutil.
 
 Acest document definește planul oficial de testare pentru validarea:
 1. comportamentului curent (as-built),
@@ -42,17 +40,6 @@ TOKEN=<jwt> bash backend/scripts/test_api.sh http://localhost:8080/api/v1
 Scenarii detaliate:
 - `docs/testing/scenarios/critical.md`
 - `docs/testing/scenarios/regression.md`
-
-Dacă rulezi migrații în mediu Docker, folosește:
-```bash
-bash scripts/apply_migrations.sh
-```
-
-
-Admin sanity check (după login ca admin):
-```bash
-curl -i -H "Authorization: Bearer <token_admin>" http://localhost:8080/api/v1/admin/stats
-```
 
 ## C. Framework stress tests
 Scop: validarea regulilor avansate Rev 5.6 (anti-abuz, sezonalitate, SRM ierarhic).
@@ -122,3 +109,4 @@ Format recomandat:
 Covered: TS-04, TS-05, T3
 Not covered: T2 (depinde de execution_windows, încă neimplementat)
 ```
+

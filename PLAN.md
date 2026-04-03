@@ -20,7 +20,7 @@
 
 | # | Task | Status | Rezultat |
 |---|------|--------|----------|
-| 1 | SA-7 + CE-1 | ⏳ PENDING | Cron fix + trajectory null rezolvat |
+| 1 | SA-7 + CE-1 | ✅ DONE | Cron fix + trajectory null rezolvat |
 | 2 | SA-1 | ⏳ PENDING | Grafic progres populat |
 | 3 | SA-3 | ⏳ PENDING | SRM L1 auto-trigger activ |
 | 4 | SA-4 + SA-5 | ⏳ PENDING | Buton L2 + reducere tasks |

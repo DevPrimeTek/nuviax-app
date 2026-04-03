@@ -49,27 +49,13 @@ func RunMigrations(pool *pgxpool.Pool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Core tables (migration 001)
+	// Auth-only core tables (reset foundation)
 	coreTables := []string{
-		"users", "user_sessions", "global_objectives",
-		"go_metrics", "sprints", "sprint_results",
-		"daily_tasks", "checkpoints", "go_scores",
-		"sprint_reflections", "context_adjustments", "audit_log",
+		"users", "user_sessions", "audit_log", "password_reset_tokens",
 	}
-
-	// Framework tables (migrations 002–006)
-	frameworkTables := []string{
-		"goal_categories", "sprint_configs", "goal_metadata",         // L1
-		"task_executions", "daily_metrics", "sprint_metrics",          // L2
-		"behavior_patterns", "consistency_snapshots", "adaptive_weights", // L3
-		"regulatory_events", "goal_activation_log", "resource_slots",  // L4
-		"growth_milestones", "achievement_badges", "ceremonies", "growth_trajectories", "completion_ceremonies", // L5
-	}
-
-	allTables := append(coreTables, frameworkTables...)
 
 	missing := make([]string, 0)
-	for _, t := range allTables {
+	for _, t := range coreTables {
 		var exists bool
 		err := pool.QueryRow(ctx,
 			`SELECT EXISTS (
@@ -85,24 +71,11 @@ func RunMigrations(pool *pgxpool.Pool) error {
 	}
 
 	if len(missing) > 0 {
-		logger.Warn("Missing framework tables — run migrations",
-			zap.Strings("tables", missing),
-			zap.String("cmd", "psql -f backend/migrations/apply_all.sql"),
-		)
-		// Only fail if core tables are missing
-		for _, t := range coreTables {
-			for _, m := range missing {
-				if t == m {
-					return fmt.Errorf("core table %q missing — run backend/migrations/apply_all.sql", t)
-				}
-			}
-		}
+		return fmt.Errorf("core table(s) missing: %v — run backend/migrations/apply_all.sql", missing)
 	}
 
 	logger.Info("Database schema verified",
 		zap.Int("core_tables", len(coreTables)),
-		zap.Int("framework_tables", len(frameworkTables)-len(missing)),
-		zap.Int("missing", len(missing)),
 	)
 	return nil
 }

@@ -901,3 +901,11 @@ func InsertSRMEvent(ctx context.Context, pool *pgxpool.Pool, goalID uuid.UUID, l
 	`, goalID, level, reason)
 	return err
 }
+
+// AwardAchievementIfEarned calls the DB function that checks and awards any
+// achievements earned by the user upon completing the given sprint.
+func AwardAchievementIfEarned(ctx context.Context, pool *pgxpool.Pool, userID, sprintID uuid.UUID) error {
+	_, err := pool.Exec(ctx,
+		"SELECT fn_award_achievement_if_earned($1, $2)", userID, sprintID)
+	return err
+}

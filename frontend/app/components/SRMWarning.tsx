@@ -6,6 +6,7 @@ interface SRMStatus {
   goal_id: string
   srm_level: string
   message: string
+  confirmed?: boolean
 }
 
 const LEVEL_STYLE: Record<string, { bg: string; border: string; color: string }> = {
@@ -36,6 +37,13 @@ export default function SRMWarning({ goalId }: { goalId: string }) {
     }
   }
 
+  const handleConfirmL2 = async () => {
+    const res = await fetch(`/api/proxy/srm/confirm-l2/${goalId}`, { method: 'POST' }).catch(() => null)
+    if (res?.ok) {
+      setSrm(null)
+    }
+  }
+
   return (
     <div
       style={{
@@ -55,6 +63,14 @@ export default function SRMWarning({ goalId }: { goalId: string }) {
           <div style={{ fontSize: 12, color: 'var(--ink2)', lineHeight: 1.5 }}>
             {srm.message}
           </div>
+          {srm.srm_level === 'L2' && !srm.confirmed && (
+            <button
+              onClick={handleConfirmL2}
+              className="mt-3 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+            >
+              Confirmare — Reduc intensitatea
+            </button>
+          )}
           {srm.srm_level === 'L3' && (
             <button
               onClick={handleConfirm}

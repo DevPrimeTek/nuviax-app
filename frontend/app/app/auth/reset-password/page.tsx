@@ -40,7 +40,7 @@ function ResetPasswordForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">NuviaX</div>
+        <Link href="https://nuviaxapp.com" className="auth-logo">NUVia<span>X</span></Link>
         <h1 className="auth-title">Parolă nouă</h1>
 
         {done ? (
@@ -49,50 +49,51 @@ function ResetPasswordForm() {
             <p className="auth-sub" style={{ marginBottom: 24 }}>
               Parola a fost resetată cu succes. Te poți autentifica.
             </p>
-            <Link href="/auth/login" className="btn-primary" style={{ display: 'inline-block' }}>
+            <Link href="/auth/login" className="auth-btn" style={{ display: 'inline-block' }}>
               Autentifică-te
             </Link>
           </div>
         ) : (
-          <form onSubmit={submit}>
-            {error && <div className="auth-error">{error}</div>}
-            <label className="field-label">Parolă nouă</label>
-            <input
-              type="password"
-              className="field-input"
-              value={pw}
-              onChange={e => setPw(e.target.value)}
-              placeholder="Min. 8 caractere"
-              required
-              autoComplete="new-password"
-              disabled={!token}
-            />
-            <label className="field-label" style={{ marginTop: 12 }}>Confirmă parola</label>
-            <input
-              type="password"
-              className="field-input"
-              value={pw2}
-              onChange={e => setPw2(e.target.value)}
-              placeholder="Repetă parola"
-              required
-              autoComplete="new-password"
-              disabled={!token}
-            />
+          <form onSubmit={submit} className="auth-form">
+            {error && <div className="auth-err">{error}</div>}
+            <div className="auth-field">
+              <label className="auth-label">Parolă nouă</label>
+              <input
+                type="password"
+                className="auth-input"
+                value={pw}
+                onChange={e => setPw(e.target.value)}
+                placeholder="Min. 8 caractere"
+                required
+                autoComplete="new-password"
+                disabled={!token}
+              />
+            </div>
+            <div className="auth-field">
+              <label className="auth-label">Confirmă parola</label>
+              <input
+                type="password"
+                className="auth-input"
+                value={pw2}
+                onChange={e => setPw2(e.target.value)}
+                placeholder="Repetă parola"
+                required
+                autoComplete="new-password"
+                disabled={!token}
+              />
+            </div>
             <button
               type="submit"
-              className="btn-primary"
+              className="auth-btn"
               disabled={loading || !token}
-              style={{ width: '100%', marginTop: 16 }}
             >
               {loading ? 'Se salvează…' : 'Setează parola nouă'}
             </button>
-            <p className="auth-sub" style={{ marginTop: 16, textAlign: 'center' }}>
-              <Link href="/auth/forgot-password" style={{ color: 'var(--l0)' }}>
-                Solicită un link nou
-              </Link>
-            </p>
           </form>
         )}
+        <p className="auth-footer">
+          <Link href="/auth/forgot-password" className="auth-link">Solicită un link nou</Link>
+        </p>
       </div>
     </div>
   )

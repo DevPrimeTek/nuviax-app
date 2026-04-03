@@ -50,7 +50,7 @@ func (s *Scheduler) Start() {
 	s.cron.AddFunc("1 0 * * *", s.jobCloseExpiredSprints)
 
 	// Job 5 — Recalibrare relevanță (la 90 de zile, 02:00 UTC)
-	s.cron.AddFunc("0 2 */90 * *", s.jobRecalibrateRelevance)
+	s.cron.AddFunc("0 2 * * 0", s.jobRecalibrateRelevance)
 
 	// Job 11 — Detecție stagnare (23:58 UTC zilnic) — G-5
 	s.cron.AddFunc("58 23 * * *", s.jobDetectStagnation)

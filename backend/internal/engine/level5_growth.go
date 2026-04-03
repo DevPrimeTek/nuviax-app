@@ -82,7 +82,7 @@ func (e *Engine) GenerateProgressVisualization(ctx context.Context, goalID uuid.
 	if len(trajectory) == 0 {
 		var start, end time.Time
 		if err := e.db.QueryRow(ctx,
-			`SELECT start_date, end_date FROM goals WHERE id = $1`, goalID,
+			`SELECT start_date, end_date FROM global_objectives WHERE id = $1`, goalID,
 		).Scan(&start, &end); err == nil {
 			total := end.Sub(start).Hours()
 			elapsed := time.Now().UTC().Sub(start).Hours()

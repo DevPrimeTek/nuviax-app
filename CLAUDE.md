@@ -101,6 +101,8 @@ git branch --show-current
 | AI Category Suggestion (Onboarding) | ✅ Implemented (v10.5.0) — 2s timeout, fallback |
 | Activity Heatmap (/profile) | ✅ Implemented (v10.5.0) — 52-week GitHub-style grid |
 | Dark/Light Theme (persistence) | ✅ Implemented (v10.5.0) — localStorage + backend (migration 012) |
+| SA-7 cron fix | ✅ Fixed — `jobRecalibrateRelevance` now runs weekly (`0 2 * * 0`) |
+| CE-1 table name fix | ✅ Fixed — trajectory query uses `global_objectives` (not `goals`) |
 | Stripe monetization | 📅 Planned Sprint 4 |
 
 ---

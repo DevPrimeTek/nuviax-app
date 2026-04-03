@@ -711,11 +711,56 @@ func GetPlatformStats(ctx context.Context, pool *pgxpool.Pool) (*models.Platform
 		&s.ActiveSprints, &s.CompletedSprints,
 		&s.TasksToday, &s.TasksCompletedToday,
 		&s.SRMEvents30d, &s.SRML3Events30d,
+			&s.RegressionEvents30d,
+			&s.Ceremonies30d, &s.BadgesAwarded30d,
+			&s.ComputedAt,
+		)
+	if err == nil {
+		return s, nil
+	}
+
+	// Fallback query: permite funcționarea panelului chiar dacă view-ul admin
+	// nu există încă (migrații incomplete pe anumite medii).
+	fallbackErr := pool.QueryRow(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM users WHERE is_active = TRUE) AS total_users,
+			(SELECT COUNT(*) FROM users WHERE is_admin = TRUE) AS admin_users,
+			(SELECT COUNT(*) FROM users
+			 WHERE is_active = TRUE AND created_at >= NOW() - INTERVAL '7 days') AS new_users_7d,
+			(SELECT COUNT(*) FROM users
+			 WHERE is_active = TRUE AND created_at >= NOW() - INTERVAL '30 days') AS new_users_30d,
+			(SELECT COUNT(*) FROM global_objectives WHERE status = 'ACTIVE') AS active_goals,
+			(SELECT COUNT(*) FROM global_objectives WHERE status = 'COMPLETED') AS completed_goals,
+			(SELECT COUNT(*) FROM global_objectives WHERE status = 'PAUSED') AS paused_goals,
+			(SELECT COUNT(*) FROM global_objectives) AS total_goals,
+			(SELECT COUNT(*) FROM sprints WHERE status = 'ACTIVE') AS active_sprints,
+			(SELECT COUNT(*) FROM sprints WHERE status = 'COMPLETED') AS completed_sprints,
+			(SELECT COUNT(*) FROM daily_tasks WHERE task_date = CURRENT_DATE) AS tasks_today,
+			(SELECT COUNT(*) FROM daily_tasks WHERE task_date = CURRENT_DATE AND completed = TRUE) AS tasks_completed_today,
+			(SELECT COUNT(*) FROM srm_events WHERE triggered_at >= NOW() - INTERVAL '30 days') AS srm_events_30d,
+			(SELECT COUNT(*) FROM srm_events
+			 WHERE srm_level = 'L3' AND triggered_at >= NOW() - INTERVAL '30 days') AS srm_l3_events_30d,
+			(SELECT COUNT(*) FROM regression_events
+			 WHERE detected_at >= NOW() - INTERVAL '30 days') AS regression_events_30d,
+			(SELECT COUNT(*) FROM completion_ceremonies
+			 WHERE generated_at >= NOW() - INTERVAL '30 days') AS ceremonies_30d,
+			(SELECT COUNT(*) FROM achievement_badges
+			 WHERE awarded_at >= NOW() - INTERVAL '30 days') AS badges_awarded_30d,
+			NOW() AS computed_at
+	`).Scan(
+		&s.TotalUsers, &s.AdminUsers, &s.NewUsers7d, &s.NewUsers30d,
+		&s.ActiveGoals, &s.CompletedGoals, &s.PausedGoals, &s.TotalGoals,
+		&s.ActiveSprints, &s.CompletedSprints,
+		&s.TasksToday, &s.TasksCompletedToday,
+		&s.SRMEvents30d, &s.SRML3Events30d,
 		&s.RegressionEvents30d,
 		&s.Ceremonies30d, &s.BadgesAwarded30d,
 		&s.ComputedAt,
 	)
-	return s, err
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("admin stats query failed (view: %v, fallback: %w)", err, fallbackErr)
+	}
+	return s, nil
 }
 
 // GetAdminUserList returns all users with computed stats for the admin panel.

@@ -1,35 +1,55 @@
 #!/usr/bin/env bash
-# NuviaX — Setup cont admin
-# Utilizare: ./scripts/setup_admin.sh sbarbu@nuviax.app 'ParolaTA' 'Nume'
-# IMPORTANT: single quotes pentru parolă
+# NuviaX — Setup cont admin (robust)
+# Acceptă email SAU username simplu (fără @).
+# Dacă primește username, îl convertește automat în <username>@nuviax.app
+#
+# Exemple:
+#   ./scripts/setup_admin.sh sbarbu_admin 'NuviaXAdmin#2026'
+#   ./scripts/setup_admin.sh sbarbu_admin@nuviax.app 'NuviaXAdmin#2026' 'Sbarbu Admin'
 
 set -euo pipefail
 
-EMAIL_LOWER=$(echo "${1:-}" | tr '[:upper:]' '[:lower:]')
+RAW_ID="${1:-}"
 PASSWORD="${2:-}"
-FULL_NAME="${3:-sbarbu}"
+FULL_NAME="${3:-}"
 
-[[ -z "$EMAIL_LOWER" || -z "$PASSWORD" ]] && {
-  echo "Utilizare: $0 <email> '<parola>' [full_name]"
-  echo "Exemplu:   $0 sbarbu@nuviax.app 'NuviaX@sbarbu#2026Prm' 'sbarbu'"
+if [[ -z "$RAW_ID" || -z "$PASSWORD" ]]; then
+  echo "Utilizare: $0 <username_sau_email> '<parola>' [full_name]"
+  echo "Exemplu : $0 sbarbu_admin 'NuviaXAdmin#2026' 'Sbarbu Admin'"
   exit 1
-}
+fi
+
+# Normalizează identitatea de login
+RAW_ID_LOWER=$(echo "$RAW_ID" | tr '[:upper:]' '[:lower:]')
+if [[ "$RAW_ID_LOWER" == *"@"* ]]; then
+  EMAIL="$RAW_ID_LOWER"
+  USERNAME="${RAW_ID_LOWER%%@*}"
+else
+  USERNAME="$RAW_ID_LOWER"
+  EMAIL="${RAW_ID_LOWER}@nuviax.app"
+fi
+
+if [[ -z "$FULL_NAME" ]]; then
+  FULL_NAME="$USERNAME"
+fi
 
 echo ""
-echo "NuviaX — Setup admin: $EMAIL_LOWER"
+echo "NuviaX — Admin access bootstrap"
+echo "Username: $USERNAME"
+echo "Email   : $EMAIL"
 echo ""
 
 # ── Verificare containere ─────────────────────────────────────────
-echo "[0/3] Verificare containere..."
-for C in nuviax_app nuviax_db; do
+echo "[0/5] Verificare containere..."
+for C in nuviax_app nuviax_api nuviax_db; do
   docker ps --format '{{.Names}}' | grep -q "^${C}$" || {
-    echo "✗ Containerul '$C' nu rulează. Pornește aplicația mai întâi."
+    echo "✗ Containerul '$C' nu rulează."
     exit 1
   }
 done
 echo "✓ Containere active"
 
-# ── Scrie script Node.js în /tmp pe HOST ──────────────────────────
+# ── Register via API (idempotent) ─────────────────────────────────
 cat > /tmp/nv_register.js << 'NODEOF'
 const http = require('http');
 const data = JSON.stringify({
@@ -57,52 +77,70 @@ req.write(data);
 req.end();
 NODEOF
 
-# ── Copiază scriptul în container și rulează-l ────────────────────
-echo "[1/3] Înregistrare cont..."
+echo "[1/5] Înregistrare cont (sau detectare existent)..."
 docker cp /tmp/nv_register.js nuviax_app:/tmp/nv_register.js
 
-RESULT=$(docker exec \
-  -e NV_EMAIL="$EMAIL_LOWER" \
+REGISTER_RESULT=$(docker exec \
+  -e NV_EMAIL="$EMAIL" \
   -e NV_PASS="$PASSWORD" \
   -e NV_NAME="$FULL_NAME" \
   nuviax_app node /tmp/nv_register.js 2>&1) || {
-    echo "✗ Eroare: $RESULT"
-    docker exec nuviax_app rm -f /tmp/nv_register.js
+    echo "✗ Eroare register: $REGISTER_RESULT"
+    docker exec nuviax_app rm -f /tmp/nv_register.js || true
     rm -f /tmp/nv_register.js
     exit 1
   }
 
-docker exec nuviax_app rm -f /tmp/nv_register.js
+docker exec nuviax_app rm -f /tmp/nv_register.js || true
 rm -f /tmp/nv_register.js
 
-[[ "$RESULT" == "CREATED" ]] && echo "✓ Cont creat"
-[[ "$RESULT" == "EXISTS"  ]] && echo "ℹ Contul există deja — continuăm"
+[[ "$REGISTER_RESULT" == "CREATED" ]] && echo "✓ Cont creat"
+[[ "$REGISTER_RESULT" == "EXISTS"  ]] && echo "ℹ Contul există deja — continuăm"
 
-# ── Setare is_admin în DB ─────────────────────────────────────────
-echo "[2/3] Setare admin în DB..."
-EMAIL_HASH=$(echo -n "$EMAIL_LOWER" | sha256sum | cut -d' ' -f1)
+# ── Promote user to admin ─────────────────────────────────────────
+echo "[2/5] Setare is_admin=TRUE..."
+EMAIL_HASH=$(echo -n "$EMAIL" | sha256sum | cut -d' ' -f1)
 
-UPDATED=$(docker exec -i nuviax_db \
+UPDATED_ID=$(docker exec -i nuviax_db \
   psql -U nuviax -d nuviax -t -A \
   -c "UPDATE users SET is_admin=TRUE WHERE email_hash='${EMAIL_HASH}' RETURNING id;" 2>&1)
 
-[[ -z "$UPDATED" || "$UPDATED" == "UPDATE 0" ]] && {
-  echo "✗ Utilizatorul nu a fost găsit în DB."
-  echo "  Utilizatori existenți:"
+if [[ -z "$UPDATED_ID" || "$UPDATED_ID" == "UPDATE 0" ]]; then
+  echo "✗ Utilizatorul nu a fost găsit în DB după register."
   docker exec -i nuviax_db psql -U nuviax -d nuviax \
-    -c "SELECT full_name, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 5;"
+    -c "SELECT id, full_name, is_admin, created_at FROM users ORDER BY created_at DESC LIMIT 10;"
   exit 1
-}
-echo "✓ is_admin=TRUE setat"
+fi
 
-# ── Verificare finală ─────────────────────────────────────────────
-echo "[3/3] Verificare..."
+echo "✓ Utilizator promovat admin"
+
+# ── Verify login works ────────────────────────────────────────────
+echo "[3/5] Verificare login API..."
+LOGIN_CODE=$(docker exec -i nuviax_app sh -lc "curl -s -o /tmp/nv_login_resp.json -w '%{http_code}' \
+  -X POST http://nuviax_api:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}'")
+
+if [[ "$LOGIN_CODE" != "200" ]]; then
+  echo "✗ Login a eșuat (HTTP $LOGIN_CODE)."
+  echo "Răspuns:"
+  docker exec -i nuviax_app cat /tmp/nv_login_resp.json || true
+  exit 1
+fi
+echo "✓ Login API valid"
+
+# ── Verify admin flag in DB ───────────────────────────────────────
+echo "[4/5] Verificare flag admin..."
 docker exec -i nuviax_db psql -U nuviax -d nuviax \
   -c "SELECT id, full_name, is_admin, is_active FROM users WHERE email_hash='${EMAIL_HASH}';"
 
+# ── Final instructions ────────────────────────────────────────────
+echo "[5/5] Instrucțiuni acces panel"
 echo ""
-echo "✓ Gata!"
-echo "  Login : https://nuviax.app/auth/login"
-echo "  Email : $EMAIL_LOWER"
-echo "  Admin : https://nuviax.app/admin"
+echo "✅ Gata. Folosește aceste date la login:"
+echo "   Email   : $EMAIL"
+echo "   Password: $PASSWORD"
+echo ""
+echo "Apoi intră la: https://nuviax.app/admin"
+echo "Dacă vezi 404/Acces restricționat, fă logout/login și refresh hard (Ctrl+Shift+R)."
 echo ""

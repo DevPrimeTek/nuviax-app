@@ -185,6 +185,10 @@ func (s *Scheduler) jobComputeDailyScore() {
 			continue
 		}
 		db.UpsertGoalScore(ctx, s.db, g.id, score, grade)
+		if err := db.ComputeGrowthTrajectory(ctx, s.db, g.id, time.Now()); err != nil {
+			logger.Warn("[scheduler] trajectory failed",
+				zap.Error(err), zap.String("goal", g.id.String()))
+		}
 	}
 
 	logger.Info("Job: ComputeDailyScore done", zap.Int("goals", len(goals)))

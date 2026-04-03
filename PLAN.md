@@ -24,7 +24,7 @@
 | 2 | SA-1 | ✅ DONE | Grafic progres populat |
 | 3 | SA-3 | ✅ DONE | SRM L1 auto-trigger activ |
 | 4 | SA-4 + SA-5 | ✅ DONE | Buton L2 + reducere tasks |
-| 5 | SA-2 + SA-6 | ⏳ PENDING | Achievements + SRM fallback |
+| 5 | SA-2 + SA-6 | ✅ DONE | Achievements + SRM fallback |
 | 6 | CI/CD tests | ⏳ PENDING | Tests la fiecare push (după demo) |
 
 ---

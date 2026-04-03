@@ -105,6 +105,8 @@ git branch --show-current
 | CE-1 table name fix | ✅ Fixed — trajectory query uses `global_objectives` (not `goals`) |
 | SA-1 trajectory call | ✅ Fixed — `jobComputeDailyScore` now calls `fn_compute_growth_trajectory` |
 | SA-3 SRM L1 auto-trigger | ✅ Fixed — `jobDetectStagnation` now writes `srm_events` L1 after 5 inactive days |
+| SA-4 ConfirmSRML2 adj | ✅ Fixed — `ConfirmSRML2` now calls `CreateContextAdjustment` (AdjEnergyLow, +7d) |
+| SA-5 SRMWarning L2 button | ✅ Fixed — L2 confirm button added to `SRMWarning.tsx` |
 | Stripe monetization | 📅 Planned Sprint 4 |
 
 ---

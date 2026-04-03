@@ -85,6 +85,14 @@ func (h *Handlers) ConfirmSRML2(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Niciun eveniment SRM L2 activ de confirmat."})
 	}
 
+	tomorrow := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour)
+	endDate := tomorrow.AddDate(0, 0, 7)
+	note := "srm_l2_confirm"
+	if _, err := db.CreateContextAdjustment(c.Context(), h.db, goalID, userID,
+		models.AdjEnergyLow, tomorrow, &endDate, &note); err != nil {
+		return serverError(c, err)
+	}
+
 	return c.JSON(fiber.Map{
 		"goal_id":   goalID,
 		"message":   "SRM Level 2 confirmat. Recalibrare structurală aplicată. Intensitatea sarcinilor va fi ajustată.",

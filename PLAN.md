@@ -22,7 +22,7 @@
 |---|------|--------|----------|
 | 1 | SA-7 + CE-1 | ✅ DONE | Cron fix + trajectory null rezolvat |
 | 2 | SA-1 | ✅ DONE | Grafic progres populat |
-| 3 | SA-3 | ⏳ PENDING | SRM L1 auto-trigger activ |
+| 3 | SA-3 | ✅ DONE | SRM L1 auto-trigger activ |
 | 4 | SA-4 + SA-5 | ⏳ PENDING | Buton L2 + reducere tasks |
 | 5 | SA-2 + SA-6 | ⏳ PENDING | Achievements + SRM fallback |
 | 6 | CI/CD tests | ⏳ PENDING | Tests la fiecare push (după demo) |

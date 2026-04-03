@@ -104,6 +104,7 @@ git branch --show-current
 | SA-7 cron fix | ✅ Fixed — `jobRecalibrateRelevance` now runs weekly (`0 2 * * 0`) |
 | CE-1 table name fix | ✅ Fixed — trajectory query uses `global_objectives` (not `goals`) |
 | SA-1 trajectory call | ✅ Fixed — `jobComputeDailyScore` now calls `fn_compute_growth_trajectory` |
+| SA-3 SRM L1 auto-trigger | ✅ Fixed — `jobDetectStagnation` now writes `srm_events` L1 after 5 inactive days |
 | Stripe monetization | 📅 Planned Sprint 4 |
 
 ---

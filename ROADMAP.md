@@ -1,6 +1,6 @@
 # ROADMAP.md — NuviaX Delivery Roadmap (Framework Rev 5.6)
 
-> Versiune: 11.0.0  
+> Versiune: 11.1.0  
 > Ultima actualizare: 2026-04-03
 
 ---
@@ -49,7 +49,11 @@
 
 **Rezultat așteptat:** scoruri robuste, rezistente la abuz și mai predictibile.
 
----
+### M2 — Seasonal Engine Alignment (P0)
+**Perioadă:** Sprint 2
+- Introducere `execution_windows`
+- Introducere `SEASONAL_PAUSE`
+- Ajustare continuity/GORI conform Rev 5.6
 
 ## M4 — Verification & Governance (P2)
 **Perioadă:** Sprint 4

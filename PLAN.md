@@ -1,12 +1,14 @@
 # PLAN.md — NuviaX Framework Rev 5.6 Full Alignment Plan
 
-> Versiune: 11.0.0  
+> Versiune: 11.1.0  
 > Actualizat: 2026-04-03  
 > Scop: implementare 100% a logicii Framework Rev 5.6 + pregătire pentru execuție Unit/Integration tests
 
 ---
 
 ## 1) Obiectiv executiv
+
+**Regulă de operare:** orice sesiune începe cu `CLAUDE.md` (source of truth) și apoi cu fișierele strict necesare task-ului.
 
 Acest plan înlocuiește planul vechi bazat pe "session prompts" și devine documentul principal de implementare arhitecturală.
 

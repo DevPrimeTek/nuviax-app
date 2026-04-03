@@ -722,6 +722,13 @@ func (s *Scheduler) jobDetectStagnation() {
 		if err == nil {
 			detected++
 			cache.InvalidateDashboard(ctx, s.redis, g.userID.String())
+			// SA-3: auto-trigger SRM L1 if no active SRM event exists for this goal
+			existingLevel, _ := db.GetActiveSRMLevel(ctx, s.db, g.id)
+			if existingLevel == "" {
+				if err := db.InsertSRMEvent(ctx, s.db, g.id, "L1", "stagnation_5days"); err != nil {
+					logger.Error("[scheduler] SRM L1 failed", zap.String("goal", g.id.String()), zap.Error(err))
+				}
+			}
 		}
 	}
 

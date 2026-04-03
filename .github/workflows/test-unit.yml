@@ -1,0 +1,16 @@
+name: Unit Tests
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Unit tests
+        working-directory: backend
+        run: go test ./internal/engine/... -v -count=1

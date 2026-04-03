@@ -4,6 +4,9 @@ Platformă SaaS de management al obiectivelor personale și profesionale, bazat�
 
 **Versiune curentă:** `10.5.0` | **Status:** Production Ready
 
+![Unit Tests](https://github.com/DevPrimeTek/nuviax-app/actions/workflows/test-unit.yml/badge.svg)
+![Integration Tests](https://github.com/DevPrimeTek/nuviax-app/actions/workflows/test-integration.yml/badge.svg)
+
 ---
 
 ## Linkuri

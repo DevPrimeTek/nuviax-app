@@ -66,10 +66,6 @@ ROADMAP.md               # roadmap livrare
 CLAUDE.md                # context master de lucru
 ```
 
----
-
-## API (high-level)
-
 - Auth: register/login/forgot/reset
 - Goals: create/list/detail/progress/visualization
 - Today: list/complete/personal
@@ -122,7 +118,7 @@ Scriptul:
 
 > Login se face cu **email**, nu cu username. Pentru comanda de mai sus, email-ul devine `sbarbu_admin@nuviax.app`.
 
----
+Health check:
 
 ## Deployment
 

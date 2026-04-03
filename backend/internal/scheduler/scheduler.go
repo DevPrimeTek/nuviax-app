@@ -489,9 +489,10 @@ func (s *Scheduler) jobGenerateCeremonies() {
 	logger.Info("Job: GenerateCeremonies", zap.Time("date", yesterday))
 
 	rows, err := s.db.Query(ctx, `
-		SELECT s.id, s.go_id,
+		SELECT s.id, s.go_id, g.user_id,
 		       EXISTS(SELECT 1 FROM evolution_sprints WHERE sprint_id = s.id) AS is_evolution
 		FROM sprints s
+		JOIN global_objectives g ON g.id = s.go_id
 		WHERE s.status = 'COMPLETED'
 		  AND DATE(s.updated_at) = $1
 		  AND NOT EXISTS (
@@ -507,13 +508,17 @@ func (s *Scheduler) jobGenerateCeremonies() {
 
 	ceremonyCount := 0
 	for rows.Next() {
-		var sprintID, goalID uuid.UUID
+		var sprintID, goalID, userID uuid.UUID
 		var isEvolution bool
-		if err := rows.Scan(&sprintID, &goalID, &isEvolution); err != nil {
+		if err := rows.Scan(&sprintID, &goalID, &userID, &isEvolution); err != nil {
 			continue
 		}
 		if err := s.engine.GenerateCompletionCeremony(ctx, sprintID, goalID, isEvolution); err == nil {
 			ceremonyCount++
+			if err := db.AwardAchievementIfEarned(ctx, s.db, userID, sprintID); err != nil {
+				logger.Warn("[scheduler] achievement failed for sprint",
+					zap.String("sprint", sprintID.String()), zap.Error(err))
+			}
 		}
 	}
 
@@ -633,7 +638,10 @@ func (s *Scheduler) jobCheckSRMTimeouts() {
 			zap.String("goal_id", goalID.String()),
 			zap.String("fallback", fallback),
 			zap.Float64("hours_since", hoursSince))
-		// TODO: engine.ApplySRMFallback(ctx, goalID, fallback)
+		resolvedFallback := engine.ComputeSRMFallback("L3", hoursSince)
+		if err := db.InsertSRMEvent(ctx, s.db, goalID, resolvedFallback, "srm_timeout_fallback"); err != nil {
+			logger.Warn("[scheduler] SRM fallback failed", zap.Error(err))
+		}
 		timeoutCount++
 	}
 

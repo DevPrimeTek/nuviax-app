@@ -1,227 +1,137 @@
 # NuviaX
 
-Platformă SaaS de management al obiectivelor personale și profesionale, bazată pe **NUViaX Growth Framework REV 5.6** — sistem proprietar cu 40 de componente matematice (C1–C40) distribuite pe 5 niveluri.
+Platformă SaaS de management al obiectivelor personale/profesionale, construită pe **NuviaX Growth Framework Rev 5.6**.
 
-**Versiune curentă:** `10.5.0` | **Status:** Production Ready
-
-![Unit Tests](https://github.com/DevPrimeTek/nuviax-app/actions/workflows/test-unit.yml/badge.svg)
-![Integration Tests](https://github.com/DevPrimeTek/nuviax-app/actions/workflows/test-integration.yml/badge.svg)
+**Versiune documentație:** `11.0.0` (Architect Sync)  
+**Stare produs:** în aliniere completă Framework (program M1–M4 activ)
 
 ---
 
 ## Linkuri
 
-| | URL |
-|--|-----|
-| Aplicație | https://nuviax.app |
+| Componentă | URL |
+|---|---|
+| App | https://nuviax.app |
 | Landing | https://nuviaxapp.com |
 | API | https://api.nuviax.app |
-| Repository | https://github.com/DevPrimeTek/nuviax-app |
+| Repo | https://github.com/DevPrimeTek/nuviax-app |
 
 ---
 
-## Stack Tehnic
+## Stack
 
-| Layer | Tehnologie |
-|-------|-----------|
-| Backend | Go 1.22 + Fiber v2.52 |
-| Database | PostgreSQL 16 (Docker) |
-| Cache | Redis 7 (Docker) |
-| Frontend | Next.js 14 + TypeScript + Tailwind |
-| Auth | JWT RS256 (RSA 4096-bit) |
-| AI | Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) |
-| Email | Resend.com |
-| CI/CD | GitHub Actions → DockerHub → VPS SSH |
-| Proxy | nginx-proxy + acme-companion |
+- Backend: Go + Fiber
+- DB: PostgreSQL
+- Cache/Sessions: Redis
+- Frontend: Next.js + TypeScript
+- AI: Anthropic Claude Haiku
+- Email: Resend
+- CI/CD: GitHub Actions → DockerHub → VPS
 
 ---
 
-## NUViaX Framework REV 5.6 — 40 Componente
+## Framework alignment program (important)
 
-| Layer | Componente | Fișier engine |
-|-------|-----------|--------------|
-| Layer 0 | C1–C8: Drift, Chaos Index, ALI, Priority, Behavior | `engine.go` |
-| Level 1 | C9–C18: Sprint Architecture, Task Generation, Relevance | `level1_structural.go` |
-| Level 2 | C19–C25: Execution Rate, Sprint Score (40/25/25/10), Stagnation | `level2_execution.go` |
-| Level 3 | C26–C31: Consistency, Energy, Context, Focus Rotation | `level3_adaptive.go` |
-| Level 4 | C32–C36: Activation Rules, Future Vault, SRM L1/L2/L3 | `level4_regulatory.go` |
-| Level 5 | C37–C40: Evolution Sprints, Ceremonies, Achievements, Visualization | `level5_growth.go` |
+În prezent se execută programul de aliniere completă Rev 5.6, organizat pe 4 milestones:
 
-**Principiu:** Toate calculele rulează exclusiv server-side. Clientul primește doar rezultate opace (%, grade, liste).
+1. **M1:** Behavior Model canonic + SRM single-active-level
+2. **M2:** `execution_windows` + `SEASONAL_PAUSE`
+3. **M3:** Regression pipeline + Temporal validity (A3)
+4. **M4:** verification final (docs + tests + compliance matrix)
+
+Detalii:
+- `PLAN.md`
+- `ROADMAP.md`
+- `docs/framework_100_percent_implementation_playbook.md`
+- `docs/framework_workflow_deviations_stress_test.md`
 
 ---
 
-## Structura Repo
+## Structură repo
 
 ```
-nuviax-app/
-├── .github/workflows/     # CI/CD: deploy.yml + deploy-frontend.yml
-├── backend/
-│   ├── cmd/server/        # Entry point
-│   ├── internal/
-│   │   ├── ai/            # Claude Haiku client
-│   │   ├── api/           # Fiber server + handlers + middleware
-│   │   ├── engine/        # Framework REV 5.6 (Layer 0 + Level 1-5)
-│   │   ├── db/            # PostgreSQL queries
-│   │   ├── email/         # Resend.com client
-│   │   └── scheduler/     # 12 cron jobs
-│   └── migrations/        # 010 migrări aplicate
-├── frontend/
-│   ├── app/               # Next.js → nuviax.app
-│   └── landing/           # Next.js static → nuviaxapp.com
-├── infra/                 # Docker Compose + scripts server
-├── docs/                  # Documentație extinsă
-│   └── archive/           # Specificații originale framework
-├── CLAUDE.md              # Context master Claude Code
-├── ROADMAP.md             # Plan dezvoltare
-└── README.md              # Acest fișier
+backend/                 # API, engine, scheduler, migrations
+frontend/app/            # aplicația principală
+frontend/landing/        # landing site
+docs/                    # documentație produs/testare/arhitectură
+PLAN.md                  # plan implementare
+ROADMAP.md               # roadmap livrare
+CLAUDE.md                # context master de lucru
 ```
 
 ---
 
-## Database
+## API (high-level)
 
-**10 migrări → 28 tabele, 26+ views, 1 materialized view, 10 funcții, 12 triggers**
+- Auth: register/login/forgot/reset
+- Goals: create/list/detail/progress/visualization
+- Today: list/complete/personal
+- SRM: status + confirm L2 + confirm L3
+- Achievements/Ceremonies
+- Settings/Profile activity
+
+> Contractele detaliate sunt în `docs/user-workflow.md`.
+
+---
+
+## Testare (Unit + Integration)
+
+### Backend validation quick run
 
 ```bash
-# Aplică toate migrările (idempotent)
-docker exec -i nuviax_db psql -U nuviax -d nuviax < backend/migrations/apply_all.sql
+bash backend/scripts/test_all.sh
 ```
+
+### API smoke checks
+
+```bash
+TOKEN=<jwt> bash backend/scripts/test_api.sh http://localhost:8080/api/v1
+```
+
+### Plan complet de testare
+
+- `docs/testing/test-plan.md`
+- `docs/testing/flows/*.md`
+- `docs/testing/scenarios/*.md`
 
 ---
 
-## API Endpoints principale
 
-```
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login
-POST   /api/v1/auth/forgot-password
-POST   /api/v1/auth/reset-password
+## Acces rapid panel admin
 
-GET    /api/v1/dashboard
-GET    /api/v1/goals                    # {goals:[], waiting:[]}
-POST   /api/v1/goals
-POST   /api/v1/goals/analyze            # AI GO validation (SMART check)
-POST   /api/v1/goals/suggest-category   # AI category suggestion (Sprint 3)
-GET    /api/v1/goals/:id
-GET    /api/v1/goals/:id/progress
-GET    /api/v1/goals/:id/visualize      # Level 5 charts
+Dacă un utilizator vede "Acces restricționat" pe `/admin`, cauza este aproape întotdeauna `is_admin = FALSE` în DB.
 
-GET    /api/v1/profile/activity         # 365-day activity data for heatmap (Sprint 3)
+Bootstrap automat cont admin:
 
-GET    /api/v1/today
-POST   /api/v1/today/complete/:id
-POST   /api/v1/today/personal
-
-GET    /api/v1/ceremonies/unviewed
-POST   /api/v1/ceremonies/:id/view
-GET    /api/v1/achievements
-
-GET    /api/v1/srm/status/:goalId
-POST   /api/v1/srm/confirm-l3/:goalId
+```bash
+bash scripts/setup_admin.sh sbarbu_admin 'NuviaXAdmin#2026' 'Sbarbu Admin'
 ```
 
----
+Scriptul:
+1. creează contul (dacă nu există),
+2. setează `is_admin=TRUE`,
+3. verifică login-ul API,
+4. afișează credențialele finale.
 
-## Scheduler Jobs (12)
-
-| Cron | Job |
-|------|-----|
-| `00:00` | Generare sarcini zilnice |
-| `23:50` | Calcul scor zilnic |
-| `23:55` | Verificare progres |
-| `00:01` | Închidere sprinturi expirate + trimitere email Sprint Complet |
-| `01:00` | Detecție Evolution Sprints |
-| `01:05` | Generare Ceremonies (BRONZE→PLATINUM) |
-| `02:00` | Verificare timeout SRM + refresh matview |
-| `00:05` | Propunere reactivare obiective PAUSED |
-| `23:58` | Detecție stagnare (≥5 zile inactive) |
-| `02:00/90d` | Recalibrare relevanță anuală |
+> Login se face cu **email**, nu cu username. Pentru comanda de mai sus, email-ul devine `sbarbu_admin@nuviax.app`.
 
 ---
 
 ## Deployment
 
+Push pe `main` declanșează pipeline CI/CD (build + deploy).
+
+Health check:
+
 ```bash
-# Automat: push pe main → GitHub Actions → DockerHub → VPS
-git push origin main
-
-# Health check
 curl https://api.nuviax.app/health
-# {"status":"ok","db":true,"redis":true}
-
-# Manual (pe server)
-bash infra/deploy.sh
-```
-
-**GitHub Secrets necesare:** `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_KEY`, `DOCKERHUB_TOKEN`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, `ENCRYPTION_KEY`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`
-
-Detalii complete: [`docs/deployment.md`](docs/deployment.md)
-
----
-
-## Environment Variables
-
-```env
-# Database
-POSTGRES_HOST=nuviax_db
-POSTGRES_PASSWORD=<openssl rand -base64 32>
-POSTGRES_DB=nuviax
-
-# Redis
-REDIS_HOST=nuviax_redis
-REDIS_PASSWORD=<openssl rand -base64 32>
-
-# Auth
-JWT_PRIVATE_KEY=<RSA 4096-bit base64>
-JWT_PUBLIC_KEY=<RSA 4096-bit public base64>
-ENCRYPTION_KEY=<openssl rand -hex 32>
-
-# Integrări (opționale — graceful degradation dacă lipsesc)
-ANTHROPIC_API_KEY=sk-ant-...
-RESEND_API_KEY=re_...
-EMAIL_FROM=noreply@nuviax.app
 ```
 
 ---
 
-## Securitate
+## Reguli de securitate
 
-- **Engine opac** — formulele nu ies niciodată din `internal/engine/`
-- **JWT RS256** — access 15min, refresh 7 zile
-- **Email criptat** — AES-256-GCM + SHA-256 hash pentru lookup
-- **Admin 404** — panel returnează 404 (nu 403) pentru non-admini
-- **Timing-safe** — `forgot-password` returnează mereu 200
+- Nu expune metrici/formule interne ale engine-ului în API.
+- Nu comite secrete în repository.
+- Pentru non-admin, endpoint-urile admin trebuie mascate (404 policy).
 
----
-
-## Documentație
-
-| Document | Conținut |
-|----------|---------|
-| [`CLAUDE.md`](CLAUDE.md) | Context master pentru sesiuni Claude Code |
-| [`ROADMAP.md`](ROADMAP.md) | Plan și priorități dezvoltare |
-| [`CHANGES.md`](CHANGES.md) | Changelog detaliat |
-| [`docs/project-structure.md`](docs/project-structure.md) | Structura completă repo |
-| [`docs/database-reference.md`](docs/database-reference.md) | Schema DB, migrări, triggers |
-| [`docs/integrations.md`](docs/integrations.md) | AI + Email implementare |
-| [`docs/deployment.md`](docs/deployment.md) | VPS, Docker, CI/CD |
-| [`docs/history-bugs-gaps.md`](docs/history-bugs-gaps.md) | Bug-uri rezolvate, gap-uri |
-| [`CLIENT_TODO.md`](CLIENT_TODO.md) | Acțiuni necesare din partea proprietarului |
-
----
-
-## Changelog
-
-| Versiune | Data | Descriere |
-|---------|------|-----------|
-| v10.5.0 | 2026-03-29 | Sprint 3 complete: i18n EN/RU (today PoC), AI category onboarding, activity heatmap, theme persistence (migration 012) |
-| v10.4.2 | 2026-03-29 | G-11 Behavior Model dominance; migration 011; ApplyEvolveOverride |
-| v10.4.1 | 2026-03-29 | Restructurare docs/, CLAUDE.md optimizat, CLIENT_TODO |
-| v10.4.0 | 2026-03-26 | P1 Gaps G-1—G-10, G-12 (10/12); migration 010 |
-| v10.3.0 | 2026-03-25 | Email Resend: welcome + sprint + forgot/reset parolă |
-| v10.2.0 | 2026-03-24 | Bug fixes B-2—B-11; AI Claude Haiku; upload avatar |
-| v10.1.0 | 2026-03-20 | Admin Panel; P0 Gaps critice |
-| v10.0.0 | 2026-03-16 | Framework REV 5.6 40/40; CI/CD complet |
-
-> Changelog detaliat: [`CHANGES.md`](CHANGES.md)

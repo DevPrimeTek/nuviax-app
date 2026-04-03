@@ -103,6 +103,7 @@ git branch --show-current
 | Dark/Light Theme (persistence) | ✅ Implemented (v10.5.0) — localStorage + backend (migration 012) |
 | SA-7 cron fix | ✅ Fixed — `jobRecalibrateRelevance` now runs weekly (`0 2 * * 0`) |
 | CE-1 table name fix | ✅ Fixed — trajectory query uses `global_objectives` (not `goals`) |
+| SA-1 trajectory call | ✅ Fixed — `jobComputeDailyScore` now calls `fn_compute_growth_trajectory` |
 | Stripe monetization | 📅 Planned Sprint 4 |
 
 ---

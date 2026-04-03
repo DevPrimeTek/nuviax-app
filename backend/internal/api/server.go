@@ -92,93 +92,19 @@ func NewServer(cfg Config) *fiber.App {
 			return c.Status(429).JSON(fiber.Map{"error": "Prea multe încercări."})
 		},
 	}))
-	ag.Post("/register",        h.Register)
-	ag.Post("/login",           h.Login)
-	ag.Post("/refresh",         h.RefreshToken)
-	ag.Post("/mfa/verify",      h.MFAVerify)
+	ag.Post("/register", h.Register)
+	ag.Post("/login", h.Login)
+	ag.Post("/refresh", h.RefreshToken)
+	ag.Post("/mfa/verify", h.MFAVerify)
 	ag.Post("/forgot-password", h.ForgotPassword)
-	ag.Post("/reset-password",  h.ResetPassword)
+	ag.Post("/reset-password", h.ResetPassword)
 
-	// Protected
+	// Protected auth routes
 	jwtMW := middleware.JWTAuth(authSvc, cfg.Redis)
 	p := app.Group("/api/v1", jwtMW)
 
-	p.Post("/auth/logout",     h.Logout)
+	p.Post("/auth/logout", h.Logout)
 	p.Post("/auth/mfa/enable", h.MFAEnable)
-
-	p.Get("/dashboard", h.GetDashboard)
-
-	p.Get("/goals",                   h.GetGoals)
-	p.Post("/goals",                  h.CreateGoal)
-	p.Post("/goals/analyze",          h.AnalyzeGO)
-	p.Post("/goals/suggest-category", h.SuggestCategory)
-	p.Get("/goals/:id",           h.GetGoal)
-	p.Patch("/goals/:id",         h.UpdateGoal)
-	p.Delete("/goals/:id",        h.ArchiveGoal)
-	p.Get("/goals/:id/progress",  h.GetGoalProgress)
-	p.Post("/goals/:id/activate", h.ActivateGoal)
-
-	p.Get("/today",               h.GetTodayTasks)
-	p.Post("/today/complete/:id", h.CompleteTask)
-	p.Post("/today/personal",     h.AddPersonalTask)
-
-	// Recap (B-8 fix)
-	p.Get("/recap/current",        h.GetCurrentRecap)
-	p.Post("/goals/:id/recap",     h.SaveGoalRecap)
-
-	p.Get("/sprints/current/:goalId", h.GetCurrentSprint)
-	p.Get("/sprints/:id/score",       h.GetSprintScore)
-	p.Post("/sprints/:id/reflection", h.SaveReflection)
-	p.Post("/sprints/:id/close",      h.CloseSprint)
-
-	p.Post("/context/pause",          h.SetPause)
-	p.Post("/context/energy",         h.SetEnergy)
-	p.Get("/context/current/:goalId", h.GetContext)
-
-	p.Get("/settings",                  h.GetSettings)
-	p.Patch("/settings",               h.UpdateSettings)
-	p.Post("/settings/password",       h.ChangePassword)
-	p.Post("/settings/avatar",         h.UploadAvatar)
-	p.Get("/settings/avatar/:filename", h.ServeAvatar)
-	p.Get("/settings/sessions",        h.GetSessions)
-	p.Delete("/settings/sessions/:id", h.RevokeSession)
-	p.Get("/settings/export",          h.ExportData)
-
-	p.Get("/profile/activity", h.GetProfileActivity)
-
-	// ── Level 4 & 5 endpoints ──────────────────────────────────
-	// Ceremonies (Level 5 — C38)
-	// NOTE: static segment /unviewed must be registered before /:goalId
-	p.Get("/ceremonies/unviewed",      h.GetUnviewedCeremonies)
-	p.Get("/ceremonies/:goalId",       h.GetLatestCeremony)
-	p.Post("/ceremonies/:id/view",     h.MarkCeremonyViewed)
-
-	// Achievements (Level 5 — C39)
-	p.Get("/achievements",             h.GetUserAchievements)
-	p.Get("/achievements/progress",    h.GetAchievementProgress)
-
-	// SRM — Strategic Reset Mode (Level 4 — C33-C36) — G-12
-	p.Get("/srm/status/:goalId",       h.GetSRMStatus)
-	p.Post("/srm/confirm-l2/:goalId",  h.ConfirmSRML2)  // single confirm
-	p.Post("/srm/confirm-l3/:goalId",  h.ConfirmSRML3)  // double confirm (auto-pauses goal)
-
-	// Progress visualization (Level 5 — C40)
-	p.Get("/goals/:id/visualize",      h.GetProgressVisualization)
-
-	// ── Admin Panel ─────────────────────────────────────────────────
-	// All admin routes require JWT + is_admin = TRUE (AdminOnly middleware).
-	// Returns 404 to non-admins to avoid leaking the panel's existence.
-	adminMW := middleware.AdminOnly(cfg.DB)
-	adm := app.Group("/api/v1/admin", jwtMW, adminMW)
-
-	adm.Get("/stats",                  h.AdminGetStats)
-	adm.Get("/users",                  h.AdminGetUsers)
-	adm.Get("/audit",                  h.AdminGetAuditLog)
-	adm.Get("/health",                 h.AdminGetHealth)
-	adm.Post("/users/:id/deactivate",  h.AdminDeactivateUser)
-	adm.Post("/users/:id/activate",    h.AdminActivateUser)
-	adm.Post("/users/:id/promote",     h.AdminPromoteUser)
-	adm.Post("/db/reset",              h.AdminDevReset)
 
 	return app
 }

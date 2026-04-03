@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">NuviaX</div>
+        <Link href="https://nuviaxapp.com" className="auth-logo">NUVia<span>X</span></Link>
         <h1 className="auth-title">Resetare parolă</h1>
 
         {sent ? (
@@ -32,35 +32,35 @@ export default function ForgotPasswordPage() {
               Dacă adresa există în sistem, vei primi un email cu instrucțiuni de resetare.
               Verifică și dosarul Spam.
             </p>
-            <Link href="/auth/login" className="btn-primary" style={{ display: 'inline-block' }}>
+            <Link href="/auth/login" className="auth-btn" style={{ display: 'inline-block' }}>
               Înapoi la autentificare
             </Link>
           </div>
         ) : (
-          <form onSubmit={submit}>
+          <form onSubmit={submit} className="auth-form">
             <p className="auth-sub">
               Introdu adresa de email asociată contului tău.
             </p>
-            <label className="field-label">Email</label>
-            <input
-              type="email"
-              className="field-input"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="email@exemplu.com"
-              required
-              autoComplete="email"
-            />
-            <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', marginTop: 16 }}>
+            <div className="auth-field">
+              <label className="auth-label">Email</label>
+              <input
+                type="email"
+                className="auth-input"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="email@exemplu.com"
+                required
+                autoComplete="email"
+              />
+            </div>
+            <button type="submit" className="auth-btn" disabled={loading}>
               {loading ? 'Se trimite…' : 'Trimite link de resetare'}
             </button>
-            <p className="auth-sub" style={{ marginTop: 16, textAlign: 'center' }}>
-              <Link href="/auth/login" style={{ color: 'var(--l0)' }}>
-                Înapoi la autentificare
-              </Link>
-            </p>
           </form>
         )}
+        <p className="auth-footer">
+          <Link href="/auth/login" className="auth-link">Înapoi la autentificare</Link>
+        </p>
       </div>
     </div>
   )

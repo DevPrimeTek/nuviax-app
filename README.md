@@ -76,6 +76,20 @@ CLAUDE.md                # context master de lucru
 
 ## Testare (Unit + Integration)
 
+
+- Auth: register/login/forgot/reset
+- Goals: create/list/detail/progress/visualization
+- Today: list/complete/personal
+- SRM: status + confirm L2 + confirm L3
+- Achievements/Ceremonies
+- Settings/Profile activity
+
+> Contractele detaliate sunt în `docs/user-workflow.md`.
+
+---
+
+## Testare (Unit + Integration)
+
 ### Backend validation quick run
 
 ```bash
@@ -116,6 +130,16 @@ Scriptul:
 > Login se face cu **email**, nu cu username. Pentru comanda de mai sus, email-ul devine `sbarbu_admin@nuviax.app`.
 
 ---
+
+## Deployment
+
+Push pe `main` declanșează pipeline CI/CD (build + deploy).
+
+Health check:
+
+```bash
+curl https://api.nuviax.app/health
+```
 
 ## Deployment
 

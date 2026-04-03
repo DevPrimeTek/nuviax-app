@@ -63,7 +63,7 @@ func RunMigrations(pool *pgxpool.Pool) error {
 		"task_executions", "daily_metrics", "sprint_metrics",          // L2
 		"behavior_patterns", "consistency_snapshots", "adaptive_weights", // L3
 		"regulatory_events", "goal_activation_log", "resource_slots",  // L4
-		"growth_milestones", "achievement_badges", "ceremonies", "growth_trajectories", // L5
+		"growth_milestones", "achievement_badges", "ceremonies", "growth_trajectories", "completion_ceremonies", // L5
 	}
 
 	allTables := append(coreTables, frameworkTables...)

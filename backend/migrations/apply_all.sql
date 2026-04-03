@@ -53,16 +53,20 @@
 \i 009_password_reset.sql
 
 -- ── Migration 010: P1 Gap Tables ───────────────────────────────
-\echo '[010/012] Applying P1 gap tables (srm_events, reactivation_protocols, stagnation_events)...'
+\echo '[010/013] Applying P1 gap tables (srm_events, reactivation_protocols, stagnation_events)...'
 \i 010_p1_gaps.sql
 
 -- ── Migration 011: Behavior Model ───────────────────────────────
-\echo '[011/012] Applying Behavior Model (dominant_behavior_model on global_objectives)...'
+\echo '[011/013] Applying Behavior Model (dominant_behavior_model on global_objectives)...'
 \i 011_behavior_model.sql
 
 -- ── Migration 012: User Theme Preference ────────────────────────
-\echo '[012/012] Applying User Theme (theme column on users)...'
+\echo '[012/013] Applying User Theme (theme column on users)...'
 \i 012_theme.sql
+
+-- ── Migration 013: Completion Ceremonies table ──────────────────
+\echo '[013/013] Applying Completion Ceremonies table...'
+\i 013_completion_ceremonies.sql
 
 \echo ''
 \echo '══════════════════════════════════════════════════════'

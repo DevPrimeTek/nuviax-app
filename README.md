@@ -130,7 +130,7 @@ Health check:
 curl https://api.nuviax.app/health
 ```
 
----
+Health check:
 
 ## Reguli de securitate
 

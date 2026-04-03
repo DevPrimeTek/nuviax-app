@@ -38,7 +38,11 @@
 
 **Rezultat așteptat:** GO sezoniere evaluate corect, fără penalizări false.
 
----
+### M2 — Seasonal Engine Alignment (P0)
+**Perioadă:** Sprint 2
+- Introducere `execution_windows`
+- Introducere `SEASONAL_PAUSE`
+- Ajustare continuity/GORI conform Rev 5.6
 
 ## M3 — Runtime Integrity (P1)
 **Perioadă:** Sprint 3

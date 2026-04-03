@@ -103,14 +103,6 @@ După rulare:
 3. refresh hard,
 4. deschide `https://nuviax.app/admin`.
 
-Dacă apare încă „Eroare internă” în admin:
-
-```bash
-docker exec -i nuviax_db psql -U nuviax -d nuviax < backend/migrations/apply_all.sql
-```
-
-Motiv tipic: migrații incomplete (ex: lipsește `completion_ceremonies` / view-uri admin).
-
 ---
 
 ## 4) Working rules for edits
@@ -144,3 +136,4 @@ Nu expune în API:
 Admin routes:
 - JWT valid + `is_admin=TRUE`
 - non-admin -> răspuns 404 (fără leak funcționalitate)
+

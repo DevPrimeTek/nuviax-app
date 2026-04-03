@@ -5,12 +5,6 @@
 
 ---
 
-## Rule of execution
-
-Orice activitate de roadmap începe din `CLAUDE.md`, care definește protocolul de analiză și indexul de fișiere pentru optimizare token/request.
-
----
-
 ## Snapshot
 
 | Arie | Status curent | Acțiune necesară |
@@ -24,11 +18,25 @@ Orice activitate de roadmap începe din `CLAUDE.md`, care definește protocolul 
 
 ## Milestone Roadmap
 
-### M1 — Structural Alignment (P0)
+## M1 — Structural Alignment (P0)
 **Perioadă:** Sprint 1
+
 - Behavior Model canonic (`CREATE/INCREASE/REDUCE/MAINTAIN/EVOLVE`)
 - SRM single-active-level enforcement
-- Actualizare contracte API/UI
+- Actualizare contracte API/UI pentru cele două schimbări
+
+**Rezultat așteptat:** dispar conflictele semantice și stările SRM ambigue.
+
+---
+
+## M2 — Seasonal Engine Alignment (P0)
+**Perioadă:** Sprint 2
+
+- Introducere `execution_windows`
+- Introducere `SEASONAL_PAUSE`
+- Ajustare continuity/GORI conform Rev 5.6
+
+**Rezultat așteptat:** GO sezoniere evaluate corect, fără penalizări false.
 
 ### M2 — Seasonal Engine Alignment (P0)
 **Perioadă:** Sprint 2
@@ -36,17 +44,29 @@ Orice activitate de roadmap începe din `CLAUDE.md`, care definește protocolul 
 - Introducere `SEASONAL_PAUSE`
 - Ajustare continuity/GORI conform Rev 5.6
 
-### M3 — Runtime Integrity (P1)
+## M3 — Runtime Integrity (P1)
 **Perioadă:** Sprint 3
+
 - Regression pipeline integrat end-to-end
 - Temporal validity A3 implementat formal
 - Semnalizare UX clară la regression/SRM
 
-### M4 — Verification & Governance (P2)
+**Rezultat așteptat:** scoruri robuste, rezistente la abuz și mai predictibile.
+
+### M2 — Seasonal Engine Alignment (P0)
+**Perioadă:** Sprint 2
+- Introducere `execution_windows`
+- Introducere `SEASONAL_PAUSE`
+- Ajustare continuity/GORI conform Rev 5.6
+
+## M4 — Verification & Governance (P2)
 **Perioadă:** Sprint 4
+
 - Actualizare completă documentație "as-built"
 - Compliance matrix C1..C40
 - Finalizare test suites Unit + Integration + Stress
+
+**Rezultat așteptat:** release gate obiectiv pentru "100% lucrativ".
 
 ---
 
@@ -69,9 +89,3 @@ Orice activitate de roadmap începe din `CLAUDE.md`, care definește protocolul 
 4. Număr deviații docs-vs-code = 0.
 5. Timp mediu de închidere incident SRM/regression.
 
----
-
-## Documentație structurată (citire rapidă)
-
-- Framework: `docs/framework/rev5_6/README.md` + fișierele pe layer.
-- Workflow: `docs/workflow/README.md` + secțiuni modulare.

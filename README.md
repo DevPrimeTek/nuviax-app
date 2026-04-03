@@ -49,8 +49,6 @@ Platformă SaaS de management al obiectivelor personale/profesionale, construit�
 Detalii:
 - `PLAN.md`
 - `ROADMAP.md`
-- `docs/framework/rev5_6/README.md` (framework structurat pe layere)
-- `docs/workflow/README.md` (workflow structurat pe secțiuni)
 - `docs/framework_100_percent_implementation_playbook.md`
 - `docs/framework_workflow_deviations_stress_test.md`
 
@@ -67,10 +65,6 @@ PLAN.md                  # plan implementare
 ROADMAP.md               # roadmap livrare
 CLAUDE.md                # context master de lucru
 ```
-
----
-
-## API (high-level)
 
 - Auth: register/login/forgot/reset
 - Goals: create/list/detail/progress/visualization
@@ -124,13 +118,7 @@ Scriptul:
 
 > Login se face cu **email**, nu cu username. Pentru comanda de mai sus, email-ul devine `sbarbu_admin@nuviax.app`.
 
-Dacă apare în continuare „Eroare internă” la `/admin`, rulează migrațiile:
-
-```bash
-bash scripts/apply_migrations.sh
-```
-
----
+Health check:
 
 ## Deployment
 
@@ -142,10 +130,11 @@ Health check:
 curl https://api.nuviax.app/health
 ```
 
----
+Health check:
 
 ## Reguli de securitate
 
 - Nu expune metrici/formule interne ale engine-ului în API.
 - Nu comite secrete în repository.
 - Pentru non-admin, endpoint-urile admin trebuie mascate (404 policy).
+

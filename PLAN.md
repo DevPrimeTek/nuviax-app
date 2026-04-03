@@ -142,9 +142,8 @@ Un release se aprobă doar dacă toate condițiile sunt adevărate:
 
 ## 6) Referințe operative
 
-- `docs/framework/rev5_6/README.md`
-- `docs/workflow/README.md`
 - `docs/framework_100_percent_implementation_playbook.md`
 - `docs/framework_workflow_deviations_stress_test.md`
 - `docs/testing/test-plan.md`
 - `docs/user-workflow.md`
+

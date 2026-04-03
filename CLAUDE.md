@@ -47,11 +47,9 @@ Read CLAUDE.md v11.1.0. Branch: <branch>. Task: <task>. Files to inspect: <max 3
 - `README.md` — quickstart + ops checks
 
 ## 2.2 Framework alignment docs
-- `docs/framework/rev5_6/README.md` (index)
-- `docs/framework/rev5_6/00-intro.md`
-- `docs/framework/rev5_6/10-layer0.md` ... `60-level5.md`
 - `docs/framework_100_percent_implementation_playbook.md`
 - `docs/framework_workflow_deviations_stress_test.md`
+- `NuviaX_Growth_Framework_Rev_5_6.md`
 
 ## 2.3 Runtime backend (Go)
 - `backend/internal/api/server.go` — routing map
@@ -73,7 +71,6 @@ Read CLAUDE.md v11.1.0. Branch: <branch>. Task: <task>. Files to inspect: <max 3
 - `docs/testing/test-plan.md` — master test plan
 - `docs/testing/scenarios/critical.md`
 - `docs/testing/scenarios/regression.md`
-- `docs/workflow/README.md` + `docs/workflow/sections/*.md` (workflow structurat)
 
 ---
 
@@ -105,14 +102,6 @@ După rulare:
 2. login cu email-ul final,
 3. refresh hard,
 4. deschide `https://nuviax.app/admin`.
-
-Dacă apare încă „Eroare internă” în admin:
-
-```bash
-bash scripts/apply_migrations.sh
-```
-
-Motiv tipic: migrații incomplete (ex: lipsește `completion_ceremonies` / view-uri admin).
 
 ---
 
@@ -147,3 +136,4 @@ Nu expune în API:
 Admin routes:
 - JWT valid + `is_admin=TRUE`
 - non-admin -> răspuns 404 (fără leak funcționalitate)
+

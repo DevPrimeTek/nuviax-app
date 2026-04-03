@@ -1,85 +1,118 @@
-# docs/testing/test-plan.md — NuviaX Test Plan
+# docs/testing/test-plan.md — NuviaX Master Test Plan (Unit + Integration)
 
-> Version: 10.5.0 | Last updated: 2026-03-30
-
----
-
-## Overview
-
-This directory contains the complete NuviaX testing documentation, split into modular sections.
-
-A feature that is not covered by a passing test scenario does not exist.
-
-### Structure
-
-```
-docs/testing/
-├── test-plan.md          ← this file (overview + how to run)
-├── flows/
-│   ├── goal-flow.md      ← User journey, goal creation, daily execution
-│   ├── srm-flow.md       ← SRM L1–L3 trigger, confirm, escalation
-│   ├── achievements.md   ← Achievement award, ceremony, badge storage
-│   └── visualization.md  ← Trajectory, charts, heatmap, progress bar
-└── scenarios/
-    ├── critical.md       ← TS-01–TS-12 + critical checkpoints (8.1–8.6)
-    └── regression.md     ← SA-1–SA-7 fix mapping + post-fix checklist
-```
+> Version: 11.1.0  
+> Last updated: 2026-04-03
 
 ---
 
-## How to Run Tests
+## 1) Obiectiv
 
-### Before implementing any feature
+**Prerequisite pentru orice task de testare:** pornește din `CLAUDE.md` pentru a selecta exact fișierele relevante și a evita context inutil.
 
-1. Open the relevant flow file under `flows/`
-2. Identify the related test scenario in `scenarios/critical.md` (TS-xx)
-3. Confirm the implementation satisfies the inputs, DB changes, API response, and frontend behavior defined in that flow
-
-### After implementing any feature
-
-State explicitly which test scenarios should now pass:
-
-```
-# Example commit message or session close note:
-# "SA-4 fix complete — TS-05 should pass: L2 confirm creates ENERGY_LOW
-#  context adjustment; next-day task count reduced."
-```
-
-Do not close a session without naming the test scenarios the implementation covers.
-
-### Quick Lookup
-
-| Task type | File to read |
-|---|---|
-| New feature | `flows/<relevant-flow>.md` → nearest TS-xx in `scenarios/critical.md` |
-| Bug fix | `scenarios/critical.md` (TS-xx that reproduces the bug) |
-| Scheduler job | `flows/achievements.md` or `flows/visualization.md` |
-| SRM change | `flows/srm-flow.md` → TS-04, TS-05, TS-06 |
-| API response change | `scenarios/critical.md` (8.1–8.2 opaque API rules → TS-12) |
-| Auth/security change | `scenarios/critical.md` (8.3–8.6) |
-| Sprint 3.1 system alignment fixes | `scenarios/regression.md` |
-
-### Hard Rules
-
-```
-NEVER implement a feature without first reading its flow file
-NEVER mark a task complete if its TS-xx scenario would still fail
-NEVER assume a feature works — identify the exact DB change and API response
-NEVER ship a fix for SA-1 through SA-7 without running its mapped test scenario
-```
+Acest document definește planul oficial de testare pentru validarea:
+1. comportamentului curent (as-built),
+2. aliniamentului cu Framework Rev 5.6,
+3. criteriilor de release.
 
 ---
 
-## Current Known Gaps (Sprint 3.1)
+## 2) Tipuri de teste obligatorii
 
-| Gap | Status | Verified By |
+## A. Unit tests (backend)
+Scop: validare logică izolată pentru engine/scheduler/helpers.
+
+Comandă principală:
+```bash
+cd backend && go test ./internal/engine/... -v
+```
+
+Comandă validare pachete compilabile + formatare:
+```bash
+bash backend/scripts/test_all.sh
+```
+
+## B. Integration tests (API + DB + scheduler)
+Scop: validare fluxuri end-to-end pe endpoint-uri și persistență.
+
+Smoke API:
+```bash
+TOKEN=<jwt> bash backend/scripts/test_api.sh http://localhost:8080/api/v1
+```
+
+Scenarii detaliate:
+- `docs/testing/scenarios/critical.md`
+- `docs/testing/scenarios/regression.md`
+
+Admin sanity check (după login ca admin):
+```bash
+curl -i -H "Authorization: Bearer <token_admin>" http://localhost:8080/api/v1/admin/stats
+```
+
+## C. Framework stress tests
+Scop: validarea regulilor avansate Rev 5.6 (anti-abuz, sezonalitate, SRM ierarhic).
+
+Set minim obligatoriu:
+- T1 Canonical BM integrity
+- T2 Seasonal pause continuity
+- T3 SRM hierarchy conflict
+- T4 Regression immediate signal
+- T5 Temporal validity abuse
+- T6 Opaque API security
+
+Referință: `docs/framework_100_percent_implementation_playbook.md`.
+
+---
+
+## 3) Test matrix (ce blochează release-ul)
+
+| Arie | Test minim | Blocker release dacă pică? |
 |---|---|---|
-| SA-1: `growth_trajectories` not populated | ❌ NOT IMPLEMENTED | TS-03, TS-08 |
-| SA-2: `fn_award_achievement_if_earned()` never called | ❌ NOT IMPLEMENTED | TS-07 |
-| SA-3: SRM L1 auto-trigger not wired | ❌ NOT IMPLEMENTED | TS-04 |
-| SA-4: SRM L2 confirm does not reduce task intensity | ❌ NOT IMPLEMENTED | TS-05 |
-| SA-5: `SRMWarning.tsx` missing L2 confirm button | ❌ NOT IMPLEMENTED | TS-05 (frontend) |
-| SA-6: `jobCheckSRMTimeouts` fallback not applied | ❌ NOT IMPLEMENTED | TS-06 |
-| SA-7: `jobRecalibrateRelevance` invalid cron (`*/90`) | ❌ NOT IMPLEMENTED | TS-04 (indirect) |
+| Engine scoring | Unit tests engine | DA |
+| SRM flow | TS-04, TS-05, TS-06 | DA |
+| Goals + daily loop | TS-01, TS-02 | DA |
+| Visualization | TS-03, TS-08 | DA |
+| Achievements/ceremonies | TS-07 | DA |
+| API opacity/security | TS-12 + security checks | DA |
+| Framework stress T1..T6 | Stress suite completă | DA (pentru milestone sign-off) |
 
-Full fix details and scenario mappings: `scenarios/regression.md`
+---
+
+## 4) Mapping la programul M1–M4
+
+| Milestone | Coverage minimă de test |
+|---|---|
+| M1 (BM + SRM single-active) | Unit BM validation + SRM integration + T1 + T3 |
+| M2 (Sezonalitate) | Seasonal integration tests + T2 |
+| M3 (Regression + A3) | Regression integration + temporal validity tests + T4 + T5 |
+| M4 (Verification) | Full regression suite + T6 + document checks |
+
+---
+
+## 5) Reguli de execuție pentru echipă
+
+1. Nu închizi task arhitectural fără test mapat explicit.
+2. Nu marchezi release ready dacă lipsește cel puțin un test blocker din matrix.
+3. Orice modificare la scoring/SRM necesită:
+   - minim 1 unit test nou/actualizat,
+   - minim 1 integration scenario executat.
+4. Orice contradicție docs-vs-code descoperită în testare se tratează ca defect de prioritate înaltă.
+
+---
+
+## 6) Evidență rezultate test
+
+La finalul fiecărui PR, include obligatoriu:
+- comenzi rulate,
+- rezultat (pass/fail/warn),
+- scenarii TS/Tx acoperite,
+- ce a rămas neacoperit și de ce.
+
+Format recomandat:
+
+```md
+✅ go test ./internal/engine/... -v
+✅ bash backend/scripts/test_all.sh
+⚠️ TOKEN=<jwt> bash backend/scripts/test_api.sh ... (TOKEN indisponibil în mediu CI local)
+Covered: TS-04, TS-05, T3
+Not covered: T2 (depinde de execution_windows, încă neimplementat)
+```

@@ -50,10 +50,6 @@ docker-dev:
 db-shell:
 	docker exec -it nuviax_db psql -U nuviax -d nuviax
 
-# Run init schema manually
-db-init:
-	docker exec -i nuviax_db psql -U nuviax -d nuviax < ../../infra/init-db.sql
-
 ## ── Keys generation ─────────────────────────────────────────
 
 # Generate RSA-4096 JWT keys

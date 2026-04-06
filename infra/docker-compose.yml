@@ -43,7 +43,6 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - nuviax_pg_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - nuviax_net
     # FĂRĂ port mapping extern — accesibil doar din nuviax_net

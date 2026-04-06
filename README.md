@@ -47,10 +47,7 @@ Platformă SaaS de management al obiectivelor personale/profesionale, construit�
 4. **M4:** verification final (docs + tests + compliance matrix)
 
 Detalii:
-- `PLAN.md`
 - `ROADMAP.md`
-- `docs/framework_100_percent_implementation_playbook.md`
-- `docs/framework_workflow_deviations_stress_test.md`
 
 ---
 
@@ -61,7 +58,6 @@ backend/                 # API, engine, scheduler, migrations
 frontend/app/            # aplicația principală
 frontend/landing/        # landing site
 docs/                    # documentație produs/testare/arhitectură
-PLAN.md                  # plan implementare
 ROADMAP.md               # roadmap livrare
 CLAUDE.md                # context master de lucru
 ```

@@ -1,139 +1,216 @@
-# CLAUDE.md — NuviaX Master Operating Rules (Source of Truth)
+# CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 11.1.0  
-> Actualizat: 2026-04-03  
-> **Regula #1:** orice prompt/sesiune începe cu analiza acestui fișier.
+> Versiune: 1.0.0 (post-reset)  
+> Actualizat: 2026-04-06  
+> **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
 
-## 0) Start protocol (obligatoriu în fiecare sesiune)
+## 0) Context proiect
 
-1. Citește `CLAUDE.md` cap-coadă.
-2. Confirmă versiunea + branch + task.
-3. Citește **doar fișierele minim necesare** din indexul de mai jos.
+NuviaX — platformă SaaS de goal management, construită pe **NuviaX Growth Framework Rev 5.6** (40 componente, C1–C40).
 
-Comenzi standard:
+Stack: Go (Fiber v2) + PostgreSQL + Redis + Next.js 14 (TypeScript) + Claude Haiku 4.5 (AI) + Resend (email).
 
-```bash
-git status
-git log --oneline -5
-git branch --show-current
-```
+Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) a fost eliminat. Reconstrucția se face pe faze F0–F7.
 
-Template de start:
+---
+
+## 1) Stare curentă
+
+| Fază | Status | Ce a produs |
+|---|---|---|
+| F0 — Reset engine + schema | ✅ | Cod vechi eliminat |
+| F1 — Schema DB pentru MVP | ✅ | 32 tabele în schema public |
+| F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
+| F3 — Core Engine | ⏳ | — |
+| F4 — Scheduler + SRM | ⏳ | — |
+| F5 — API Handlers | ⏳ | — |
+| F6 — Frontend MVP | ⏳ | — |
+| F7 — Smoke Test + Docs | ⏳ | — |
+
+**DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.  
+**Fișier mort:** `infra/init-db.sql` — nu e folosit, de eliminat la cleanup.
+
+---
+
+## 2) MVP Scope — Ce implementăm
+
+**29 componente (14 FULL + 15 SIMPLIFIED). 11 componente POST_MVP.**
+
+### FULL (implementare completă)
+C1 Structural Supremacy, C2 Behavior Model, C3 Max 3 GO, C4 365-Day Max, C5 30-Day Sprint, C6 Normalization, C12 Future Vault, C14 GO Validation, C19 Sprint Structuring, C20 Sprint Target, C21 80% Rule, C24 Progress Computation, C25 Execution Variance, C37 Sprint Score
+
+### SIMPLIFIED (logică de bază, fără edge cases avansate)
+C7 Priority Weight, C8 Priority Balance, C9 Semantic Parsing, C10 BM Classification, C11 Relevance Scoring, C13 Relevance Thresholds, C22 Milestone Structuring, C23 Daily Stack, C26 Drift Engine, C27 Stagnation Detection, C28 Chaos Index, C30 Consistency Tracking, C32 Adaptive Context (doar Pause), C33 SRM (L1/L2/L3 fără timeout protocol), C38 GORI (fără variance penalty)
+
+### POST_MVP (nu se implementează acum)
+C15 Strategic Feasibility, C16 Capacity Calibration, C17 Deep Work Estimation, C18 Annual Recalibration, C29 Focus Rotation, C31 Behavioral Patterns, C34 Weighted Suspension, C35 Core Stabilization, C36 Reactivation Protocol, C39 Engagement Signal, C40 Sprint Reflection Gate
+
+**Matrice completă cu justificări:** `MVP_SCOPE.md`
+
+---
+
+## 3) Start protocol sesiune
 
 ```text
-Read CLAUDE.md v11.1.0. Branch: <branch>. Task: <task>. Files to inspect: <max 3 initially>.
+Read CLAUDE.md v1.0.0. Branch: claude/<feature>. Task: <descriere>.
+Files to read: <max 3>.
 ```
-
----
-
-## 1) Token/request optimization rules (Codex + Claude Code)
-
-- Nu face scan global inutil.
-- Pleacă din `CLAUDE.md` -> deschide doar fișierele relevante task-ului.
-- Extinde contextul progresiv (max 3 fișiere inițial, apoi incremental).
-- Pentru debugging: întâi verifici config+middleware+ruta, apoi handlers/DB, apoi UI.
-- Nu marca "root cause" fără dovadă în cod.
-
----
-
-## 2) File index (referințe oficiale)
-
-## 2.1 Core governance docs
-- `CLAUDE.md` — reguli sesiune + index
-- `PLAN.md` — workstreams tehnice + release gating
-- `ROADMAP.md` — milestones M1..M4
-- `README.md` — quickstart + ops checks
-
-## 2.2 Framework alignment docs
-- `docs/framework_100_percent_implementation_playbook.md`
-- `docs/framework_workflow_deviations_stress_test.md`
-- `NuviaX_Growth_Framework_Rev_5_6.md`
-
-## 2.3 Runtime backend (Go)
-- `backend/internal/api/server.go` — routing map
-- `backend/internal/api/middleware/jwt.go` — auth guard
-- `backend/internal/api/middleware/admin.go` — admin guard
-- `backend/internal/api/handlers/*.go` — API behavior
-- `backend/internal/engine/*.go` — core scoring logic
-- `backend/internal/scheduler/scheduler.go` — cron orchestration
-- `backend/internal/db/queries.go` — DB access
-- `backend/migrations/*.sql` — schema truth
-
-## 2.4 Frontend app
-- `frontend/app/middleware.ts` — route protection
-- `frontend/app/app/admin/page.tsx` — admin UI
-- `frontend/app/app/api/proxy/[...path]/route.ts` — API proxy with cookie auth
-- `frontend/app/app/auth/login/page.tsx` — login flow
-
-## 2.5 Test docs
-- `docs/testing/test-plan.md` — master test plan
-- `docs/testing/scenarios/critical.md`
-- `docs/testing/scenarios/regression.md`
-
----
-
-## 3) Admin panel runbook (DevOps quick fix)
-
-## Simptom
-User se loghează în aplicație, dar `/admin` nu se deschide.
-
-## Cauze tipice
-1. user nu are `is_admin=TRUE`;
-2. login făcut cu username în loc de email;
-3. sesiune/token vechi după promovare admin.
-
-## Soluție standard (idempotent)
 
 ```bash
-bash scripts/setup_admin.sh sbarbu_admin 'NuviaXAdmin#2026' 'Sbarbu Admin'
+git status && git branch --show-current && git log --oneline -3
 ```
 
-Acest script:
-- convertește automat `sbarbu_admin` -> `sbarbu_admin@nuviax.app`
-- creează contul dacă nu există
-- setează `is_admin=TRUE`
-- verifică login API
-- afișează pașii finali de acces
+---
 
-După rulare:
-1. logout,
-2. login cu email-ul final,
-3. refresh hard,
-4. deschide `https://nuviax.app/admin`.
+## 4) Reguli de lucru
+
+**Model selection (regulă de bază — selectează modelul optim pentru sarcină):**
+
+| Sarcină | Model | De ce |
+|---|---|---|
+| Implementare cod, bugfix, refactoring | **Sonnet** | Rapid, ieftin, suficient pentru cod structurat |
+| Creare/modificare fișiere, migrări, config | **Sonnet** | Task-uri directe cu input/output clar |
+| Teste unitare, integrare | **Sonnet** | Pattern repetitiv |
+| Decizie arhitecturală nouă, design sistem | **Opus** | Necesită raționament profund |
+| Debugging complex, root cause neclar | **Opus** | Necesită analiză multi-fișier |
+| Review cod cu implicații de securitate | **Opus** | Necesită atenție la detalii subtile |
+
+**Regulă implicită: Sonnet. Opus doar când task-ul necesită raționament, nu implementare.**
+
+**Optimizare tokenuri și prevenire timeout:**
+- Citește max 3 fișiere per task, cu path exact
+- NU explora global structura — e documentată mai jos
+- NU citi: `node_modules/`, `vendor/`, `.next/`, `build/`, `dist/`, `go.sum`
+- Un task per sesiune → commit → sesiune nouă
+- Dacă nu știi path-ul, întreabă
+- Sesiuni max 45–60 min — dacă task-ul e mai mare, split în sub-sesiuni
+- Prompturile din `PROMPTS_MVP.md` sunt deja split pentru a evita timeout
+- Dacă o sesiune se apropie de limită: commit WIP, notează unde ai rămas, continuă în sesiune nouă
+
+**Branch și commit:**
+- Branch: `claude/<feature-name>` — niciodată direct pe `main`
+- `git add <fișiere specifice>` — niciodată `git add .`
+- Convenții: `feat:` / `fix:` / `docs:` / `refactor:` / `chore:`
+
+**NU comite niciodată:** `.env`, `.env.*`, `.keys/`, `*.pem`, `*.key`, `node_modules/`, `vendor/`
 
 ---
 
-## 4) Working rules for edits
+## 5) Regula CLEAN PROJECT — OBLIGATORIE
 
-- Orice schimbare la auth/admin trebuie să atingă și documentația relevantă.
-- Pentru schimbări framework (scoring/SRM), actualizezi obligatoriu:
-  - `PLAN.md`
-  - `ROADMAP.md`
-  - `docs/testing/test-plan.md`
-- Nu lăsa statusuri "implemented" dacă nu sunt verificabile în cod.
+Proiectul trebuie să fie curat în permanență. La fiecare sesiune:
+
+**Înainte de commit, verifică:**
+- Niciun fișier nefolosit adăugat
+- Niciun import mort în fișierele modificate
+- Niciun `console.log` / `fmt.Println` de debug lăsat
+- Niciun comentariu TODO fără referință la fază (ex: `// TODO(F8): implement C39`)
+
+**La orice fază completată (F3, F4, etc.):**
+- Șterge fișiere care nu mai sunt relevante
+- Șterge funcții/metode moarte din fișierele atinse
+- Verifică `docs/` — șterge documente care descriu comportament vechi eliminat
+
+**Fișiere deja identificate pentru cleanup:**
+- `infra/init-db.sql` — mort, schema nuviax nu e folosită
+- `docs/DEMO_EXECUTION_PLAN.md` — referă SA-1..SA-7 din era v10.x
+- `PROMPTS.md` (cel vechi din v10.x) — înlocuit de `PROMPTS_MVP.md`
+- `PLAN.md` (cel vechi cu WS-A..WS-F) — înlocuit de `ROADMAP.md`
+- `CHANGES.md` — istoric v10.x, de arhivat în `docs/archive/`
+- `docs/framework_100_percent_implementation_playbook.md` — era v10.x
+- `docs/framework_workflow_deviations_stress_test.md` — era v10.x
+
+**Promptul de cleanup F0.1 este în `PROMPTS_MVP.md`.**
 
 ---
 
-## 5) Definition of Done
+## 6) Regula SYNC-ON-COMMIT — OBLIGATORIE
 
-Task-ul este DONE doar dacă:
-1. schimbarea este implementată,
-2. root cause este demonstrat cu referințe de cod,
-3. test/check minim este rulat,
-4. docs principale sunt sincronizate,
-5. commit + PR message sunt create.
+La fiecare commit care modifică cod, actualizează TOATE fișierele afectate:
+
+| Ce modifici | Ce actualizezi obligatoriu |
+|---|---|
+| Engine (scoring/formule) | `FORMULAS_QUICK_REFERENCE.md` |
+| Schema DB (migrare nouă) | `docs/database-reference.md` |
+| Endpoint nou/modificat | `README.md` (secțiunea endpoints) |
+| Env variable nouă | `README.md` + `infra/.env.example` |
+| Scheduler job nou | `README.md` (secțiunea scheduler) |
+| Versiune bump | `CLAUDE.md` + `README.md` (ambele trebuie să coincidă) |
+| Fază completată (F3, etc.) | `CLAUDE.md` secțiunea 1 + `ROADMAP.md` status |
+| Orice | Fișierele docs din `docs/` care descriu zona modificată |
+
+**Verificare la final de sesiune:**
+```bash
+grep "Versiune" CLAUDE.md README.md
+# Trebuie să coincidă
+```
+
+**Dacă un commit schimbă comportament fără a actualiza docs = commit invalid.**
 
 ---
 
-## 6) Security invariants
+## 7) Securitate engine — INVARIANT
 
-Nu expune în API:
-- metrici interne (weights/drift/chaos/formule)
-- praguri interne sensibile
+```
+NICIODATĂ nu expune în API:
+❌ drift, chaos_index, weights, factors, thresholds, formule
 
-Admin routes:
-- JWT valid + `is_admin=TRUE`
-- non-admin -> răspuns 404 (fără leak funcționalitate)
+EXPUNE DOAR:
+✅ Progress % | Grade (A+/A/B/C/D) | Ceremony tier | Achievement ID
+```
 
+Admin routes: JWT valid + `is_admin=TRUE` → non-admin primește 404 (nu 403).
+
+---
+
+## 8) Index fișiere
+
+**Governance:**
+- `CLAUDE.md` — acest fișier
+- `ROADMAP.md` — faze F0–F7 + post-MVP
+- `MVP_SCOPE.md` — matrice C1–C40 cu justificări
+- `PROMPTS_MVP.md` — prompturi pentru Claude Code (F0.1, F3–F7)
+
+**Framework (citește doar la nevoie):**
+- `docs/framework/rev5_6/00-intro.md` — principii + changelog
+- `docs/framework/rev5_6/10-layer0.md` — C1–C8
+- `docs/framework/rev5_6/20-level1.md` — C9–C18
+- `docs/framework/rev5_6/30-level2.md` — C19–C25
+- `docs/framework/rev5_6/40-level3.md` — C26–C31
+- `docs/framework/rev5_6/50-level4.md` — C32–C36
+- `docs/framework/rev5_6/60-level5.md` — C37–C40
+- `FORMULAS_QUICK_REFERENCE.md` — formule rapide
+
+**Backend (Go):**
+- `backend/internal/api/server.go` — routing
+- `backend/internal/api/middleware/*.go` — JWT, admin
+- `backend/internal/api/handlers/*.go` — handlere
+- `backend/internal/engine/*.go` — scoring (F3)
+- `backend/internal/scheduler/scheduler.go` — cron (F4)
+- `backend/internal/db/db.go` + `queries.go` — DB
+- `backend/migrations/*.sql` — schema
+
+**Frontend:**
+- `frontend/app/middleware.ts` — route protection
+- `frontend/app/app/auth/*/page.tsx` — auth (F2 ✅)
+- `frontend/app/app/api/proxy/[...path]/route.ts` — API proxy
+- `frontend/app/styles/globals.css` — design system
+
+**Infra:**
+- `infra/docker-compose.yml` — containere
+- `infra/.env.example` — variabile env
+- `infra/verify-deployment.sh` — verificare post-deploy
+- `scripts/setup_admin.sh` — bootstrap admin
+
+---
+
+## 9) Definition of Done per task
+
+1. Implementare conform MVP_SCOPE (FULL sau SIMPLIFIED)
+2. Zero câmpuri interne expuse în API
+3. Test minim rulat
+4. Docs actualizate (regula SYNC-ON-COMMIT)
+5. Cleanup: zero fișiere/imports/logs moarte
+6. Commit + push pe branch `claude/*`

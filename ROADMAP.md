@@ -14,7 +14,7 @@
 | F0 — Reset | ✅ | — |
 | F1 — Schema DB | ✅ | Schema pentru toate C1–C40 |
 | F2 — Auth CSS | ✅ | — |
-| F0.1 — Cleanup | ⏳ | — |
+| F0.1 — Cleanup | ✅ | — |
 | F3 — Core Engine | ⏳ | C1–C8, C14, C19–C21, C24–C26, C28, C30, C37, C38 |
 | F4 — Scheduler + SRM | ⏳ | C23, C27, C33, C32 (Pause only) |
 | F5 — API Handlers | ⏳ | C9, C10, C11, C12, C13, C3 (Vault) |
@@ -34,13 +34,9 @@ Pagini auth cu clase CSS standardizate.
 
 ---
 
-## F0.1 — Cleanup ⏳
+## F0.1 — Cleanup ✅ (2026-04-06)
 
-Eliminare fișiere moarte din era v10.x. Detalii în `PROMPTS_MVP.md`.
-
-**Fișiere de eliminat:** `infra/init-db.sql`, `PLAN.md` (vechi), `PROMPTS.md` (vechi), documente de stress test vechi.  
-**Fișiere de arhivat:** `CHANGES.md` → `docs/archive/`  
-**Estimare:** 15 min
+Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPTS.md`, `CHANGES.md`, `docs/DEMO_EXECUTION_PLAN.md`, `docs/framework_100_percent_implementation_playbook.md`, `docs/framework_workflow_deviations_stress_test.md`. README verificat — zero secrete expuse.
 
 ---
 

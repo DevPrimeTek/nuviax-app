@@ -2,8 +2,8 @@
 
 Platformă SaaS de management al obiectivelor personale/profesionale, construită pe **NuviaX Growth Framework Rev 5.6**.
 
-**Versiune documentație:** `11.1.0` (Architect Sync)  
-**Stare produs:** în aliniere completă Framework (program M1–M4 activ)
+**Versiune documentație:** `1.0.0` (MVP Reset)  
+**Stare produs:** reconstrucție pe faze F0–F7, framework Rev 5.6
 
 ---
 
@@ -103,7 +103,7 @@ Dacă un utilizator vede "Acces restricționat" pe `/admin`, cauza este aproape 
 Bootstrap automat cont admin:
 
 ```bash
-bash scripts/setup_admin.sh sbarbu_admin 'NuviaXAdmin#2026' 'Sbarbu Admin'
+bash scripts/setup_admin.sh <username> '<password>' '<Display Name>'
 ```
 
 Scriptul:
@@ -112,7 +112,7 @@ Scriptul:
 3. verifică login-ul API,
 4. afișează credențialele finale.
 
-> Login se face cu **email**, nu cu username. Pentru comanda de mai sus, email-ul devine `sbarbu_admin@nuviax.app`.
+> Login se face cu **email**, nu cu username. Email-ul devine `<username>@nuviax.app`.
 
 Health check:
 

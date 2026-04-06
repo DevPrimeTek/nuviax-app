@@ -21,6 +21,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | Fază | Status | Ce a produs |
 |---|---|---|
 | F0 — Reset engine + schema | ✅ | Cod vechi eliminat |
+| F0.1 — Cleanup fișiere moarte | ✅ | Fișiere v10.x eliminate |
 | F1 — Schema DB pentru MVP | ✅ | 32 tabele în schema public |
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
 | F3 — Core Engine | ⏳ | — |
@@ -29,8 +30,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F6 — Frontend MVP | ⏳ | — |
 | F7 — Smoke Test + Docs | ⏳ | — |
 
-**DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.  
-**Fișier mort:** `infra/init-db.sql` — nu e folosit, de eliminat la cleanup.
+**DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
 ---
 
@@ -113,16 +113,9 @@ Proiectul trebuie să fie curat în permanență. La fiecare sesiune:
 - Șterge funcții/metode moarte din fișierele atinse
 - Verifică `docs/` — șterge documente care descriu comportament vechi eliminat
 
-**Fișiere deja identificate pentru cleanup:**
-- `infra/init-db.sql` — mort, schema nuviax nu e folosită
-- `docs/DEMO_EXECUTION_PLAN.md` — referă SA-1..SA-7 din era v10.x
-- `PROMPTS.md` (cel vechi din v10.x) — înlocuit de `PROMPTS_MVP.md`
-- `PLAN.md` (cel vechi cu WS-A..WS-F) — înlocuit de `ROADMAP.md`
-- `CHANGES.md` — istoric v10.x, de arhivat în `docs/archive/`
-- `docs/framework_100_percent_implementation_playbook.md` — era v10.x
-- `docs/framework_workflow_deviations_stress_test.md` — era v10.x
-
-**Promptul de cleanup F0.1 este în `PROMPTS_MVP.md`.**
+**Fișiere v10.x eliminate (F0.1 ✅):**
+- `infra/init-db.sql`, `PLAN.md`, `PROMPTS.md`, `CHANGES.md` — eliminate
+- `docs/DEMO_EXECUTION_PLAN.md`, `docs/framework_100_percent_implementation_playbook.md`, `docs/framework_workflow_deviations_stress_test.md` — eliminate
 
 ---
 

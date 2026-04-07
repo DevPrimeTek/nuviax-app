@@ -24,7 +24,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F1 — Schema DB pentru MVP | ✅ | 32 tabele în schema public |
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
 | F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
-| F4 — Scheduler + SRM | ⏳ | — |
+| F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
 | F5 — API Handlers | ⏳ | — |
 | F6 — Frontend MVP | ⏳ | — |
 | F7 — Smoke Test + Docs | ⏳ | — |

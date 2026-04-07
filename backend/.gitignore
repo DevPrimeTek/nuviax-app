@@ -1,0 +1,11 @@
+# Compiled binaries
+server
+api
+nuviax-api
+
+# Test cache
+*.test
+*.out
+
+# Air live-reload tmp
+tmp/

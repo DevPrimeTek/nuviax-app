@@ -10,11 +10,11 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
 	"github.com/devprimetek/nuviax-app/internal/email"
-	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/internal/scheduler"
 	"github.com/devprimetek/nuviax-app/pkg/logger"
 )
@@ -54,8 +54,13 @@ func main() {
 	}
 	defer rdb.Close()
 
-	// ── Engine ─────────────────────────────────────────────────
-	eng := engine.New(pool, rdb)
+	// ── AI (optional — graceful degradation if key missing) ──────
+	aiClient, _ := ai.New()
+	if aiClient != nil {
+		logger.Info("AI service: Claude Haiku configured")
+	} else {
+		logger.Info("AI service: ANTHROPIC_API_KEY not set — AI features disabled")
+	}
 
 	// ── Email (optional — graceful degradation if key missing) ─
 	emailClient, _ := email.New()
@@ -66,7 +71,7 @@ func main() {
 	}
 
 	// ── Background Scheduler ───────────────────────────────────
-	sched := scheduler.New(pool, rdb, eng, emailClient, []byte(cfg.EncryptionKey))
+	sched := scheduler.New(pool, aiClient, emailClient, []byte(cfg.EncryptionKey))
 	sched.Start()
 	defer sched.Stop()
 

@@ -103,6 +103,63 @@ sum(weights) ≤ 7
 
 ---
 
+## C26 — Drift Critical (SRM trigger)
+
+```
+IsDriftCritical = all(last_3_drift_values < -0.15)
+```
+
+Returns false if fewer than 3 values.
+
+---
+
+## C28 — Chaos Index
+
+```
+ChaosIndex = Clamp(drift×0.30 + stagnation×0.25 + inconsistency×0.25, 0, 1)
+```
+
+Velocity component (weight 0.20) omitted in MVP.
+
+| ChaosIndex | Level  |
+|---|---|
+| `< 0.30`   | GREEN  |
+| `< 0.40`   | YELLOW |
+| `< 0.60`   | AMBER  |
+| `≥ 0.60`   | RED    |
+
+---
+
+## C33 — SRM Fallback (rule-based)
+
+| Hours since last activity | Level |
+|---|---|
+| `≥ 168` | PAUSE |
+| `≥ 72`  | L1    |
+| `≥ 24`  | L2    |
+| `< 24`  | (none) |
+
+---
+
+## C38 — GORI (Global Objective Realization Index)
+
+```
+GORI = Clamp(avg(sprintScores) × (completed / max(total, 1)), 0, 1)
+```
+
+---
+
+## C37 — Ceremony Tier
+
+| SprintScore | Tier     |
+|---|---|
+| `≥ 0.90`    | PLATINUM |
+| `≥ 0.80`    | GOLD     |
+| `≥ 0.65`    | SILVER   |
+| `< 0.65`    | BRONZE   |
+
+---
+
 ## Helpers
 
 ```

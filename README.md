@@ -73,6 +73,25 @@ CLAUDE.md                # context master de lucru
 
 ---
 
+## Scheduler Jobs (background cron — UTC)
+
+| # | Job | Cron | Componentă |
+|---|-----|------|-----------|
+| 1 | `jobGenerateDailyTasks` | `00:01` | C23 Daily Stack — AI task generation (Haiku fallback) |
+| 2 | `jobComputeDailyScore` | `23:50` | C24 Progress + C25 Drift computation → daily_scores |
+| 3 | `jobCheckDailyProgress` | `23:55` | C26 Drift Engine — SRM L1 event if drift critical |
+| 4 | `jobCloseExpiredSprints` | `00:00` | C37 Sprint Score — close + grade + ceremony + email |
+| 5 | `jobStartNextSprints` | `00:05` | C19 Sprint Structuring — auto-start next sprint |
+| 6 | `jobComputeWeeklyALI` | `Sun 03:00` | C38 ALI — placeholder (post-MVP) |
+| 7 | `jobRecalibrateRelevance` | `Sun 02:00` | C28 Chaos Index — SRM L2 if chaos ≥ 0.40 |
+| 8 | `jobCheckStagnation` | `23:58` | C27 Stagnation — detect 5+ days no activity |
+| 9 | `jobCheckSRMTimeouts` | `hourly` | C33 SRM — L3 unconfirmed → ComputeSRMFallback |
+| 10 | `jobGenerateCeremonies` | `01:05` | C37 — backfill ceremonies for completed sprints |
+| 11 | `jobDetectEvolution` | `01:00` | C31 Behavioral Patterns — placeholder (post-MVP) |
+| 12 | `jobComputeGORI` | `01:10` | C38 GORI — update go_metrics per GO |
+
+---
+
 ## Testare (Unit + Integration)
 
 ### Backend validation quick run

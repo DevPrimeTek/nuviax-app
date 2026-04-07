@@ -16,7 +16,7 @@
 | F2 — Auth CSS | ✅ | — |
 | F0.1 — Cleanup | ✅ | — |
 | F3 — Core Engine | ✅ | C1–C8, C14, C19–C21, C24–C26, C28, C30, C37, C38 |
-| F4 — Scheduler + SRM | ⏳ | C23, C27, C33, C32 (Pause only) |
+| F4 — Scheduler + SRM | ✅ | C23, C27, C33, C32 (Pause only) |
 | F5 — API Handlers | ⏳ | C9, C10, C11, C12, C13, C3 (Vault) |
 | F6 — Frontend MVP | ⏳ | UI pentru toate componentele active |
 | F7 — Smoke Test | ⏳ | Verificare E2E |
@@ -74,7 +74,7 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
-## F4 — Scheduler + SRM Runtime ⏳
+## F4 — Scheduler + SRM Runtime ✅ (2026-04-07)
 
 **Componentele implementate:**
 

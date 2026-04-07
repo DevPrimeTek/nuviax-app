@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
 > Versiune: 1.0.0 (post-reset)  
-> Actualizat: 2026-04-06  
+> Actualizat: 2026-04-07  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -23,7 +23,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F0 — Reset engine + schema | ✅ | Cod vechi eliminat |
 | F1 — Schema DB pentru MVP | ✅ | 32 tabele în schema public |
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
-| F3 — Core Engine | ⏳ | — |
+| F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
 | F4 — Scheduler + SRM | ⏳ | — |
 | F5 — API Handlers | ⏳ | — |
 | F6 — Frontend MVP | ⏳ | — |

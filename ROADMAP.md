@@ -18,7 +18,7 @@
 | F3 — Core Engine | ✅ | C1–C8, C14, C19–C21, C24–C26, C28, C30, C37, C38 | 2026-04-07 |
 | F4 — Scheduler + SRM | ✅ | C23, C27, C33, C32 (Pause only) | 2026-04-07 |
 | F5 — API Handlers | ✅ | Auth + Goals + Today + Dashboard + SRM + Achievements + Profile + Admin — 30 endpoints | 2026-04-18 |
-| F6 — Frontend MVP | ⚠️ PARȚIAL | Paginile există. Funcționale după F5 complet | — |
+| F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Audit endpoint-uri OK. | 2026-04-18 |
 | F7 — Smoke Test | ⏳ | Verificare E2E | — |
 
 ### Stare detaliată F5
@@ -122,7 +122,7 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
-## F5 — API Handlers ⚠️ PARȚIAL (Auth complet, business logic lipsă)
+## F5 — API Handlers ✅ (2026-04-18)
 
 **Componentele de implementat:**
 
@@ -144,18 +144,18 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
-## F6 — Frontend MVP ⚠️ PARȚIAL (pagini există, necesită verificare)
+## F6 — Frontend MVP ✅ (2026-04-18)
 
-**Pagini implementate (de verificat funcționalitate după F5):**
+**Build:** `npm run build` — zero erori TypeScript, 23 pagini compilate.
+
+**Pagini verificate:**
 - `onboarding`, `today`, `goals`, `goals/[id]`, `dashboard`
 - `recap`, `profile`, `settings`, `achievements`, `admin`
 
-**Componente implementate:**
-- `AppShell`, `SRMWarning`, `CeremonyModal`, `ActivityHeatmap`, `ProgressCharts`
+**Componente verificate:**
+- `AppShell`, `SRMWarning`, `CeremonyModal`, `ActivityHeatmap`, `ProgressCharts`, `GoalTabs`, `DashboardClientLayer`
 
-**Acțiune necesară:** `npm run build` + audit pagini după F5 complet
-
-**Estimare:** 30–45 min verificare + fix-uri minore
+**Audit endpoint-uri:** Toate paginile cheamă endpoint-uri F5 existente (Goals, Today, Dashboard, SRM, Achievements, Profile, Settings, Admin).
 
 ---
 
@@ -204,4 +204,4 @@ F5a (Goals+Today+Dashboard handlers) → F5b (SRM+Achievements+Admin+wiring) →
 
 ---
 
-*v1.0.1 | 2026-04-18 — PM review: stare reală F5/F6 documentată, prompts actualizate*
+*v1.0.1 | 2026-04-18 — F6 complet: build success, zero erori TypeScript, audit endpoint-uri OK*

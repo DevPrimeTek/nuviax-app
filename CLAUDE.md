@@ -26,7 +26,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
 | F5 — API Handlers | ✅ | Auth 8 + Goals/Today/Dashboard 11 (F5a) + SRM/Achievements/Profile/Admin 11 endpoints (F5b) |
-| F6 — Frontend MVP | ⚠️ PARȚIAL | Toate paginile și componentele există în cod. Nefuncționale până F5 e complet |
+| F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Toate paginile și componentele funcționale. |
 | F7 — Smoke Test + Docs | ⏳ | — |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
@@ -35,6 +35,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - F5a rezolvat: Goals/Today/Dashboard + AI client integrat în server.go ✅
 - F5b rezolvat: SRM/Achievements/Profile/Admin handlers implementate ✅
 - F5 complet ✅ — Frontend poate integra toate endpoint-urile
+- F6 complet ✅ — Build success, zero erori TypeScript, audit endpoint-uri OK
 
 ---
 

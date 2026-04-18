@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.0.0 (post-reset)  
-> Actualizat: 2026-04-07  
+> Versiune: 1.0.1  
+> Actualizat: 2026-04-18  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -25,12 +25,17 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
 | F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
-| F5 — API Handlers | ⏳ | — |
-| F6 — Frontend MVP | ⏳ | — |
+| F5 — API Handlers | ⚠️ PARȚIAL | Auth 8 endpoints ✅. Goals/Today/Dashboard/SRM/Profile/Achievements/Admin lipsesc. AI client neintegrat în server.go |
+| F6 — Frontend MVP | ⚠️ PARȚIAL | Toate paginile și componentele există în cod. Nefuncționale până F5 e complet |
 | F7 — Smoke Test + Docs | ⏳ | — |
 
-**DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.  
-**Fișier mort:** `infra/init-db.sql` — nu e folosit, de eliminat la cleanup.
+**DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
+
+**Blocaje actuale (2026-04-18):**
+- `handlers.Handlers` struct nu are câmpul `ai *ai.Client`
+- `api.Config` struct nu include `AIClient *ai.Client`
+- `server.go` înregistrează doar rute auth — toate rutele business lipsesc
+- Frontend cheamă endpoint-uri inexistente în backend
 
 ---
 
@@ -54,7 +59,7 @@ C15 Strategic Feasibility, C16 Capacity Calibration, C17 Deep Work Estimation, C
 ## 3) Start protocol sesiune
 
 ```text
-Read CLAUDE.md v1.0.0. Branch: claude/<feature>. Task: <descriere>.
+Read CLAUDE.md v1.0.1. Branch: claude/<feature>. Task: <descriere>.
 Files to read: <max 3>.
 ```
 
@@ -113,14 +118,9 @@ Proiectul trebuie să fie curat în permanență. La fiecare sesiune:
 - Șterge funcții/metode moarte din fișierele atinse
 - Verifică `docs/` — șterge documente care descriu comportament vechi eliminat
 
-**Fișiere deja identificate pentru cleanup:**
-- `infra/init-db.sql` — mort, schema nuviax nu e folosită
-- `docs/DEMO_EXECUTION_PLAN.md` — referă SA-1..SA-7 din era v10.x
-- `PROMPTS.md` (cel vechi din v10.x) — înlocuit de `PROMPTS_MVP.md`
-- `PLAN.md` (cel vechi cu WS-A..WS-F) — înlocuit de `ROADMAP.md`
-- `CHANGES.md` — istoric v10.x, de arhivat în `docs/archive/`
-- `docs/framework_100_percent_implementation_playbook.md` — era v10.x
-- `docs/framework_workflow_deviations_stress_test.md` — era v10.x
+**Fișiere deja identificate pentru cleanup (F0.1 ✅ complet — toate eliminate):**
+- Toate fișierele v10.x au fost eliminate în F0.1 (2026-04-06)
+- Nu există fișiere moarte cunoscute la momentul 2026-04-18
 
 **Promptul de cleanup F0.1 este în `PROMPTS_MVP.md`.**
 

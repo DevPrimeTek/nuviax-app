@@ -1,10 +1,11 @@
 # PROMPTS_MVP.md — Claude Code Session Prompts
 
-> **Versiune:** 1.0.0  
+> **Versiune:** 1.0.1  
+> **Actualizat:** 2026-04-18 (PM review — prompts recalibrate la starea reală)  
 > **Reguli:**  
 > - Fiecare prompt = o sesiune Claude Code nouă  
 > - Copiază blocul ``` integral → paste în sesiune  
-> - Ordine strictă: F0.1 → F3a → F3b → F4 → F5a → F5b → F6a → F6b → F7  
+> - Ordine strictă: F5a → F5b → F6-audit → F7  
 > - Prompturi split în sub-sesiuni de max 45–60 min pentru a evita timeout
 
 ---
@@ -25,522 +26,398 @@
 
 ---
 
-## Index
+## Index sesiuni rămase
 
-| # | Ce face | Model | Timp |
-|---|---------|-------|------|
-| F0.1 | Cleanup fișiere moarte + securizare README | Sonnet | 15 min |
-| F3a | Engine core: scoring + validare + helpers | Sonnet | 45 min |
-| F3b | Engine SRM + Growth + teste | Sonnet | 45 min |
-| F4 | Scheduler: 12 cron jobs | Sonnet | 45 min |
-| F5a | API: goals + today + dashboard | Sonnet | 45 min |
-| F5b | API: SRM + achievements + AI + email + admin | Sonnet | 45 min |
-| F6a | Frontend: onboarding + today + goals + dashboard | Sonnet | 60 min |
-| F6b | Frontend: profile + settings + achievements + componente | Sonnet | 60 min |
-| F7 | Smoke test + docs finale | Sonnet | 30 min |
+| # | Ce face | Model | Timp | Branch |
+|---|---------|-------|------|--------|
+| F5a | API: Goals + Today + Dashboard handlers + server.go wiring | Sonnet | 45 min | `claude/api-handlers` |
+| F5b | API: SRM + Achievements + Profile + Admin + AI client integrat | Sonnet | 45 min | `claude/api-handlers` |
+| F6-audit | Frontend: build check + fix-uri după F5 | Sonnet | 30 min | `claude/frontend-mvp` |
+| F7 | Smoke test + docs finale v1.1.0 | Sonnet | 30 min | `claude/smoke-test` |
 
 **Model:** Sonnet pentru tot. Opus doar la decizie arhitecturală neprevăzută.  
-**Total: 10 sesiuni, ~7–8h**
+**Total: 4 sesiuni, ~2.5–3h**
 
 ---
 
-## F0.1 — Cleanup + Securizare README
+## Context actual (citește înainte de F5a)
 
-**Model: Sonnet** | **Max 15 min**
+**Ce există deja:**
+- `backend/internal/api/handlers/handlers.go` — Auth complet (Register, Login, MFA, RefreshToken, Logout, ForgotPassword, ResetPassword)
+- `backend/internal/api/server.go` — Config struct + routing (doar auth înregistrat)
+- `backend/internal/engine/` — engine complet (F3 ✅)
+- `backend/internal/scheduler/scheduler.go` — 12 jobs (F4 ✅)
+- `backend/internal/ai/ai.go` — Client complet (GenerateTaskTexts, AnalyzeGO, SuggestGOCategory)
+- `backend/internal/email/email.go` — Client complet (SendWelcome, SendSprintComplete, SendPasswordReset)
+- Frontend: toate paginile și componentele există
 
-```
-Read CLAUDE.md v1.0.0. Branch: claude/cleanup. Task: cleanup fișiere moarte + securizare README.
-
-## Pas 1 — Verifică și șterge fișiere moarte
-Verifică existența, apoi grep că nu sunt referite:
-
-  ls -la infra/init-db.sql PLAN.md docs/DEMO_EXECUTION_PLAN.md docs/framework_100_percent_implementation_playbook.md docs/framework_workflow_deviations_stress_test.md 2>/dev/null
-
-Pentru fiecare care există:
-  grep -r "numele_fisierului" backend/ frontend/ *.md
-Dacă zero referințe → git rm <fișier>
-
-## Pas 2 — Arhivează
-  mkdir -p docs/archive
-  git mv CHANGES.md docs/archive/CHANGES_v10.md 2>/dev/null || true
-  git mv PROMPTS.md docs/archive/PROMPTS_v10.md 2>/dev/null || true
-
-## Pas 3 — Securizare README.md
-Verifică README.md pentru informații sensibile:
-  grep -n "sk-ant-\|re_[A-Za-z]\|API_KEY.*=.*[A-Za-z0-9]\|password\|PRIVATE.*KEY\|162\.\|10\.\|192\.168" README.md
-Dacă găsește ceva → ELIMINĂ. README nu trebuie să conțină:
-  - Chei API reale sau parțiale
-  - Parole
-  - IP-uri server
-  - Paths absolute de pe server
-  - Orice credențiale
-
-## Pas 4 — Build check
-  cd backend && go build ./... && cd ..
-
-## PRE-COMMIT CHECKLIST (OBLIGATORIU — din CLAUDE.md secțiunea 6)
-  grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}" README.md CLAUDE.md ROADMAP.md infra/.env.example docs/ 2>/dev/null
-  # ZERO rezultate
-
-Actualizează CLAUDE.md:
-  - Secțiunea 1: F0.1 → ✅
-  - Secțiunea 5: elimină din lista de cleanup fișierele deja șterse
-
-Actualizează ROADMAP.md:
-  - F0.1 → ✅ cu data de azi
-
-Verifică versiuni:
-  grep "Versiune\|versiune" CLAUDE.md README.md ROADMAP.md
-
-## Commit
-  git add -A
-  git commit -m "chore: cleanup v10.x dead files, secure README, archive CHANGES (F0.1)"
-```
+**Ce lipsește și trebuie adăugat în F5:**
+- `handlers.Handlers` struct: lipsește câmpul `ai *ai.Client`
+- `handlers.New(...)`: lipsește parametrul `aiClient *ai.Client`
+- `api.Config` struct: lipsește câmpul `AIClient *ai.Client`
+- `server.go`: nu inițializează AI client, nu înregistrează rute business
+- Toți handlerii de business (Goals, Today, Dashboard, SRM, Profile, Achievements, Admin)
 
 ---
 
-## F3a — Engine Core
+## F5a — API Core (Goals + Today + Dashboard)
 
-**Model: Sonnet** | **Max 45 min**
-
-```
-Read CLAUDE.md v1.0.0. Branch: claude/core-engine. Task: engine scoring + validare GO.
-
-## Citește max 3 fișiere
-1. FORMULAS_QUICK_REFERENCE.md — formulele exacte
-2. backend/internal/db/queries.go — funcțiile DB existente
-3. backend/migrations/001_base_schema.sql — structura tabelelor core
-
-## Creează: backend/internal/engine/engine.go
-
-Package engine. Import: context, math, time, uuid, pgxpool.
-
-func ValidateGO(name string, bm string, startDate, endDate time.Time, activeCount int) error
-  // C2: bm ∈ {CREATE, INCREASE, REDUCE, MAINTAIN, EVOLVE}
-  // C3: activeCount < 3
-  // C4: endDate - startDate ≤ 365 days
-  // C14: name not empty, bm not empty
-
-func ComputeExpected(dayInSprint int) float64
-  // C5: float64(dayInSprint) / 30.0
-
-func ComputeProgress(completedCheckpoints, totalCheckpoints int) float64
-  // C24: Clamp(float64(completed) / float64(total), 0, 1)
-
-func ComputeDrift(realProgress, expected float64) float64
-  // C25: realProgress - expected (NOT clamped)
-
-func ComputeSprintTarget(annualTarget, currentProgress float64, sprintsRemaining int) float64
-  // C20+C21: (annualTarget - currentProgress) / remaining × 0.80
-
-func ComputeSprintScore(progressComp, consistencyComp, deviationComp float64) float64
-  // C37: Clamp(progress×0.50 + consistency×0.30 + deviation×0.20, 0, 1)
-
-func ComputeRelevance(impact, urgency, alignment, feasibility float64) float64
-  // C11: impact×0.35 + urgency×0.25 + alignment×0.25 + feasibility×0.15
-
-func RelevanceToWeight(relevance float64) int
-  // C7+C13: <0.40→1, <0.75→2, ≥0.75→3
-
-func ScoreToGrade(score float64) string
-  // ≥0.90 "A+", ≥0.80 "A", ≥0.65 "B", ≥0.45 "C", else "D"
-
-## Creează: backend/internal/engine/helpers.go
-
-func Clamp(x, min, max float64) float64
-func ValidateBehaviorModel(bm string) bool
-func CheckPriorityBalance(weights []int) bool  // C8: sum ≤ 7
-
-## NU implementa aici: SRM, GORI, Ceremonies, queries DB — sunt în F3b
-
-## Verificare
-  cd backend && go build ./internal/engine/... && go vet ./internal/engine/...
-
-## PRE-COMMIT CHECKLIST (OBLIGATORIU)
-  grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}" README.md CLAUDE.md 2>/dev/null  # ZERO
-  Actualizează FORMULAS_QUICK_REFERENCE.md dacă formulele implementate diferă
-  Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
-
-## Commit
-  git add backend/internal/engine/engine.go backend/internal/engine/helpers.go
-  git commit -m "feat(engine): core scoring — ValidateGO, Sprint Score, Drift, Progress (F3a)"
-```
-
----
-
-## F3b — Engine SRM + Growth + Teste
-
-**Model: Sonnet** | **Max 45 min**
+**Model: Sonnet** | **Max 45 min** | **Branch: `claude/api-handlers`**
 
 ```
-Read CLAUDE.md v1.0.0. Branch: claude/core-engine (continuare). Task: SRM + GORI + teste.
-
-## Citește max 3 fișiere
-1. backend/internal/engine/engine.go — funcțiile din F3a
-2. backend/internal/engine/helpers.go — Clamp, ScoreToGrade
-3. FORMULAS_QUICK_REFERENCE.md — formule SRM + GORI
-
-## Creează: backend/internal/engine/srm.go
-
-func IsDriftCritical(driftValues []float64) bool
-  // C26: ultimele 3 valori toate < -0.15 → true
-
-func ComputeChaosIndex(driftComp, stagnationComp, inconsistencyComp float64) float64
-  // C28: drift×0.30 + stagnation×0.25 + inconsistency×0.25 + 0×0.20
-
-func ChaosLevel(chaosIndex float64) string
-  // <0.30 GREEN, <0.40 YELLOW, <0.60 AMBER, ≥0.60 RED
-
-func ComputeSRMFallback(hoursSince float64) string
-  // ≥168 PAUSE, ≥72 L1, ≥24 L2, else ""
-
-## Creează: backend/internal/engine/growth.go
-
-func ComputeGORI(sprintScores []float64, completed, total int) float64
-  // C38: Clamp(avg(scores) × (completed/max(total,1)), 0, 1)
-
-func GORIGrade(gori float64) string
-func CeremonyTier(sprintScore float64) string
-  // ≥0.90 PLATINUM, ≥0.80 GOLD, ≥0.65 SILVER, else BRONZE
-
-## Creează: backend/internal/engine/engine_test.go — minim 12 teste
-  TestValidateGO_ValidInput, TestValidateGO_InvalidBM, TestValidateGO_TooManyActive,
-  TestValidateGO_DurationOver365, TestClamp_InRange, TestClamp_Below, TestClamp_Above,
-  TestScoreToGrade_AllBrackets, TestSprintScore_Weights, TestComputeGORI_Basic,
-  TestCeremonyTier_AllBrackets, TestIsDriftCritical_ThreeDays
-
-## Verificare
-  cd backend && go test ./internal/engine/... -v -count=1
-
-## PRE-COMMIT CHECKLIST (OBLIGATORIU)
-  Actualizează CLAUDE.md: secțiunea 1 → F3 → ✅
-  Actualizează ROADMAP.md: F3 → ✅ cu data
-  Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
-
-## Commit
-  git add backend/internal/engine/
-  git commit -m "feat(engine): SRM logic, GORI, ceremonies, 12 unit tests (F3b)"
-```
-
----
-
-## F4 — Scheduler
-
-**Model: Sonnet** | **Max 45 min**
-
-```
-Read CLAUDE.md v1.0.0. Branch: claude/scheduler. Task: rewrite scheduler 12 jobs.
-
-## IMPORTANT: Citește CLAUDE.md secțiunea 8 (Integrări existente) ÎNAINTE de a scrie cod.
-## ai.go și email.go DEJA EXISTĂ — nu le rescrie, integrează-le.
-
-## Citește max 3 fișiere
-1. backend/internal/ai/ai.go — funcțiile AI existente (GenerateTaskTexts, AnalyzeGO)
-2. backend/internal/email/email.go — funcțiile email existente (SendWelcome, SendSprintComplete)
-3. backend/internal/scheduler/scheduler.go — structura existentă (rewrite)
-
-## Rewrite: backend/internal/scheduler/scheduler.go
-
-Struct Scheduler { db *pgxpool.Pool, ai *ai.Client, email *email.Client }
-NewScheduler: acceptă ai.Client și email.Client (pot fi nil — graceful degradation)
-12 jobs — fiecare cu context.WithTimeout(5min) + logger.Info start/finish:
-
-1. jobGenerateDailyTasks (00:01) — GO ACTIVE → pentru fiecare:
-   DACĂ s.ai != nil:
-     texts, err := s.ai.GenerateTaskTexts(ctx, goalName, checkpointName, sprintNum, 2)
-     Dacă err != nil → fallback pe template generic
-   ALTFEL:
-     texts = []string{"Activitate pentru <goalName>", "Continuare <checkpointName>"}
-   INSERT daily_tasks cu textele generate
-
-2. jobComputeDailyScore (23:50) — engine.ComputeProgress+Drift → INSERT go_scores
-3. jobCheckDailyProgress (23:55) — engine.IsDriftCritical → INSERT srm_events L1
-
-4. jobCloseExpiredSprints (00:00) — ACTIVE+expired →
-   SprintScore → INSERT sprint_results → CeremonyTier → INSERT ceremonies → COMPLETED
-   DACĂ s.email != nil:
-     go s.email.SendSprintComplete(ctx, userEmail, userName, goalName, grade, sprintNum)
-   (fire-and-forget, nu blochează job-ul)
-
-5. jobStartNextSprints (00:05) — GO ACTIVE fără sprint → INSERT sprints+checkpoints
-6. jobComputeWeeklyALI (duminică 03:00) — placeholder UPDATE go_metrics
-7. jobRecalibrateRelevance (duminică 02:00) — ChaosIndex → dacă ≥0.40 INSERT srm_events L2
-8. jobCheckStagnation (23:58) — 5+ zile fără completed → INSERT stagnation_events
-9. jobCheckSRMTimeouts (orar) — L3 neconfirmate → ComputeSRMFallback
-10. jobGenerateCeremonies (01:05) — sprints COMPLETED fără ceremony → INSERT
-11. jobDetectEvolution (01:00) — placeholder log
-12. jobComputeGORI (01:10) — engine.ComputeGORI → UPDATE go_metrics
-
-## Verificare
-  cd backend && go build ./internal/scheduler/...
-
-## PRE-COMMIT CHECKLIST (OBLIGATORIU)
-  Actualizează CLAUDE.md: F4 → ✅
-  Actualizează ROADMAP.md: F4 → ✅
-  Actualizează README.md: adaugă secțiune scheduler cu 12 jobs + cron times
-  Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
-
-## Commit
-  git add backend/internal/scheduler/
-  git commit -m "feat(scheduler): 12 cron jobs + SRM runtime (F4)"
-```
-
----
-
-## F5a — API Core
-
-**Model: Sonnet** | **Max 45 min**
-
-```
-Read CLAUDE.md v1.0.0. Branch: claude/api-handlers. Task: endpoints goals + today + dashboard + AI validare GO.
+Read CLAUDE.md v1.0.1. Branch: claude/api-handlers. Task: adaugă handlers Goals+Today+Dashboard în handlers.go + înregistrează rute în server.go.
 
 ## IMPORTANT: Citește CLAUDE.md secțiunea 8 (Integrări existente).
-## ai.go și email.go DEJA EXISTĂ — NU le rescrie. Integrează-le în handlers.
+## ai.go și email.go DEJA EXISTĂ — NU le rescrie. Integrează-le.
 
 ## Citește max 3 fișiere
-1. backend/internal/ai/ai.go — funcțiile AI existente (AnalyzeGO, SuggestGOCategory)
-2. backend/internal/api/handlers/handlers.go — handlere existente (verifică ce există deja)
+1. backend/internal/api/handlers/handlers.go — ce există (Auth complet)
+2. backend/internal/ai/ai.go — funcțiile AI existente
 3. backend/internal/engine/engine.go — funcții F3
 
-## Handlers struct trebuie să accepte ai + email (pot fi nil):
-  type Handlers struct { db, redis, engine, ai *ai.Client, email *email.Client, encKey }
-  Dacă ai==nil → fallback rule-based. Dacă email==nil → skip email.
+## PASUL 1 — Extinde Handlers struct și New() în handlers.go
 
-## Adaugă la routing (păstrează ce funcționează deja):
+Adaugă câmpul ai la struct:
+  type Handlers struct {
+    db     *pgxpool.Pool
+    redis  *redis.Client
+    auth   *auth.Service
+    engine *engine.Engine
+    encKey []byte
+    email  *email.Client
+    ai     *ai.Client  // ← ADAUGĂ (nil dacă ANTHROPIC_API_KEY lipsește)
+  }
+
+Modifică New() să accepte aiClient:
+  func New(pool *pgxpool.Pool, rdb *redis.Client, authSvc *auth.Service, eng *engine.Engine, encKey []byte, emailClient *email.Client, aiClient *ai.Client) *Handlers {
+    return &Handlers{db: pool, redis: rdb, auth: authSvc, engine: eng, encKey: encKey, email: emailClient, ai: aiClient}
+  }
+
+## PASUL 2 — Adaugă handlerii în handlers.go
 
 ### POST /goals/analyze — AI Validare GO (C9/C10)
-  Verifică dacă handlerul AnalyzeGO DEJA EXISTĂ — dacă da, păstrează-l!
-  Flux: parse text → dacă h.ai != nil: ai.AnalyzeGO(ctx, text) cu 2s timeout
-  → return {needs_clarification, question, hint, source:"ai"}
-  Fallback: rule-based (vagueTerms, measurable, time patterns)
+  Parse {text string}
+  Dacă h.ai != nil:
+    ctx2, cancel := context.WithTimeout(c.Context(), 2*time.Second)
+    defer cancel()
+    result, err := h.ai.AnalyzeGO(ctx2, req.Text)
+    Dacă err != nil → fallback
+  Fallback rule-based: vagueTerms check + measurable check
+  Return {needs_clarification bool, question string, hint string, source string}
+  NICIODATĂ nu returna drift/chaos/weights/thresholds
 
-### POST /goals/suggest-category — AI Sugestie Categorie
-  Dacă h.ai != nil: ai.SuggestGOCategory(ctx, title, desc) cu 2s timeout
-  Return {category, confidence} sau {category:"", confidence:0} la fallback
+### POST /goals/suggest-category
+  Dacă h.ai != nil: ai.SuggestGOCategory(ctx 2s timeout)
+  Return {category string, confidence float64}
+  Fallback: {category: "", confidence: 0}
 
-### POST /goals — CreateGoal (cu AI pre-validare)
-  ValidateGO, ComputeRelevance, RelevanceToWeight
-  Dacă activeCount >= 3 → WAITING + vaulted:true
-  Altfel → ACTIVE + sprint + 3 checkpoints
-  Return 201 (FĂRĂ drift/chaos/weights)
+### POST /goals — CreateGoal (C3, C4, C12, C14)
+  Parse {name, start_date, end_date, dominant_behavior_model, description?}
+  engine.ValidateGO(name, bm, start, end, activeCount) → 400 dacă eroare
+  Dacă activeCount >= 3 → INSERT GO cu status=WAITING (C12 Future Vault) → return 201
+  Altfel → INSERT GO ACTIVE + INSERT sprint 30 zile + INSERT 3 checkpoints
+  Return 201: {id, name, status, sprint_id} — FĂRĂ drift/chaos/weights
 
-### GET /goals — ListGoals: [{id, name, status, progress_pct, grade}]
-### GET /goals/:id — GetGoalDetail: DOAR progress_pct, grade, status, sprint info
-### GET /goals/:id/visualize — growth_trajectories data
-### GET /today — daily_tasks WHERE today AND user_id
-### POST /tasks/:id/complete — UPDATE completed=TRUE
-### GET /dashboard — goals overview per user
+### GET /goals — ListGoals
+  SELECT GO pentru user_id curent
+  Return [{id, name, status, progress_pct, grade, behavior_model, end_date}]
+  progress_pct și grade din ultima înregistrare go_scores
 
-## SECURITATE — check OBLIGATORIU:
+### GET /goals/:id — GetGoalDetail
+  Return {id, name, status, progress_pct, grade, sprint_day, sprint_total, checkpoint_name}
+  FĂRĂ drift, chaos_index, weights, thresholds
+
+### GET /goals/:id/visualize
+  SELECT growth_trajectories WHERE go_id = :id ORDER BY recorded_at
+  Return [{date, progress_pct, expected_pct}]
+
+### GET /today — GetToday
+  SELECT daily_tasks WHERE user_id=? AND task_date=TODAY AND (status!='CANCELLED')
+  JOIN cu sprint info pentru GO activ
+  Return {goal_name, day_number, checkpoint{name, progress_pct}, streak_days, main_tasks[], personal_tasks[]}
+
+### POST /today/complete/:id — CompleteTask
+  UPDATE daily_tasks SET completed=TRUE, completed_at=NOW() WHERE id=:id AND user_id=?
+  Return 200 {ok: true}
+
+### POST /today/personal — AddPersonalTask (max 2/zi)
+  Verifică COUNT(personal tasks today) < 2 → 400 dacă depășit
+  INSERT daily_tasks cu type=PERSONAL
+  Return 201 task creat
+
+### POST /context/energy — SetEnergy
+  Parse {level: "low"|"mid"|"hi"}
+  INSERT context_adjustments cu type=ENERGY_LEVEL
+  Return 200 {ok: true}
+
+### GET /dashboard — GetDashboard
+  SELECT active GOs cu ultima go_scores
+  Return {goals: [{id, name, progress_pct, grade, streak_days}], active_count, tasks_today_done, tasks_today_total, srm_active bool}
+  Cache în Redis 5 min (key: "dashboard:{userId}")
+
+## PASUL 3 — Actualizează server.go
+
+Adaugă AIClient în Config:
+  type Config struct {
+    ...
+    AIClient    *ai.Client    // ← ADAUGĂ (nil dacă ANTHROPIC_API_KEY lipsește)
+  }
+
+Actualizează handlers.New() call:
+  h := handlers.New(cfg.DB, cfg.Redis, authSvc, eng, encKey, cfg.EmailClient, cfg.AIClient)
+
+Adaugă rute în grupul protected p:
+  // Goals
+  p.Post("/goals/analyze", h.AnalyzeGO)
+  p.Post("/goals/suggest-category", h.SuggestGOCategory)
+  p.Post("/goals", h.CreateGoal)
+  p.Get("/goals", h.ListGoals)
+  p.Get("/goals/:id", h.GetGoalDetail)
+  p.Get("/goals/:id/visualize", h.GetGoalVisualize)
+  // Today
+  p.Get("/today", h.GetToday)
+  p.Post("/today/complete/:id", h.CompleteTask)
+  p.Post("/today/personal", h.AddPersonalTask)
+  p.Post("/context/energy", h.SetEnergy)
+  // Dashboard
+  p.Get("/dashboard", h.GetDashboard)
+
+## PASUL 4 — Actualizează cmd/main.go sau cmd/api/main.go
+Inițializează AI client la pornire:
+  aiClient, _ := ai.New()   // nil dacă ANTHROPIC_API_KEY lipsește — graceful degradation
+  cfg := api.Config{
+    ...
+    AIClient:   aiClient,
+  }
+
+## Verificare
+  cd backend && go build ./... && go vet ./...
   grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/
   # ZERO rezultate
 
 ## PRE-COMMIT CHECKLIST (OBLIGATORIU)
-  Actualizează README.md: adaugă endpoints goals, today, dashboard
-  Verifică secrete: grep "sk-ant-\|password" README.md  # ZERO
-  Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
+  grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}" README.md CLAUDE.md ROADMAP.md 2>/dev/null  # ZERO
+  grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/  # ZERO
+  Actualizează README.md: endpoints Goals/Today/Dashboard marcate ✅
+  Verifică versiuni: grep "Versiune\|1.0.1" CLAUDE.md README.md ROADMAP.md
 
 ## Commit
   git add backend/internal/api/
-  git commit -m "feat(api): goals, today, dashboard endpoints (F5a)"
+  git commit -m "feat(api): Goals, Today, Dashboard handlers + server.go wiring (F5a)"
 ```
 
 ---
 
-## F5b — API Extended
+## F5b — API Extended (SRM + Achievements + Profile + Admin)
 
-**Model: Sonnet** | **Max 45 min**
+**Model: Sonnet** | **Max 45 min** | **Branch: `claude/api-handlers` (continuare)**
 
 ```
-Read CLAUDE.md v1.0.0. Branch: claude/api-handlers (continuare). Task: SRM + achievements + email wiring + admin.
+Read CLAUDE.md v1.0.1. Branch: claude/api-handlers (continuare F5a). Task: SRM + achievements + profile + admin handlers.
 
-## IMPORTANT: ai.go și email.go DEJA EXISTĂ cu funcții complete.
-## NU le rescrie. Verifică că sunt WIRED corect în handlers și server.go.
+## IMPORTANT: ai.go, email.go DEJA EXISTĂ. handlers.go din F5a are AI integrat.
+## NU rescrie ce există. Adaugă doar ce lipsește.
 
 ## Citește max 3 fișiere
-1. backend/internal/api/handlers/handlers.go — din F5a
-2. backend/internal/ai/ai.go — VERIFICĂ funcțiile existente, nu rescrie
-3. backend/internal/email/email.go — VERIFICĂ funcțiile existente, nu rescrie
+1. backend/internal/api/handlers/handlers.go — din F5a (verifică ce există)
+2. backend/internal/engine/srm.go — ChaosLevel, ComputeSRMFallback
+3. backend/internal/api/server.go — rutele din F5a
 
-## Endpoints:
-GET /srm/status/:goalId → {srm_level, triggered_at} NICIODATĂ chaos/drift
-POST /srm/confirm-l2/:goalId → INSERT context_adjustments ENERGY_LOW
-POST /srm/confirm-l3/:goalId → UPDATE GO status=PAUSED
-GET /achievements → badge list
-GET /ceremonies/:goalId → ultima ceremonie
-POST /ceremonies/:id/view → UPDATE viewed_at
-GET /profile/activity → daily_metrics 365 zile
-PATCH /settings → theme, locale
-GET /admin/stats → 404 non-admin
-GET /admin/users → 404 non-admin
-POST /admin/users/:id/deactivate → 404 non-admin
+## Adaugă handlerii în handlers.go:
 
-## WIRING EMAIL (verifică, nu rescrie):
-Handler Register (DEJA EXISTĂ) trebuie să apeleze:
-  if h.email != nil {
-    go h.email.SendWelcome(context.Background(), email, name)
-  }
-  Verifică în handlers.go că acest apel EXISTĂ. Dacă nu → adaugă-l.
+### GET /srm/status/:goalId
+  SELECT srm_events WHERE go_id=:goalId ORDER BY created_at DESC LIMIT 1
+  Return {srm_level: "L1"|"L2"|"L3"|"NONE", triggered_at}
+  NICIODATĂ nu returna chaos_index, drift, weights
 
-Handler ForgotPassword (DEJA EXISTĂ) trebuie să apeleze:
-  if h.email != nil {
-    go h.email.SendPasswordReset(context.Background(), email, resetLink)
-  }
-  Verifică în handlers.go că acest apel EXISTĂ. Dacă nu → adaugă-l.
+### POST /srm/confirm-l2/:goalId
+  UPDATE srm_events SET confirmed_at=NOW() WHERE go_id=:goalId AND level='L2' AND confirmed_at IS NULL
+  INSERT context_adjustments cu type=ENERGY_LOW
+  Return 200 {ok: true}
 
-## WIRING AI (verifică, nu rescrie):
-Verifică că server.go inițializează:
-  aiClient, _ := ai.New()  // nil dacă ANTHROPIC_API_KEY lipsește
-  emailClient, _ := email.New()  // nil dacă RESEND_API_KEY lipsește
-  handlers := NewHandlers(db, redis, engine, aiClient, emailClient, encKey)
+### POST /srm/confirm-l3/:goalId
+  UPDATE global_objectives SET status='PAUSED', paused_at=NOW() WHERE id=:goalId AND user_id=?
+  INSERT context_adjustments cu type=PAUSE
+  Return 200 {ok: true}
 
-## ENV VARS necesare (DEJA pe server, doar verifică .env.example):
-  ANTHROPIC_API_KEY=sk-ant-...YOUR_KEY_HERE
-  RESEND_API_KEY=re_...YOUR_KEY_HERE
-  EMAIL_FROM=NuviaX <noreply@nuviax.app>
+### GET /achievements
+  SELECT achievements WHERE user_id=? ORDER BY earned_at DESC
+  Return [{id, type, title, description, earned_at}]
 
-## SECURITATE check:
+### GET /ceremonies/:goalId
+  SELECT ceremonies WHERE go_id=:goalId ORDER BY created_at DESC LIMIT 1
+  Return {id, tier, sprint_score, viewed_at} sau null
+
+### POST /ceremonies/:id/view
+  UPDATE ceremonies SET viewed_at=NOW() WHERE id=:id AND go_id IN (GO-uri ale userului)
+  Return 200 {ok: true}
+
+### GET /profile/activity
+  SELECT daily_metrics WHERE user_id=? AND recorded_at >= NOW()-365 days
+  Return [{date, tasks_completed, active_minutes}] (365 entries)
+
+### PATCH /settings
+  Parse {theme?: "light"|"dark", locale?: "ro"|"en"|"ru"}
+  UPDATE users SET preferences = preferences || jsonb_build_object(...)
+  Return 200 {ok: true}
+
+### GET /admin/stats — Admin guard (404 non-admin)
+  middleware.RequireAdmin → dacă user.is_admin=false → 404 (nu 403!)
+  SELECT COUNT(users), COUNT(active GOs), COUNT(tasks today)
+  Return {users_total, active_goals, tasks_today}
+
+### GET /admin/users
+  middleware.RequireAdmin → 404 dacă non-admin
+  SELECT users cu email decriptat, created_at, last_login
+  Return [{id, email, full_name, created_at, is_active, goals_count}]
+
+### POST /admin/users/:id/deactivate
+  middleware.RequireAdmin → 404 dacă non-admin
+  UPDATE users SET is_active=FALSE WHERE id=:id
+  Return 200 {ok: true}
+
+## Adaugă rute în server.go (grupul p):
+  // SRM
+  p.Get("/srm/status/:goalId", h.GetSRMStatus)
+  p.Post("/srm/confirm-l2/:goalId", h.ConfirmSRML2)
+  p.Post("/srm/confirm-l3/:goalId", h.ConfirmSRML3)
+  // Achievements + Ceremonies
+  p.Get("/achievements", h.ListAchievements)
+  p.Get("/ceremonies/:goalId", h.GetCeremony)
+  p.Post("/ceremonies/:id/view", h.ViewCeremony)
+  // Profile + Settings
+  p.Get("/profile/activity", h.GetProfileActivity)
+  p.Patch("/settings", h.UpdateSettings)
+  // Admin (cu RequireAdmin middleware)
+  admin := p.Group("/admin", middleware.RequireAdmin)
+  admin.Get("/stats", h.AdminStats)
+  admin.Get("/users", h.AdminUsers)
+  admin.Post("/users/:id/deactivate", h.AdminDeactivateUser)
+
+## Verificare
+  cd backend && go build ./... && go vet ./...
   grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/  # ZERO
 
 ## PRE-COMMIT CHECKLIST (OBLIGATORIU)
+  grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}" README.md CLAUDE.md ROADMAP.md 2>/dev/null  # ZERO
+  grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/  # ZERO
   Actualizează CLAUDE.md: F5 → ✅
-  Actualizează ROADMAP.md: F5 → ✅
-  Actualizează README.md: endpoints complete + env vars (ANTHROPIC_API_KEY, RESEND_API_KEY)
-  Actualizează infra/.env.example dacă env vars noi
-  Verifică secrete: grep "sk-ant-" README.md infra/.env.example  # ZERO chei reale
+  Actualizează ROADMAP.md: F5 → ✅ cu data
+  Actualizează README.md: toate endpoint-urile marcate ✅
+  Verifică versiuni: grep "Versiune\|1.0.1" CLAUDE.md README.md ROADMAP.md  # toate identice
 
 ## Commit
-  git add backend/internal/
-  git commit -m "feat(api): SRM, achievements, AI, email, admin (F5b)"
+  git add backend/internal/api/
+  git commit -m "feat(api): SRM, achievements, profile, admin handlers (F5b)"
 ```
 
 ---
 
-## F6a — Frontend Core
+## F6-audit — Frontend Audit + Fix
 
-**Model: Sonnet** | **Max 60 min**
+**Model: Sonnet** | **Max 30–45 min** | **Branch: `claude/frontend-mvp`**
 
 ```
-Read CLAUDE.md v1.0.0. Branch: claude/frontend-mvp. Task: 4 pagini core.
+Read CLAUDE.md v1.0.1. Branch: claude/frontend-mvp. Task: audit frontend — build check + fix erori după F5.
 
-## Citește max 3 fișiere
-1. frontend/app/app/auth/login/page.tsx — referință stil
-2. frontend/app/styles/globals.css — CSS vars
-3. frontend/app/app/api/proxy/[...path]/route.ts — API proxy
+## Context
+Toate paginile și componentele frontend EXISTĂ deja:
+  Pagini: onboarding, today, goals, goals/[id], dashboard, recap, profile, settings, achievements, admin
+  Componente: AppShell, SRMWarning, CeremonyModal, ActivityHeatmap, ProgressCharts, GoalTabs
 
-## 4 pagini:
+## Citește max 3 fișiere (cele cu erori de build dacă există)
+1. frontend/app/app/onboarding/page.tsx — verifică fluxul AI
+2. frontend/app/app/dashboard/page.tsx — verifică ce afișează
+3. frontend/app/lib/api.ts — tipurile definite
 
-/onboarding — wizard 4 pași cu AI:
-  Pas 1: input text goal name + description
-  Pas 2: POST /api/proxy/goals/analyze → AI validează GO
-    Dacă needs_clarification=true → afișează question + hint → user reformulează → re-submit
-    Dacă needs_clarification=false → trecem la pas 3
-    Dacă AI nu răspunde în 2s → skip validare, trecem direct la pas 3
-  Pas 3: date (start, end) + select BM (5 opțiuni) + AI suggest-category (pre-fill)
-    POST /api/proxy/goals/suggest-category cu title → pre-selectează categoria
-    User poate override categoria sugerată
-  Pas 4: confirmare → POST /api/proxy/goals → redirect /today
+## PASUL 1 — Build check
+  cd frontend/app && npm run build 2>&1 | head -50
+  Notează TOATE erorile TypeScript/build
 
-/today — GET /today → task cards cu checkbox → POST /tasks/:id/complete (update DUPĂ confirmare API)
-/goals — GET /goals → card list cu progress bar + grade → click → /goals/[id]
-/dashboard — GET /dashboard → cards overview + tasks count + SRM banner dacă activ
+## PASUL 2 — Audit endpoint calls
+Verifică că fiecare pagină cheamă endpoint-uri care EXISTĂ după F5:
+  Onboarding: POST /goals/analyze ✓, POST /goals/suggest-category ✓, POST /goals ✓
+  Today: GET /today ✓, POST /today/complete/:id ✓, POST /today/personal ✓, POST /context/energy ✓
+  Goals: GET /goals ✓, GET /goals/:id ✓
+  Dashboard: GET /dashboard ✓
+  SRM: GET /srm/status/:id ✓, POST /srm/confirm-l2/:id ✓, POST /srm/confirm-l3/:id ✓
+  Achievements: GET /achievements ✓
+  Profile: GET /profile/activity ✓
+  Settings: PATCH /settings ✓
+  Admin: GET /admin/stats ✓, GET /admin/users ✓
 
-## Stil: clase din app.css. NU implementa: i18n, charts, heatmap
+## PASUL 3 — Fix erori de build
+  Repară DOAR erorile de TypeScript/linting care blochează build-ul
+  NU adăuga funcționalitate nouă — scopul e build success
 
-## Verificare
+## PASUL 4 — Verificare build final
   cd frontend/app && npm run build
+  # ZERO erori de build
 
 ## PRE-COMMIT CHECKLIST (OBLIGATORIU)
-  Verifică secrete: grep -rn "sk-ant-\|API_KEY\|password" frontend/app/app/  # ZERO
-  Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
-
-## Commit
-  git add frontend/app/app/onboarding/ frontend/app/app/today/ frontend/app/app/goals/ frontend/app/app/dashboard/
-  git commit -m "feat(frontend): onboarding, today, goals, dashboard (F6a)"
-```
-
----
-
-## F6b — Frontend Extended
-
-**Model: Sonnet** | **Max 60 min**
-
-```
-Read CLAUDE.md v1.0.0. Branch: claude/frontend-mvp (continuare). Task: pagini secundare + componente.
-
-## Citește max 3 fișiere
-1. frontend/app/app/today/page.tsx — referință din F6a
-2. frontend/app/components/ — ce există
-3. frontend/app/styles/globals.css — CSS vars
-
-## Pagini:
-/goals/[id] — detaliu: progress %, grade, sprint day X/30, milestones
-/profile — avatar, name, stats simple
-/settings — theme toggle + language selector
-/achievements — badge grid 10 types
-/admin — verifică dacă există, dacă nu: 2 tab-uri Stats+Users, guard is_admin
-
-## Componente:
-SRMWarning.tsx — banner L1/L2/L3 cu buton confirm
-AppShell.tsx — verifică, adaugă links noi la sidebar
-CeremonyModal.tsx — modal per tier, buton "Am văzut"
-
-## Verificare
-  cd frontend/app && npm run build
-
-## PRE-COMMIT CHECKLIST (OBLIGATORIU)
+  grep -rn "sk-ant-\|API_KEY.*=.*[A-Za-z0-9]" frontend/app/  # ZERO
   Actualizează CLAUDE.md: F6 → ✅
-  Actualizează ROADMAP.md: F6 → ✅
-  Verifică secrete în frontend: grep -rn "sk-ant-\|API_KEY" frontend/  # ZERO
+  Actualizează ROADMAP.md: F6 → ✅ cu data
   Verifică versiuni: grep "Versiune" CLAUDE.md README.md ROADMAP.md
 
 ## Commit
   git add frontend/app/
-  git commit -m "feat(frontend): profile, settings, achievements, admin, components (F6b)"
+  git commit -m "fix(frontend): build errors fixed, F6 complete"
 ```
 
 ---
 
 ## F7 — Smoke Test + Docs Finale
 
-**Model: Sonnet** | **Max 30 min**
+**Model: Sonnet** | **Max 30 min** | **Branch: `claude/smoke-test`**
 
 ```
-Read CLAUDE.md v1.0.0. Branch: claude/smoke-test. Task: E2E test + docs finale.
+Read CLAUDE.md v1.0.1. Branch: claude/smoke-test. Task: E2E smoke test + docs finale v1.1.0.
 
-## Teste curl — execută și notează rezultatul
+## PASUL 1 — Smoke tests curl
 
-  # Auth
+  # 1. Register
   curl -s -o /dev/null -w "%{http_code}" -X POST localhost:8080/api/v1/auth/register \
     -H "Content-Type: application/json" \
     -d '{"email":"smoke@test.com","password":"Smoke1234!","full_name":"Smoke Test"}'
   # → 201 sau 409
 
+  # 2. Login + token
   TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login \
     -H "Content-Type: application/json" \
     -d '{"email":"smoke@test.com","password":"Smoke1234!"}' | jq -r '.access_token')
 
-  # Create GO
+  # 3. AI validate GO
+  curl -s -H "Authorization: Bearer $TOKEN" -X POST localhost:8080/api/v1/goals/analyze \
+    -H "Content-Type: application/json" \
+    -d '{"text":"Vreau să slăbesc"}'
+  # → {needs_clarification: true, ...} sau {needs_clarification: false}
+
+  # 4. Create GO
   curl -s -H "Authorization: Bearer $TOKEN" -X POST localhost:8080/api/v1/goals \
     -H "Content-Type: application/json" \
-    -d '{"name":"Test MVP","start_date":"2026-04-07","end_date":"2026-10-07","dominant_behavior_model":"INCREASE"}'
+    -d '{"name":"Test MVP Goal","start_date":"2026-04-18","end_date":"2026-10-18","dominant_behavior_model":"INCREASE"}'
   # → 201
 
-  # Dashboard
+  # 5. Today
+  curl -s -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/today
+  # → 200
+
+  # 6. Dashboard
   curl -s -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/dashboard
   # → 200 cu goals
 
-  # Opacity check CRITIC
+  # 7. API Opacity check CRITIC
   curl -s -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/goals | grep -i "drift\|chaos\|weight\|threshold"
   # → ZERO rezultate
 
-  # Admin guard
+  # 8. Admin guard
   curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/admin/stats
   # → 404
 
-## Dacă buguri minore → fix acum. Majore → docs/known-issues.md
+## PASUL 2 — Dacă buguri → fix sau docs/known-issues.md
 
-## PRE-COMMIT CHECKLIST FINAL (OBLIGATORIU)
+## PASUL 3 — PRE-COMMIT CHECKLIST FINAL (OBLIGATORIU)
 
   # Securitate completă
   grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}\|password.*=.*[A-Za-z]" README.md CLAUDE.md ROADMAP.md infra/.env.example 2>/dev/null
@@ -550,22 +427,29 @@ Read CLAUDE.md v1.0.0. Branch: claude/smoke-test. Task: E2E test + docs finale.
   grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/
   # ZERO
 
-  # Actualizare docs finale
-  Actualizează README.md: versiune 1.1.0, endpoints complete, scheduler 12 jobs
-  Actualizează CLAUDE.md: F3–F7 → ✅, versiune 1.1.0
-  Actualizează ROADMAP.md: F0–F7 → ✅, versiune 1.1.0
+  # Actualizare docs finale v1.1.0
+  Actualizează README.md: versiune → 1.1.0
+  Actualizează CLAUDE.md: F5–F7 → ✅, versiune → 1.1.0
+  Actualizează ROADMAP.md: F0–F7 → ✅, versiune → 1.1.0
 
   # Verificare versiuni
-  grep "Versiune\|versiune\|1.1.0" CLAUDE.md README.md ROADMAP.md
+  grep "1.1.0" CLAUDE.md README.md ROADMAP.md
   # Toate trei: 1.1.0
 
 ## Commit
-  git add README.md CLAUDE.md ROADMAP.md docs/
-  git commit -m "docs: v1.1.0 — MVP complete, all F0–F7 verified"
+  git add README.md CLAUDE.md ROADMAP.md
+  git commit -m "docs: v1.1.0 — MVP complete, F0–F7 verified"
 ```
 
 ---
 
-*v1.0.0 | 2026-04-06*  
-*10 sesiuni Sonnet, ~7–8h total*  
+## Sesiunile F0.1–F4 (COMPLETATE ✅)
+
+Sesiunile F0.1, F3a, F3b, F4 au fost executate cu succes (commits pe branch-urile respective, mergere în main).  
+Nu mai sunt necesare — documentate doar ca referință istorică.
+
+---
+
+*v1.0.1 | 2026-04-18*  
+*4 sesiuni rămase: F5a + F5b + F6-audit + F7 (~2.5–3h total)*  
 *PRE-COMMIT CHECKLIST obligatoriu în fiecare sesiune*

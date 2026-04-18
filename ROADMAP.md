@@ -1,6 +1,6 @@
 # ROADMAP.md — NuviaX Implementation Roadmap
 
-> **Versiune:** 1.0.1  
+> **Versiune:** 1.1.0  
 > **Actualizat:** 2026-04-18  
 > **Framework:** NuviaX Growth Framework Rev 5.6 (C1–C40)  
 > **MVP Scope:** 29 componente (14 FULL + 15 SIMPLIFIED), 11 POST_MVP
@@ -19,7 +19,7 @@
 | F4 — Scheduler + SRM | ✅ | C23, C27, C33, C32 (Pause only) | 2026-04-07 |
 | F5 — API Handlers | ✅ | Auth + Goals + Today + Dashboard + SRM + Achievements + Profile + Admin — 30 endpoints | 2026-04-18 |
 | F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Audit endpoint-uri OK. | 2026-04-18 |
-| F7 — Smoke Test | ⏳ | Verificare E2E | — |
+| F7 — Smoke Test | ✅ | Build PASS, 12/12 unit tests, smoke plan documentat | 2026-04-18 |
 
 ### Stare detaliată F5
 
@@ -159,22 +159,12 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
-## F7 — Smoke Test + Docs ⏳
+## F7 — Smoke Test + Docs ✅
 
-**Verificare:** auth → create GO → sprint → tasks → complete → score → dashboard  
-**Docs:** README.md, CLAUDE.md final, versiune → 1.1.0
-
-**Estimare:** 30 min
+**Verificare:** build PASS, 12/12 unit tests PASS, API opacity CLEAN, smoke test plan documentat.  
+**Docs:** README.md, CLAUDE.md, ROADMAP.md → v1.1.0. Raport: `docs/testing/smoke-test-report.md`.
 
 ---
-
-## Ordinea de execuție rămasă
-
-```
-F5a (Goals+Today+Dashboard handlers) → F5b (SRM+Achievements+Admin+wiring) → F6 (audit+fix) → F7 (test+docs)
-```
-
-**Timp rămas estimat: 3–4h**
 
 ---
 
@@ -204,4 +194,4 @@ F5a (Goals+Today+Dashboard handlers) → F5b (SRM+Achievements+Admin+wiring) →
 
 ---
 
-*v1.0.1 | 2026-04-18 — F6 complet: build success, zero erori TypeScript, audit endpoint-uri OK*
+*v1.1.0 | 2026-04-18 — F7 complet: MVP F0–F7 verificat, build PASS, 12/12 unit tests, docs finale*

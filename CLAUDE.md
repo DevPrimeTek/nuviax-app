@@ -25,16 +25,16 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
 | F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
-| F5 — API Handlers | ⚠️ PARȚIAL | Auth 8 ✅ + Goals/Today/Dashboard 11 endpoints ✅ (F5a). SRM/Profile/Achievements/Admin lipsesc (F5b) |
+| F5 — API Handlers | ✅ | Auth 8 + Goals/Today/Dashboard 11 (F5a) + SRM/Achievements/Profile/Admin 11 endpoints (F5b) |
 | F6 — Frontend MVP | ⚠️ PARȚIAL | Toate paginile și componentele există în cod. Nefuncționale până F5 e complet |
 | F7 — Smoke Test + Docs | ⏳ | — |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
-**Blocaje actuale (2026-04-18):**
+**Stare (2026-04-18):**
 - F5a rezolvat: Goals/Today/Dashboard + AI client integrat în server.go ✅
-- F5b (SRM/Profile/Achievements/Admin) — handlers lipsesc
-- Frontend cheamă endpoint-uri F5b inexistente în backend
+- F5b rezolvat: SRM/Achievements/Profile/Admin handlers implementate ✅
+- F5 complet ✅ — Frontend poate integra toate endpoint-urile
 
 ---
 

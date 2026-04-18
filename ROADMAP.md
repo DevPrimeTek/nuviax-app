@@ -17,7 +17,7 @@
 | F0.1 — Cleanup | ✅ | Fișiere v10.x eliminate | 2026-04-06 |
 | F3 — Core Engine | ✅ | C1–C8, C14, C19–C21, C24–C26, C28, C30, C37, C38 | 2026-04-07 |
 | F4 — Scheduler + SRM | ✅ | C23, C27, C33, C32 (Pause only) | 2026-04-07 |
-| F5 — API Handlers | ⚠️ PARȚIAL | Auth complet. Goals/Today/Dashboard/SRM/Profile/Achievements/Admin lipsesc | — |
+| F5 — API Handlers | ✅ | Auth + Goals + Today + Dashboard + SRM + Achievements + Profile + Admin — 30 endpoints | 2026-04-18 |
 | F6 — Frontend MVP | ⚠️ PARȚIAL | Paginile există. Funcționale după F5 complet | — |
 | F7 — Smoke Test | ⏳ | Verificare E2E | — |
 
@@ -41,11 +41,11 @@
 - `api.Config` extins cu `AIClient *ai.Client` ✅
 - `server.go` rutele Goals/Today/Dashboard înregistrate ✅
 
-**Lipsesc F5b (neimplementate):**
-- SRM: `GET /srm/status/:goalId`, `POST /srm/confirm-l2/:goalId`, `POST /srm/confirm-l3/:goalId`
-- Achievements: `GET /achievements`, `GET /ceremonies/:goalId`, `POST /ceremonies/:id/view`
-- Profile: `GET /profile/activity`, `PATCH /settings`
-- Admin: `GET /admin/stats`, `GET /admin/users`, `POST /admin/users/:id/deactivate`
+**Implementat F5b (SRM + Achievements + Profile + Admin):**
+- SRM: `GET /srm/status/:goalId` ✅, `POST /srm/confirm-l2/:goalId` ✅, `POST /srm/confirm-l3/:goalId` ✅
+- Achievements: `GET /achievements` ✅, `GET /ceremonies/:goalId` ✅, `POST /ceremonies/:id/view` ✅
+- Profile: `GET /profile/activity` ✅, `PATCH /settings` ✅
+- Admin: `GET /admin/stats` ✅, `GET /admin/users` ✅, `POST /admin/users/:id/deactivate` ✅
 
 ### Stare detaliată F6
 

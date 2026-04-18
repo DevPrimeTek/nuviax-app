@@ -125,6 +125,26 @@ func NewServer(cfg Config) *fiber.App {
 	// Dashboard
 	p.Get("/dashboard", h.GetDashboard)
 
+	// SRM (C33)
+	p.Get("/srm/status/:goalId", h.GetSRMStatus)
+	p.Post("/srm/confirm-l2/:goalId", h.ConfirmSRML2)
+	p.Post("/srm/confirm-l3/:goalId", h.ConfirmSRML3)
+
+	// Achievements + Ceremonies (C37)
+	p.Get("/achievements", h.ListAchievements)
+	p.Get("/ceremonies/:goalId", h.GetCeremony)
+	p.Post("/ceremonies/:id/view", h.ViewCeremony)
+
+	// Profile + Settings
+	p.Get("/profile/activity", h.GetProfileActivity)
+	p.Patch("/settings", h.UpdateSettings)
+
+	// Admin (404 for non-admin)
+	admin := p.Group("/admin", middleware.AdminOnly(cfg.DB))
+	admin.Get("/stats", h.AdminStats)
+	admin.Get("/users", h.AdminUsers)
+	admin.Post("/users/:id/deactivate", h.AdminDeactivateUser)
+
 	return app
 }
 

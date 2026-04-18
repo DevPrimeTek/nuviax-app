@@ -3,7 +3,7 @@
 Platformă SaaS de management al obiectivelor personale/profesionale, construită pe **NuviaX Growth Framework Rev 5.6**.
 
 **Versiune documentație:** `1.0.1`  
-**Stare produs:** MVP în construcție — F0–F4 complete, F5 parțial, F6 parțial, F7 pending
+**Stare produs:** MVP în construcție — F0–F5 complete, F6 parțial, F7 pending
 
 ---
 
@@ -79,20 +79,20 @@ PROMPTS_MVP.md           # prompturi sesiuni Claude Code
 | POST | `/api/v1/context/energy` | Setare nivel energie |
 | GET | `/api/v1/dashboard` | Overview utilizator (Redis cache 5 min) |
 
-### Business Logic (de implementat — F5b)
+### Business Logic (implementate ✅ — F5b)
 | Method | Endpoint | Descriere |
 |---|---|---|
-| GET | `/api/v1/srm/status/:goalId` | Status SRM |
-| POST | `/api/v1/srm/confirm-l2/:goalId` | Confirmare SRM L2 |
-| POST | `/api/v1/srm/confirm-l3/:goalId` | Pauză GO (SRM L3) |
-| GET | `/api/v1/achievements` | Lista achievements |
-| GET | `/api/v1/ceremonies/:goalId` | Ultima ceremonie |
-| POST | `/api/v1/ceremonies/:id/view` | Marchează ceremonie vizualizată |
-| GET | `/api/v1/profile/activity` | Activitate 365 zile |
-| PATCH | `/api/v1/settings` | Theme, locale |
-| GET | `/api/v1/admin/stats` | Statistici admin (404 non-admin) |
-| GET | `/api/v1/admin/users` | Lista utilizatori (404 non-admin) |
-| POST | `/api/v1/admin/users/:id/deactivate` | Dezactivare cont (404 non-admin) |
+| GET | `/api/v1/srm/status/:goalId` | Status SRM ✅ |
+| POST | `/api/v1/srm/confirm-l2/:goalId` | Confirmare SRM L2 ✅ |
+| POST | `/api/v1/srm/confirm-l3/:goalId` | Pauză GO (SRM L3) ✅ |
+| GET | `/api/v1/achievements` | Lista achievements ✅ |
+| GET | `/api/v1/ceremonies/:goalId` | Ultima ceremonie ✅ |
+| POST | `/api/v1/ceremonies/:id/view` | Marchează ceremonie vizualizată ✅ |
+| GET | `/api/v1/profile/activity` | Activitate 365 zile ✅ |
+| PATCH | `/api/v1/settings` | Theme, locale ✅ |
+| GET | `/api/v1/admin/stats` | Statistici admin (404 non-admin) ✅ |
+| GET | `/api/v1/admin/users` | Lista utilizatori (404 non-admin) ✅ |
+| POST | `/api/v1/admin/users/:id/deactivate` | Dezactivare cont (404 non-admin) ✅ |
 
 ---
 

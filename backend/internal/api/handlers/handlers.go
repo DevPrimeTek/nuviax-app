@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
 	"github.com/devprimetek/nuviax-app/internal/auth"
 	"github.com/devprimetek/nuviax-app/internal/cache"
@@ -29,10 +30,11 @@ type Handlers struct {
 	engine *engine.Engine
 	encKey []byte
 	email  *email.Client // nil if RESEND_API_KEY not configured
+	ai     *ai.Client    // nil if ANTHROPIC_API_KEY not configured
 }
 
-func New(pool *pgxpool.Pool, rdb *redis.Client, authSvc *auth.Service, eng *engine.Engine, encKey []byte, emailClient *email.Client) *Handlers {
-	return &Handlers{db: pool, redis: rdb, auth: authSvc, engine: eng, encKey: encKey, email: emailClient}
+func New(pool *pgxpool.Pool, rdb *redis.Client, authSvc *auth.Service, eng *engine.Engine, encKey []byte, emailClient *email.Client, aiClient *ai.Client) *Handlers {
+	return &Handlers{db: pool, redis: rdb, auth: authSvc, engine: eng, encKey: encKey, email: emailClient, ai: aiClient}
 }
 
 // ═══════════════════════════════════════════════════════════════

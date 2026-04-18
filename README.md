@@ -64,7 +64,7 @@ PROMPTS_MVP.md           # prompturi sesiuni Claude Code
 | POST | `/api/v1/auth/reset-password` | Resetare parolă cu token |
 | POST | `/api/v1/auth/logout` | Deconectare |
 
-### Business Logic (de implementat în F5)
+### Goals / Today / Dashboard (implementate ✅ — F5a)
 | Method | Endpoint | Descriere |
 |---|---|---|
 | POST | `/api/v1/goals/analyze` | AI validare text GO (C9/C10) |
@@ -75,9 +75,13 @@ PROMPTS_MVP.md           # prompturi sesiuni Claude Code
 | GET | `/api/v1/goals/:id/visualize` | Date growth trajectories |
 | GET | `/api/v1/today` | Taskuri zilnice |
 | POST | `/api/v1/today/complete/:id` | Marchează task completat |
-| POST | `/api/v1/today/personal` | Adaugă task personal |
+| POST | `/api/v1/today/personal` | Adaugă task personal (max 2/zi) |
 | POST | `/api/v1/context/energy` | Setare nivel energie |
-| GET | `/api/v1/dashboard` | Overview utilizator |
+| GET | `/api/v1/dashboard` | Overview utilizator (Redis cache 5 min) |
+
+### Business Logic (de implementat — F5b)
+| Method | Endpoint | Descriere |
+|---|---|---|
 | GET | `/api/v1/srm/status/:goalId` | Status SRM |
 | POST | `/api/v1/srm/confirm-l2/:goalId` | Confirmare SRM L2 |
 | POST | `/api/v1/srm/confirm-l3/:goalId` | Pauză GO (SRM L3) |

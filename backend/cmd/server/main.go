@@ -84,6 +84,7 @@ func main() {
 		EncryptionKey:  []byte(cfg.EncryptionKey),
 		AllowedOrigins: cfg.AllowedOrigins,
 		EmailClient:    emailClient,
+		AIClient:       aiClient,
 	})
 
 	// ── Graceful shutdown ──────────────────────────────────────

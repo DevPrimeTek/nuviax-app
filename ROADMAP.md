@@ -33,19 +33,19 @@
 - `POST /auth/reset-password` ✅
 - `POST /auth/logout` ✅
 
-**Lipsesc (neimplementate):**
-- Goals: `POST /goals/analyze`, `POST /goals/suggest-category`, `POST /goals`, `GET /goals`, `GET /goals/:id`, `GET /goals/:id/visualize`
-- Today: `GET /today`, `POST /today/complete/:id`, `POST /today/personal`, `POST /context/energy`
-- Dashboard: `GET /dashboard`
+**Implementat F5a (Goals + Today + Dashboard):**
+- Goals: `POST /goals/analyze` ✅, `POST /goals/suggest-category` ✅, `POST /goals` ✅, `GET /goals` ✅, `GET /goals/:id` ✅, `GET /goals/:id/visualize` ✅
+- Today: `GET /today` ✅, `POST /today/complete/:id` ✅, `POST /today/personal` ✅, `POST /context/energy` ✅
+- Dashboard: `GET /dashboard` ✅ (Redis cached 5 min)
+- `handlers.Handlers` struct extins cu `ai *ai.Client` ✅
+- `api.Config` extins cu `AIClient *ai.Client` ✅
+- `server.go` rutele Goals/Today/Dashboard înregistrate ✅
+
+**Lipsesc F5b (neimplementate):**
 - SRM: `GET /srm/status/:goalId`, `POST /srm/confirm-l2/:goalId`, `POST /srm/confirm-l3/:goalId`
 - Achievements: `GET /achievements`, `GET /ceremonies/:goalId`, `POST /ceremonies/:id/view`
 - Profile: `GET /profile/activity`, `PATCH /settings`
 - Admin: `GET /admin/stats`, `GET /admin/users`, `POST /admin/users/:id/deactivate`
-
-**Blocaje tehnice identificate:**
-- `handlers.Handlers` struct nu are câmpul `ai *ai.Client` — trebuie adăugat
-- `api.Config` struct nu include `AIClient *ai.Client` — trebuie adăugat
-- `server.go` nu înregistrează nicio rută în afară de auth — toate rutele de mai sus lipsesc
 
 ### Stare detaliată F6
 

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api/handlers"
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
 	"github.com/devprimetek/nuviax-app/internal/auth"
@@ -30,6 +31,7 @@ type Config struct {
 	EncryptionKey  []byte
 	AllowedOrigins string
 	EmailClient    *email.Client // optional: nil if RESEND_API_KEY not set
+	AIClient       *ai.Client   // optional: nil if ANTHROPIC_API_KEY not set
 }
 
 func NewServer(cfg Config) *fiber.App {
@@ -39,7 +41,7 @@ func NewServer(cfg Config) *fiber.App {
 	}
 	eng := engine.New(cfg.DB, cfg.Redis)
 	encKey := parseEncKey(cfg.EncryptionKey)
-	h := handlers.New(cfg.DB, cfg.Redis, authSvc, eng, encKey, cfg.EmailClient)
+	h := handlers.New(cfg.DB, cfg.Redis, authSvc, eng, encKey, cfg.EmailClient, cfg.AIClient)
 
 	app := fiber.New(fiber.Config{
 		AppName:      "NUViaX API",
@@ -105,6 +107,23 @@ func NewServer(cfg Config) *fiber.App {
 
 	p.Post("/auth/logout", h.Logout)
 	p.Post("/auth/mfa/enable", h.MFAEnable)
+
+	// Goals (C3, C4, C9, C10, C12, C14)
+	p.Post("/goals/analyze", h.AnalyzeGO)
+	p.Post("/goals/suggest-category", h.SuggestGOCategory)
+	p.Post("/goals", h.CreateGoal)
+	p.Get("/goals", h.ListGoals)
+	p.Get("/goals/:id", h.GetGoalDetail)
+	p.Get("/goals/:id/visualize", h.GetGoalVisualize)
+
+	// Today (C23, C24)
+	p.Get("/today", h.GetToday)
+	p.Post("/today/complete/:id", h.CompleteTask)
+	p.Post("/today/personal", h.AddPersonalTask)
+	p.Post("/context/energy", h.SetEnergy)
+
+	// Dashboard
+	p.Get("/dashboard", h.GetDashboard)
 
 	return app
 }

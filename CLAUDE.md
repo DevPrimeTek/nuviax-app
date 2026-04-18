@@ -25,17 +25,16 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
 | F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
-| F5 — API Handlers | ⚠️ PARȚIAL | Auth 8 endpoints ✅. Goals/Today/Dashboard/SRM/Profile/Achievements/Admin lipsesc. AI client neintegrat în server.go |
+| F5 — API Handlers | ⚠️ PARȚIAL | Auth 8 ✅ + Goals/Today/Dashboard 11 endpoints ✅ (F5a). SRM/Profile/Achievements/Admin lipsesc (F5b) |
 | F6 — Frontend MVP | ⚠️ PARȚIAL | Toate paginile și componentele există în cod. Nefuncționale până F5 e complet |
 | F7 — Smoke Test + Docs | ⏳ | — |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
 **Blocaje actuale (2026-04-18):**
-- `handlers.Handlers` struct nu are câmpul `ai *ai.Client`
-- `api.Config` struct nu include `AIClient *ai.Client`
-- `server.go` înregistrează doar rute auth — toate rutele business lipsesc
-- Frontend cheamă endpoint-uri inexistente în backend
+- F5a rezolvat: Goals/Today/Dashboard + AI client integrat în server.go ✅
+- F5b (SRM/Profile/Achievements/Admin) — handlers lipsesc
+- Frontend cheamă endpoint-uri F5b inexistente în backend
 
 ---
 
@@ -100,6 +99,12 @@ git status && git branch --show-current && git log --oneline -3
 - Convenții: `feat:` / `fix:` / `docs:` / `refactor:` / `chore:`
 
 **NU comite niciodată:** `.env`, `.env.*`, `.keys/`, `*.pem`, `*.key`, `node_modules/`, `vendor/`
+
+**REGULĂ STRICTĂ — Variabile de mediu și funcționalități necunoscute:**
+- `ANTHROPIC_API_KEY`, `RESEND_API_KEY` și toate celelalte env vars **există pe server și în GitHub Secrets** chiar dacă nu sunt vizibile local în sesiunea curentă.
+- **NICIODATĂ nu dezactiva, nu comenta și nu elimini cod** care depinde de o variabilă de mediu sau o resursă pe care nu o găsești local.
+- **NICIODATĂ nu faci presupuneri** despre ce există sau nu pe server/în config.
+- Dacă ceva lipsește, este neclar, sau nu înțelegi contextul → **ÎNTREABĂ mai întâi**. Nu improviza, nu simplifica, nu dezactiva.
 
 ---
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.0.1  
+> Versiune: 1.1.0  
 > Actualizat: 2026-04-18  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
@@ -27,7 +27,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
 | F5 — API Handlers | ✅ | Auth 8 + Goals/Today/Dashboard 11 (F5a) + SRM/Achievements/Profile/Admin 11 endpoints (F5b) |
 | F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Toate paginile și componentele funcționale. |
-| F7 — Smoke Test + Docs | ⏳ | — |
+| F7 — Smoke Test + Docs | ✅ | Build PASS, 12/12 unit tests, smoke plan + docs v1.1.0 |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
@@ -36,6 +36,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - F5b rezolvat: SRM/Achievements/Profile/Admin handlers implementate ✅
 - F5 complet ✅ — Frontend poate integra toate endpoint-urile
 - F6 complet ✅ — Build success, zero erori TypeScript, audit endpoint-uri OK
+- F7 complet ✅ — Build PASS, 12/12 unit tests, API opacity CLEAN, docs → v1.1.0
 
 ---
 

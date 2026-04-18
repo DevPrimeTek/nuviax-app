@@ -100,6 +100,12 @@ git status && git branch --show-current && git log --oneline -3
 
 **NU comite niciodată:** `.env`, `.env.*`, `.keys/`, `*.pem`, `*.key`, `node_modules/`, `vendor/`
 
+**REGULĂ STRICTĂ — Variabile de mediu și funcționalități necunoscute:**
+- `ANTHROPIC_API_KEY`, `RESEND_API_KEY` și toate celelalte env vars **există pe server și în GitHub Secrets** chiar dacă nu sunt vizibile local în sesiunea curentă.
+- **NICIODATĂ nu dezactiva, nu comenta și nu elimini cod** care depinde de o variabilă de mediu sau o resursă pe care nu o găsești local.
+- **NICIODATĂ nu faci presupuneri** despre ce există sau nu pe server/în config.
+- Dacă ceva lipsește, este neclar, sau nu înțelegi contextul → **ÎNTREABĂ mai întâi**. Nu improviza, nu simplifica, nu dezactiva.
+
 ---
 
 ## 5) Regula CLEAN PROJECT — OBLIGATORIE

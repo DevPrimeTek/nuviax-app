@@ -1,7 +1,7 @@
-# Compiled binaries
-server
-api
-nuviax-api
+# Compiled binaries (root-only — avoid matching the `internal/api` path)
+/server
+/api
+/nuviax-api
 
 # Test cache
 *.test

@@ -190,29 +190,63 @@ Nu adăuga niciun text în afara JSON-ului.`
 	return result.NeedsClarification, q, h, nil
 }
 
-// SuggestionResult holds the category suggestion returned by SuggestGOCategory.
+// SuggestionResult holds the suggestion returned by SuggestGOCategory.
+// Extended beyond a pure category to match the onboarding workflow
+// (C2 Behavior Model + C9 Semantic Parsing): the AI also proposes a
+// dominant behavior model and 1-3 alternative "directions" the user can
+// pick from when the raw GO is ambiguous.
 type SuggestionResult struct {
-	Category   string  `json:"category"`
-	Confidence float64 `json:"confidence"`
-	Reasoning  string  `json:"reasoning"`
+	Category      string   `json:"category"`
+	Confidence    float64  `json:"confidence"`
+	Reasoning     string   `json:"reasoning"`
+	BehaviorModel string   `json:"behavior_model"`
+	Directions    []string `json:"directions"`
 }
 
-// SuggestGOCategory asks Claude Haiku to classify a goal into one category.
-// Valid categories: HEALTH, CAREER, FINANCE, RELATIONSHIPS, LEARNING, CREATIVITY, OTHER.
+// validBehaviorModels holds the canonical C2 set; used to sanity-check AI output.
+var validBehaviorModels = map[string]bool{
+	"CREATE": true, "INCREASE": true, "REDUCE": true,
+	"MAINTAIN": true, "EVOLVE": true,
+}
+
+// SuggestGOCategory asks Claude Haiku to classify a goal AND propose:
+//   - category (HEALTH/CAREER/FINANCE/RELATIONSHIPS/LEARNING/CREATIVITY/OTHER),
+//   - dominant behavior model (C2: CREATE/INCREASE/REDUCE/MAINTAIN/EVOLVE),
+//   - 1-3 alternative directions the user can pick from when the GO is
+//     ambiguous (C9 Semantic Parsing).
+//
 // Hard timeout: 2 seconds — user is waiting in the onboarding flow.
-// Returns empty SuggestionResult (not an error) on timeout or API failure.
+// Returns an empty SuggestionResult (not an error) on timeout or API failure,
+// so the caller can fall back to rule-based defaults.
 func (c *Client) SuggestGOCategory(title, description string) SuggestionResult {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	system := `You are a goal classifier. Given a goal title and description, classify it into exactly ONE of:
-HEALTH, CAREER, FINANCE, RELATIONSHIPS, LEARNING, CREATIVITY, OTHER.
-Respond ONLY with valid JSON, no extra text:
-{"category":"CAREER","confidence":0.85,"reasoning":"brief reason"}`
+	system := `You are a NuviaX goal coach. Given a user goal (title + optional description), return a JSON analysis.
 
-	prompt := fmt.Sprintf("Goal: %q\nDescription: %q\nClassify:", title, description)
+Respond ONLY with valid JSON — no prose, no markdown. Schema:
+{
+  "category": "HEALTH|CAREER|FINANCE|RELATIONSHIPS|LEARNING|CREATIVITY|OTHER",
+  "confidence": 0.0-1.0,
+  "reasoning": "one short sentence in Romanian",
+  "behavior_model": "CREATE|INCREASE|REDUCE|MAINTAIN|EVOLVE",
+  "directions": ["variant 1", "variant 2", "variant 3"]
+}
 
-	text, err := c.complete(ctx, system, prompt, 128)
+Behavior model guidance:
+- CREATE   = start a new habit/skill/project ("Vreau să învăț Go")
+- INCREASE = raise an existing metric ("Vreau să alerg mai mult")
+- REDUCE   = lower a metric ("Vreau să slăbesc 10kg")
+- MAINTAIN = keep a level ("Vreau să dorm 8h pe noapte")
+- EVOLVE   = pivot/transform ("Vreau să schimb cariera spre AI")
+
+Directions: write 2-3 SHORT, CONCRETE reformulations of the goal in Romanian,
+each with a measurable target and deadline. If the goal is already specific,
+return 1 direction that confirms it. Max 12 words per direction.`
+
+	prompt := fmt.Sprintf("Goal: %q\nDescription: %q\nAnalyze:", title, description)
+
+	text, err := c.complete(ctx, system, prompt, maxTokensShort)
 	if err != nil {
 		return SuggestionResult{}
 	}
@@ -222,13 +256,21 @@ Respond ONLY with valid JSON, no extra text:
 		return SuggestionResult{}
 	}
 
-	// Validate category
-	valid := map[string]bool{
+	// Validate category; drop the whole suggestion if unrecognised.
+	validCategories := map[string]bool{
 		"HEALTH": true, "CAREER": true, "FINANCE": true,
 		"RELATIONSHIPS": true, "LEARNING": true, "CREATIVITY": true, "OTHER": true,
 	}
-	if !valid[result.Category] {
+	if !validCategories[result.Category] {
 		return SuggestionResult{}
+	}
+	// Drop BM if Claude returned something off-contract; the caller will fall back.
+	if !validBehaviorModels[result.BehaviorModel] {
+		result.BehaviorModel = ""
+	}
+	// Guardrail: cap directions at 3 to keep the UI tidy.
+	if len(result.Directions) > 3 {
+		result.Directions = result.Directions[:3]
 	}
 	return result
 }

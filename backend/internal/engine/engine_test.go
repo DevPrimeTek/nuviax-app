@@ -157,3 +157,298 @@ func TestIsDriftCritical_ThreeDays(t *testing.T) {
 		t.Fatal("expected true for last 3 all < -0.15 in longer slice")
 	}
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MVP coverage expansion — Tester/Architect sign-off (2026-04-18)
+// Tests below close gaps flagged during the F7 audit:
+//   C2 (ValidateBehaviorModel), C5 (ComputeExpected), C7+C13 (RelevanceToWeight),
+//   C8 (CheckPriorityBalance), C11 (ComputeRelevance), C14 edges,
+//   C20+C21 (ComputeSprintTarget 80% rule), C24 (ComputeProgress),
+//   C25 (ComputeDrift), C28 (ComputeChaosIndex/ChaosLevel),
+//   C33 (ComputeSRMFallback), C38 (GORIGrade).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── C14 edge: end date not after start date ─────────────────────────────────
+
+func TestValidateGO_EndBeforeStart(t *testing.T) {
+	start := time.Now()
+	end := start.Add(-24 * time.Hour)
+	if err := ValidateGO("Rewind goal", "MAINTAIN", start, end, 0); err == nil {
+		t.Fatal("expected error when endDate is before startDate")
+	}
+}
+
+func TestValidateGO_EmptyName(t *testing.T) {
+	start := time.Now()
+	end := start.Add(30 * 24 * time.Hour)
+	if err := ValidateGO("", "CREATE", start, end, 0); err == nil {
+		t.Fatal("expected error for empty name")
+	}
+}
+
+func TestValidateGO_EmptyBM(t *testing.T) {
+	start := time.Now()
+	end := start.Add(30 * 24 * time.Hour)
+	if err := ValidateGO("goal", "", start, end, 0); err == nil {
+		t.Fatal("expected error for empty behavior model")
+	}
+}
+
+// ── C2 — ValidateBehaviorModel ──────────────────────────────────────────────
+
+func TestValidateBehaviorModel_AllValid(t *testing.T) {
+	for _, bm := range []string{"CREATE", "INCREASE", "REDUCE", "MAINTAIN", "EVOLVE"} {
+		if !ValidateBehaviorModel(bm) {
+			t.Errorf("expected %q to be valid BM", bm)
+		}
+	}
+}
+
+func TestValidateBehaviorModel_Invalid(t *testing.T) {
+	for _, bm := range []string{"", "create", "INVENT", "DELETE", "UP"} {
+		if ValidateBehaviorModel(bm) {
+			t.Errorf("expected %q to be invalid BM", bm)
+		}
+	}
+}
+
+// ── C8 — CheckPriorityBalance (sum ≤ 7) ─────────────────────────────────────
+
+func TestCheckPriorityBalance_WithinLimit(t *testing.T) {
+	if !CheckPriorityBalance([]int{3, 2, 2}) {
+		t.Fatal("expected sum=7 to pass C8")
+	}
+	if !CheckPriorityBalance([]int{1, 1, 1}) {
+		t.Fatal("expected sum=3 to pass C8")
+	}
+	if !CheckPriorityBalance(nil) {
+		t.Fatal("expected empty weights to pass C8")
+	}
+}
+
+func TestCheckPriorityBalance_OverLimit(t *testing.T) {
+	if CheckPriorityBalance([]int{3, 3, 3}) {
+		t.Fatal("expected sum=9 to fail C8")
+	}
+	if CheckPriorityBalance([]int{3, 3, 2}) {
+		t.Fatal("expected sum=8 to fail C8")
+	}
+}
+
+// ── C5 — Expected progress ──────────────────────────────────────────────────
+
+func TestComputeExpected_LinearThrough30(t *testing.T) {
+	if got := ComputeExpected(1); got < 1.0/30.0-0.0001 || got > 1.0/30.0+0.0001 {
+		t.Fatalf("day 1 expected ~0.0333, got %v", got)
+	}
+	if got := ComputeExpected(15); got < 0.5-0.0001 || got > 0.5+0.0001 {
+		t.Fatalf("day 15 expected ~0.5, got %v", got)
+	}
+	if got := ComputeExpected(30); got != 1.0 {
+		t.Fatalf("day 30 expected 1.0, got %v", got)
+	}
+}
+
+// ── C24 — ComputeProgress ───────────────────────────────────────────────────
+
+func TestComputeProgress_ZeroTotal(t *testing.T) {
+	if got := ComputeProgress(5, 0); got != 0 {
+		t.Fatalf("expected 0 when totalCheckpoints=0, got %v", got)
+	}
+}
+
+func TestComputeProgress_Ratio(t *testing.T) {
+	if got := ComputeProgress(3, 10); got < 0.3-0.0001 || got > 0.3+0.0001 {
+		t.Fatalf("expected 0.3, got %v", got)
+	}
+}
+
+func TestComputeProgress_Clamped(t *testing.T) {
+	// completed > total → clamped to 1
+	if got := ComputeProgress(12, 10); got != 1.0 {
+		t.Fatalf("expected clamp to 1.0 when completed>total, got %v", got)
+	}
+}
+
+// ── C25 — ComputeDrift ──────────────────────────────────────────────────────
+
+func TestComputeDrift_AheadAndBehind(t *testing.T) {
+	if got := ComputeDrift(0.60, 0.50); got < 0.10-0.0001 || got > 0.10+0.0001 {
+		t.Fatalf("expected ahead drift 0.10, got %v", got)
+	}
+	if got := ComputeDrift(0.30, 0.50); got > -0.20+0.0001 || got < -0.20-0.0001 {
+		t.Fatalf("expected behind drift -0.20, got %v", got)
+	}
+	if got := ComputeDrift(0.50, 0.50); got != 0 {
+		t.Fatalf("expected 0 drift on match, got %v", got)
+	}
+}
+
+// ── C20 + C21 — ComputeSprintTarget (80% rule) ──────────────────────────────
+
+func TestComputeSprintTarget_EightyPercent(t *testing.T) {
+	// annual=1.0, progress=0.0, remaining=10 → (1.0/10)*0.80 = 0.08
+	got := ComputeSprintTarget(1.0, 0.0, 10)
+	want := 0.08
+	if got < want-0.0001 || got > want+0.0001 {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestComputeSprintTarget_ZeroSprintsRemaining(t *testing.T) {
+	if got := ComputeSprintTarget(1.0, 0.0, 0); got != 0 {
+		t.Fatalf("expected 0 when sprintsRemaining=0, got %v", got)
+	}
+	if got := ComputeSprintTarget(1.0, 0.0, -3); got != 0 {
+		t.Fatalf("expected 0 when sprintsRemaining<0, got %v", got)
+	}
+}
+
+func TestComputeSprintTarget_PartialProgress(t *testing.T) {
+	// annual=1.0, progress=0.5, remaining=5 → (0.5/5)*0.80 = 0.08
+	got := ComputeSprintTarget(1.0, 0.5, 5)
+	want := 0.08
+	if got < want-0.0001 || got > want+0.0001 {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+// ── C11 — ComputeRelevance ──────────────────────────────────────────────────
+
+func TestComputeRelevance_Weights(t *testing.T) {
+	// all=1 → 0.35+0.25+0.25+0.15 = 1.0
+	if got := ComputeRelevance(1, 1, 1, 1); got < 1.0-0.0001 || got > 1.0+0.0001 {
+		t.Fatalf("all=1 expected 1.0, got %v", got)
+	}
+	// all=0 → 0
+	if got := ComputeRelevance(0, 0, 0, 0); got != 0 {
+		t.Fatalf("all=0 expected 0, got %v", got)
+	}
+	// impact weight = 0.35
+	if got := ComputeRelevance(1, 0, 0, 0); got < 0.35-0.0001 || got > 0.35+0.0001 {
+		t.Fatalf("impact alone expected 0.35, got %v", got)
+	}
+	// feasibility weight = 0.15
+	if got := ComputeRelevance(0, 0, 0, 1); got < 0.15-0.0001 || got > 0.15+0.0001 {
+		t.Fatalf("feasibility alone expected 0.15, got %v", got)
+	}
+}
+
+// ── C7 + C13 — RelevanceToWeight ────────────────────────────────────────────
+
+func TestRelevanceToWeight_AllBrackets(t *testing.T) {
+	cases := []struct {
+		rel  float64
+		want int
+	}{
+		{0.80, 3},
+		{0.75, 3}, // boundary
+		{0.74, 2},
+		{0.50, 2},
+		{0.40, 2}, // boundary
+		{0.39, 1},
+		{0.00, 1},
+	}
+	for _, c := range cases {
+		if got := RelevanceToWeight(c.rel); got != c.want {
+			t.Errorf("RelevanceToWeight(%v) = %d, want %d", c.rel, got, c.want)
+		}
+	}
+}
+
+// ── C28 — ComputeChaosIndex ─────────────────────────────────────────────────
+
+func TestComputeChaosIndex_Weights(t *testing.T) {
+	// drift=1, stagnation=1, inconsistency=1 → 0.30+0.25+0.25 = 0.80
+	got := ComputeChaosIndex(1, 1, 1)
+	want := 0.80
+	if got < want-0.0001 || got > want+0.0001 {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	if got := ComputeChaosIndex(0, 0, 0); got != 0 {
+		t.Fatalf("all=0 expected 0, got %v", got)
+	}
+	// drift weight = 0.30
+	if got := ComputeChaosIndex(1, 0, 0); got < 0.30-0.0001 || got > 0.30+0.0001 {
+		t.Fatalf("drift alone expected 0.30, got %v", got)
+	}
+}
+
+// ── C28 — ChaosLevel ────────────────────────────────────────────────────────
+
+func TestChaosLevel_AllBands(t *testing.T) {
+	cases := []struct {
+		chaos float64
+		want  string
+	}{
+		{0.00, "GREEN"},
+		{0.29, "GREEN"},
+		{0.30, "YELLOW"},
+		{0.39, "YELLOW"},
+		{0.40, "AMBER"},
+		{0.59, "AMBER"},
+		{0.60, "RED"},
+		{0.95, "RED"},
+	}
+	for _, c := range cases {
+		if got := ChaosLevel(c.chaos); got != c.want {
+			t.Errorf("ChaosLevel(%v) = %q, want %q", c.chaos, got, c.want)
+		}
+	}
+}
+
+// ── C33 — ComputeSRMFallback ────────────────────────────────────────────────
+
+func TestComputeSRMFallback_AllLevels(t *testing.T) {
+	cases := []struct {
+		hours float64
+		want  string
+	}{
+		{0, ""},
+		{23.9, ""},
+		{24, "L2"},
+		{71.9, "L2"},
+		{72, "L1"},
+		{167.9, "L1"},
+		{168, "PAUSE"},
+		{720, "PAUSE"},
+	}
+	for _, c := range cases {
+		if got := ComputeSRMFallback(c.hours); got != c.want {
+			t.Errorf("ComputeSRMFallback(%v) = %q, want %q", c.hours, got, c.want)
+		}
+	}
+}
+
+// ── C38 — GORIGrade wrapper ─────────────────────────────────────────────────
+
+func TestGORIGrade_DelegatesToScoreToGrade(t *testing.T) {
+	cases := []struct {
+		gori float64
+		want string
+	}{
+		{0.95, "A+"},
+		{0.82, "A"},
+		{0.70, "B"},
+		{0.50, "C"},
+		{0.10, "D"},
+	}
+	for _, c := range cases {
+		if got := GORIGrade(c.gori); got != c.want {
+			t.Errorf("GORIGrade(%v) = %q, want %q", c.gori, got, c.want)
+		}
+	}
+}
+
+// ── C37 — ComputeSprintScore clamp above 1 ──────────────────────────────────
+
+func TestComputeSprintScore_ClampToOne(t *testing.T) {
+	// Input components above 1 shouldn't produce output > 1 due to clamp
+	if got := ComputeSprintScore(2.0, 2.0, 2.0); got != 1.0 {
+		t.Fatalf("expected clamp to 1.0, got %v", got)
+	}
+	// Negative components: clamp lower bound
+	if got := ComputeSprintScore(-1, -1, -1); got != 0 {
+		t.Fatalf("expected clamp to 0, got %v", got)
+	}
+}

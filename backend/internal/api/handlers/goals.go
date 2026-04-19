@@ -73,7 +73,9 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 	})
 }
 
-// POST /goals/suggest-category — AI-based category suggestion with graceful fallback.
+// POST /goals/suggest-category — AI-based category + BM + directions (C2, C9, C10).
+// Falls back to a simple rule-based heuristic when AI is unavailable so the
+// onboarding flow is never blocked.
 func (h *Handlers) SuggestGOCategory(c *fiber.Ctx) error {
 	var req struct {
 		Title       string `json:"title"`
@@ -85,13 +87,91 @@ func (h *Handlers) SuggestGOCategory(c *fiber.Ctx) error {
 
 	if h.ai != nil {
 		result := h.ai.SuggestGOCategory(req.Title, req.Description)
-		return c.JSON(fiber.Map{
-			"category":   result.Category,
-			"confidence": result.Confidence,
-		})
+		// If AI returned a valid category, pass through — otherwise fall through to heuristic.
+		if result.Category != "" {
+			bm := result.BehaviorModel
+			if bm == "" {
+				bm = fallbackBehaviorModel(req.Title + " " + req.Description)
+			}
+			directions := result.Directions
+			if len(directions) == 0 {
+				directions = fallbackDirections(req.Title)
+			}
+			return c.JSON(fiber.Map{
+				"category":       result.Category,
+				"confidence":     result.Confidence,
+				"behavior_model": bm,
+				"directions":     directions,
+				"source":         "ai",
+			})
+		}
 	}
 
-	return c.JSON(fiber.Map{"category": "", "confidence": 0})
+	// Rule-based fallback — keeps onboarding functional without ANTHROPIC_API_KEY.
+	return c.JSON(fiber.Map{
+		"category":       fallbackCategory(req.Title + " " + req.Description),
+		"confidence":     0.4,
+		"behavior_model": fallbackBehaviorModel(req.Title + " " + req.Description),
+		"directions":     fallbackDirections(req.Title),
+		"source":         "rule-based",
+	})
+}
+
+// fallbackCategory returns a best-effort category guess based on keywords.
+// Returns "OTHER" when nothing matches — never empty.
+func fallbackCategory(text string) string {
+	lower := strings.ToLower(text)
+	switch {
+	case containsAny(lower, "kg", "slab", "alerg", "sport", "fitness", "mananc", "sanatat", "dorm"):
+		return "HEALTH"
+	case containsAny(lower, "afacer", "lansez", "cariera", "job", "salariu", "promov", "business", "venit"):
+		return "CAREER"
+	case containsAny(lower, "bani", "economis", "investit", "buget", "datori", "mrr", "ron", "eur"):
+		return "FINANCE"
+	case containsAny(lower, "prieten", "famili", "partener", "relati", "social", "iubit"):
+		return "RELATIONSHIPS"
+	case containsAny(lower, "inva", "curs", "carte", "citesc", "studi", "limbi", "certificat"):
+		return "LEARNING"
+	case containsAny(lower, "desenez", "pict", "muzic", "compu", "scriu", "creat", "art"):
+		return "CREATIVITY"
+	}
+	return "OTHER"
+}
+
+// fallbackBehaviorModel picks a C2 behavior model using simple verb heuristics.
+// Defaults to INCREASE (the most neutral monotonic verb) when nothing matches.
+func fallbackBehaviorModel(text string) string {
+	lower := strings.ToLower(text)
+	switch {
+	case containsAny(lower, "reduc", "slab", "renunt", "scap", "elimin", "mai putin"):
+		return "REDUCE"
+	case containsAny(lower, "menti", "pastrez", "ramân", "raman", "stabi", "continu"):
+		return "MAINTAIN"
+	case containsAny(lower, "schimb", "pivot", "transform", "evolu", "trec la"):
+		return "EVOLVE"
+	case containsAny(lower, "invat", "lansez", "construiesc", "creez", "deschid", "pornesc", "incep"):
+		return "CREATE"
+	}
+	return "INCREASE"
+}
+
+// fallbackDirections returns a single passthrough direction — the original
+// text — so the UI can always render at least one option.
+func fallbackDirections(title string) []string {
+	t := strings.TrimSpace(title)
+	if t == "" {
+		return nil
+	}
+	return []string{t}
+}
+
+func containsAny(haystack string, needles ...string) bool {
+	for _, n := range needles {
+		if strings.Contains(haystack, n) {
+			return true
+		}
+	}
+	return false
 }
 
 // POST /goals — Create Global Objective (C3, C4, C12, C14).

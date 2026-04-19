@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.1.0  
-> Actualizat: 2026-04-18  
+> Versiune: 1.2.0  
+> Actualizat: 2026-04-19  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -23,20 +23,22 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F0 — Reset engine + schema | ✅ | Cod vechi eliminat |
 | F1 — Schema DB pentru MVP | ✅ | 32 tabele în schema public |
 | F2 — Auth CSS standardizat | ✅ | Pagini auth consistente |
-| F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 12 unit tests |
+| F3 — Core Engine | ✅ | engine.go, srm.go, growth.go, helpers.go, 34 unit tests |
 | F4 — Scheduler + SRM | ✅ | scheduler.go rewrite — 12 jobs, AI+Email integrate |
 | F5 — API Handlers | ✅ | Auth 8 + Goals/Today/Dashboard 11 (F5a) + SRM/Achievements/Profile/Admin 11 endpoints (F5b) |
 | F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Toate paginile și componentele funcționale. |
-| F7 — Smoke Test + Docs | ✅ | Build PASS, 12/12 unit tests, smoke plan + docs v1.1.0 |
+| F7 — Smoke Test + Docs | ✅ | Build PASS, 71 unit tests, smoke plan + docs v1.2.0 |
+| F7.1 — Onboarding unblock | ✅ | AI `/goals/suggest-category` întoarce BM + directions; frontend trimite `dominant_behavior_model` la POST /goals |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
-**Stare (2026-04-18):**
+**Stare (2026-04-19):**
 - F5a rezolvat: Goals/Today/Dashboard + AI client integrat în server.go ✅
 - F5b rezolvat: SRM/Achievements/Profile/Admin handlers implementate ✅
 - F5 complet ✅ — Frontend poate integra toate endpoint-urile
 - F6 complet ✅ — Build success, zero erori TypeScript, audit endpoint-uri OK
-- F7 complet ✅ — Build PASS, 12/12 unit tests, API opacity CLEAN, docs → v1.1.0
+- F7 complet ✅ — Build PASS, 71 unit tests, API opacity CLEAN, docs → v1.2.0
+- F7.1 complet ✅ — Onboarding workflow E2E: AI → SMART check → categorie + BM + directions → user alege variantă → POST /goals cu BM → GO creat
 
 ---
 

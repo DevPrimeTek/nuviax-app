@@ -2,9 +2,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Step = 'welcome' | 'input' | 'verify' | 'analyzing' | 'done'
+type Step = 'welcome' | 'input' | 'verify' | 'direction' | 'analyzing' | 'done'
 
 type Category = 'HEALTH' | 'CAREER' | 'FINANCE' | 'RELATIONSHIPS' | 'LEARNING' | 'CREATIVITY' | 'OTHER'
+
+// C2 Behavior Models — kept in sync with backend/internal/engine/helpers.go
+type BehaviorModel = 'CREATE' | 'INCREASE' | 'REDUCE' | 'MAINTAIN' | 'EVOLVE'
 
 const CATEGORIES: { key: Category; label: string; emoji: string }[] = [
   { key: 'HEALTH',        label: 'Sănătate',      emoji: '🏃' },
@@ -35,6 +38,7 @@ export default function OnboardingPage() {
   const [currentGoIndex, setCurrentGoIndex] = useState(0)
   const [analysisStep, setAnalysisStep] = useState(0)
   const [createdGoals, setCreatedGoals] = useState<{id:string;name:string;status:string}[]>([])
+  const [createError, setCreateError] = useState<string | null>(null)
 
   // Stare pentru pasul de verificare GO
   const [verifyQuestion, setVerifyQuestion] = useState('')
@@ -46,6 +50,14 @@ export default function OnboardingPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [suggestionLoading, setSuggestionLoading] = useState(false)
   const [suggestionConfidence, setSuggestionConfidence] = useState(0)
+  // Per-GO C2 behavior model, filled by the AI on suggest-category.
+  // Falls back to 'INCREASE' when the AI is unavailable so POST /goals never 400s.
+  const [suggestedBMs, setSuggestedBMs] = useState<BehaviorModel[]>([])
+  // Per-GO list of AI-proposed reformulations (C9 semantic parsing).
+  // When a GO has ≥2 directions, the user is asked to pick one before analysis.
+  const [suggestedDirections, setSuggestedDirections] = useState<string[][]>([])
+  const [chosenDirections, setChosenDirections] = useState<Record<number, string>>({})
+  const [directionGoIndex, setDirectionGoIndex] = useState(0)
   const suggestDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -86,6 +98,21 @@ export default function OnboardingPage() {
           } else {
             setSuggestedCategory(null)
           }
+          // Store the suggested C2 behavior model for this GO slot.
+          // Backend sends INCREASE as a safe fallback if nothing better was inferred.
+          const bm: BehaviorModel = (d.behavior_model as BehaviorModel) || 'INCREASE'
+          setSuggestedBMs(prev => {
+            const next = [...prev]
+            next[currentGoIndex] = bm
+            return next
+          })
+          // Store up to 3 AI-proposed directions for this GO slot (C9).
+          const dirs: string[] = Array.isArray(d.directions) ? d.directions.filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0) : []
+          setSuggestedDirections(prev => {
+            const next = [...prev]
+            next[currentGoIndex] = dirs
+            return next
+          })
         }
       } catch { /* ignore */ }
       setSuggestionLoading(false)
@@ -110,7 +137,7 @@ export default function OnboardingPage() {
     const filled = goInputs.filter(g => g.trim())
     if (!filled.length) return
 
-    // Analizează TOATE GO-urile — primul care necesită clarificare declanșează pasul verify
+    // Pass 1 — SMART check (C9/C10). First GO that needs clarification → verify step.
     for (let i = 0; i < filled.length; i++) {
       try {
         const res = await fetch('/api/proxy/goals/analyze', {
@@ -127,14 +154,13 @@ export default function OnboardingPage() {
             return
           }
         } else {
-          // Dacă API-ul returnează eroare, cerem clarificare ca măsură de siguranță
+          // API error → ask for clarification as safety net
           setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
           setVerifyHint('Ex: Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026')
           setStep('verify')
           return
         }
       } catch {
-        // Eroare de rețea — cerem clarificare
         setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
         setVerifyHint('Ex: Vreau să slăbesc 10 kg până în septembrie 2026')
         setStep('verify')
@@ -142,25 +168,63 @@ export default function OnboardingPage() {
       }
     }
 
-    // Toate GO-urile sunt clare
+    // Pass 2 — if any GO has ≥2 AI-proposed directions, let the user pick one.
+    const firstAmbiguous = filled.findIndex((_, i) => (suggestedDirections[i] || []).length >= 2)
+    if (firstAmbiguous >= 0) {
+      setDirectionGoIndex(firstAmbiguous)
+      setStep('direction')
+      return
+    }
+
+    // Clear for all GOs → proceed to analysis.
     setStep('analyzing')
     runAnalysis(filled)
   }
 
+  // Called from the 'direction' step — advances to the next ambiguous GO or
+  // runs the final analysis if every GO now has a chosen direction.
+  function handleDirectionChosen(choice: string) {
+    setChosenDirections(prev => ({ ...prev, [directionGoIndex]: choice }))
+
+    const filled = goInputs.filter(g => g.trim())
+    // Find the next ambiguous GO after the current one.
+    const next = filled.findIndex((_, i) => i > directionGoIndex && (suggestedDirections[i] || []).length >= 2)
+    if (next >= 0) {
+      setDirectionGoIndex(next)
+      return
+    }
+
+    // All directions chosen — apply them and run analysis.
+    const refined = filled.map((g, i) => {
+      if (i === directionGoIndex) return choice
+      const stored = i < directionGoIndex ? (prevChosen(i, choice) ?? g) : g
+      return stored
+    })
+    setStep('analyzing')
+    runAnalysis(refined)
+  }
+
+  // Helper: resolves the stored choice for an earlier GO; the caller passes
+  // the current-step choice so it's applied even before React flushes state.
+  function prevChosen(i: number, currentChoice: string): string | null {
+    if (i === directionGoIndex) return currentChoice
+    return chosenDirections[i] ?? null
+  }
+
   async function runAnalysis(goals: string[], clarification?: string) {
-    // Dacă există o clarificare, rafinăm primul GO
+    // If the user provided a clarification in the verify step, append it to the first GO.
     const refinedGoals = [...goals]
     if (clarification?.trim() && refinedGoals[0]) {
       refinedGoals[0] = `${refinedGoals[0]}. ${clarification.trim()}`
     }
 
-    // Animatie progresiva
+    // Progressive animation
     for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
       await new Promise(r => setTimeout(r, i === ANALYSIS_STEPS.length - 1 ? 600 : 700))
       setAnalysisStep(i)
     }
 
-    // Creare goals in backend
+    // Create goals in backend
     const today = new Date()
     const end = new Date(today)
     end.setDate(end.getDate() + 90)
@@ -168,9 +232,14 @@ export default function OnboardingPage() {
     const endStr = end.toISOString().split('T')[0]
 
     const created: {id:string;name:string;status:string}[] = []
+    const errors: string[] = []
     for (let i = 0; i < refinedGoals.length; i++) {
       const text = refinedGoals[i].trim()
       const name = text.length > 80 ? text.slice(0, 80) + '...' : text
+      // Pick the AI-suggested C2 behavior model, otherwise default to INCREASE.
+      // engine.ValidateGO requires a valid BM — sending one here prevents the 400
+      // that used to silently block onboarding.
+      const bm: BehaviorModel = suggestedBMs[i] || 'INCREASE'
       try {
         const res = await fetch('/api/proxy/goals', {
           method: 'POST',
@@ -180,17 +249,27 @@ export default function OnboardingPage() {
             description: text,
             start_date: startStr,
             end_date: endStr,
-            waiting_list: false,
+            dominant_behavior_model: bm,
           }),
         })
         if (res.ok) {
           const goal = await res.json()
-          created.push({ id: goal.id, name: goal.name, status: 'ACTIVE' })
+          created.push({ id: goal.id, name: goal.name, status: goal.status || 'ACTIVE' })
+        } else {
+          const body = await res.text().catch(() => '')
+          errors.push(`GO ${i + 1}: ${res.status} ${body.slice(0, 120)}`)
         }
-      } catch {}
+      } catch (e: unknown) {
+        errors.push(`GO ${i + 1}: ${e instanceof Error ? e.message : 'network error'}`)
+      }
     }
 
     setCreatedGoals(created)
+    if (created.length === 0 && errors.length > 0) {
+      // Surface the first error so the user understands why nothing was created
+      // instead of seeing a silent "GOs will appear..." placeholder.
+      setCreateError(errors[0])
+    }
     setStep('done')
   }
 
@@ -426,6 +505,65 @@ export default function OnboardingPage() {
     </div>
   )
 
+  // Pas de alegere direcție când AI a propus mai multe variante (C9 Semantic Parsing)
+  if (step === 'direction') {
+    const filled = goInputs.filter(g => g.trim())
+    const rawText = filled[directionGoIndex] || ''
+    const options = suggestedDirections[directionGoIndex] || []
+    return (
+      <div className="auth-page">
+        <div className="auth-card" style={{maxWidth:540}}>
+          <div className="auth-logo">NUVia<span>X</span></div>
+          <div style={{fontSize:12,color:'var(--l0l)',fontFamily:'var(--ff-m)',fontWeight:600,marginBottom:8,letterSpacing:'0.05em'}}>
+            ALEGE DIRECȚIA · GO {directionGoIndex + 1}
+          </div>
+          <div style={{fontSize:20,fontWeight:700,fontFamily:'var(--ff-h)',marginBottom:8}}>
+            AI a identificat mai multe direcții posibile
+          </div>
+          <div style={{fontSize:13,color:'var(--ink4)',marginBottom:16,fontFamily:'var(--ff-m)'}}>
+            GO original: <span style={{color:'var(--ink3)'}}>{rawText.length > 80 ? rawText.slice(0,80)+'...' : rawText}</span>
+          </div>
+          <p style={{color:'var(--ink3)',fontSize:14,lineHeight:1.6,marginBottom:16}}>
+            Care reformulare reflectă cel mai bine ce vrei să obții?
+          </p>
+
+          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:20}}>
+            {options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => handleDirectionChosen(opt)}
+                style={{
+                  textAlign:'left', padding:'14px 16px', borderRadius:12,
+                  border:'1.5px solid var(--line)', background:'var(--bg2)',
+                  color:'var(--ink)', fontFamily:'var(--ff-b)', fontSize:14,
+                  cursor:'pointer', lineHeight:1.5, transition:'all .15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--l0)'; e.currentTarget.style.background = 'var(--l0g)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--bg2)' }}
+              >
+                <span style={{fontSize:11,color:'var(--l0l)',fontFamily:'var(--ff-m)',fontWeight:600,marginRight:8}}>
+                  Opțiune {i + 1}
+                </span>
+                {opt}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => handleDirectionChosen(rawText)}
+            style={{
+              width:'100%', padding:'11px 0', borderRadius:8,
+              border:'1.5px solid var(--line)', background:'transparent',
+              color:'var(--ink3)', fontFamily:'var(--ff-b)', fontSize:13, cursor:'pointer',
+            }}
+          >
+            Păstrează formularea mea originală
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'analyzing') return (
     <div className="auth-page">
       <div className="auth-card" style={{maxWidth:440,textAlign:'center'}}>
@@ -524,8 +662,11 @@ export default function OnboardingPage() {
         ))}
 
         {createdGoals.length === 0 && (
-          <div style={{padding:16,borderRadius:10,border:'1.5px solid var(--line)',background:'var(--bg2)',marginBottom:16,color:'var(--ink3)',fontSize:14}}>
-            GO-urile vor apărea în dashboard după ce sunt procesate.
+          <div style={{padding:16,borderRadius:10,border:'1.5px solid #7f1d1d',background:'rgba(127,29,29,.15)',marginBottom:16,color:'#fecaca',fontSize:13,lineHeight:1.5}}>
+            <div style={{fontWeight:600,marginBottom:4,color:'#fca5a5'}}>Niciun GO nu a fost creat.</div>
+            {createError
+              ? <div style={{fontFamily:'var(--ff-m)',fontSize:12,opacity:.9,wordBreak:'break-word'}}>{createError}</div>
+              : <div>Verifică conexiunea și încearcă din nou.</div>}
           </div>
         )}
 

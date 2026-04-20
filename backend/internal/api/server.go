@@ -110,6 +110,7 @@ func NewServer(cfg Config) *fiber.App {
 	p.Post("/auth/mfa/enable", h.MFAEnable)
 
 	// Goals (C3, C4, C9, C10, C12, C14)
+	p.Post("/goals/parse", h.ParseGoal)
 	p.Post("/goals/analyze", h.AnalyzeGO)
 	p.Post("/goals/suggest-category", h.SuggestGOCategory)
 	p.Post("/goals", h.CreateGoal)

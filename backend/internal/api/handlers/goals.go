@@ -174,6 +174,45 @@ func containsAny(haystack string, needles ...string) bool {
 	return false
 }
 
+// POST /goals/parse — Parse raw goal text and return SMART suggestions (C9, C10).
+// Replaces the old verify flow: instead of asking the user to retype, the AI
+// generates 3 concrete SMART variants the user can select from.
+func (h *Handlers) ParseGoal(c *fiber.Ctx) error {
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.Text) == "" {
+		return badRequest(c, "Textul obiectivului este obligatoriu.")
+	}
+
+	if h.ai != nil {
+		ctx2, cancel := context.WithTimeout(c.Context(), 10*time.Second)
+		defer cancel()
+		result, err := h.ai.ParseAndSuggestGO(ctx2, req.Text)
+		if err == nil && len(result.Suggestions) > 0 {
+			return c.JSON(fiber.Map{
+				"detected_goals": result.DetectedGoals,
+				"suggestions":    result.Suggestions,
+				"source":         "ai",
+			})
+		}
+	}
+
+	// Rule-based fallback: return original text as single suggestion so the
+	// onboarding flow is never blocked when AI is unavailable.
+	text := strings.TrimSpace(req.Text)
+	return c.JSON(fiber.Map{
+		"detected_goals": 1,
+		"suggestions": []fiber.Map{{
+			"text":           text,
+			"category":       fallbackCategory(text),
+			"behavior_model": fallbackBehaviorModel(text),
+			"confidence":     0.4,
+		}},
+		"source": "rule-based",
+	})
+}
+
 // POST /goals — Create Global Objective (C3, C4, C12, C14).
 func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)

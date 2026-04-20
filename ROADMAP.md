@@ -1,7 +1,7 @@
 # ROADMAP.md — NuviaX Implementation Roadmap
 
-> **Versiune:** 1.1.0  
-> **Actualizat:** 2026-04-18  
+> **Versiune:** 1.2.0  
+> **Actualizat:** 2026-04-20  
 > **Framework:** NuviaX Growth Framework Rev 5.6 (C1–C40)  
 > **MVP Scope:** 29 componente (14 FULL + 15 SIMPLIFIED), 11 POST_MVP
 
@@ -20,6 +20,8 @@
 | F5 — API Handlers | ✅ | Auth + Goals + Today + Dashboard + SRM + Achievements + Profile + Admin — 30 endpoints | 2026-04-18 |
 | F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Audit endpoint-uri OK. | 2026-04-18 |
 | F7 — Smoke Test | ✅ | Build PASS, 12/12 unit tests, smoke plan documentat | 2026-04-18 |
+| F7.1 — Onboarding unblock | ✅ | AI suggest-category + BM + directions integrate în onboarding | 2026-04-19 |
+| F7.2 — Onboarding SMART parsing | ✅ | `POST /goals/parse` + `ParseAndSuggestGO` + flux suggestions clickabile | 2026-04-20 |
 
 ### Stare detaliată F5
 

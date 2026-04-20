@@ -29,7 +29,7 @@ func (h *Handlers) AnalyzeGO(c *fiber.Ctx) error {
 	}
 
 	if h.ai != nil {
-		ctx2, cancel := context.WithTimeout(c.Context(), 2*time.Second)
+		ctx2, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 		defer cancel()
 		needsClarification, question, hint, err := h.ai.AnalyzeGO(ctx2, req.Text)
 		if err == nil {
@@ -218,7 +218,7 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	var activeCount int
 	if err := h.db.QueryRow(c.Context(), `
 		SELECT COUNT(*) FROM global_objectives
-		WHERE user_id=$1 AND status='ACTIVE'
+		WHERE user_id=$1 AND status='ACTIVE'::go_status
 	`, userID).Scan(&activeCount); err != nil {
 		return serverError(c, err)
 	}
@@ -230,7 +230,7 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 		if err := h.db.QueryRow(c.Context(), `
 			INSERT INTO global_objectives
 				(user_id, name, description, behavior_model, domain, metric, start_date, end_date, status)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'WAITING')
+			VALUES ($1,$2,$3,$4::behavior_model,$5,$6,$7,$8,'WAITING'::go_status)
 			RETURNING id, name, status
 		`, userID, req.Name, req.Description, req.DominantBehaviorModel,
 			domain, metric, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"),
@@ -258,7 +258,7 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	if err := tx.QueryRow(c.Context(), `
 		INSERT INTO global_objectives
 			(user_id, name, description, behavior_model, domain, metric, start_date, end_date, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'ACTIVE')
+		VALUES ($1,$2,$3,$4::behavior_model,$5,$6,$7,$8,'ACTIVE'::go_status)
 		RETURNING id, name, status
 	`, userID, req.Name, req.Description, req.DominantBehaviorModel,
 		domain, metric, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"),
@@ -273,7 +273,7 @@ func (h *Handlers) CreateGoal(c *fiber.Ctx) error {
 	var sprintID uuid.UUID
 	if err := tx.QueryRow(c.Context(), `
 		INSERT INTO sprints (go_id, user_id, sprint_number, start_date, end_date, status)
-		VALUES ($1,$2,1,$3,$4,'ACTIVE')
+		VALUES ($1,$2,1,$3,$4,'ACTIVE'::sprint_status)
 		RETURNING id
 	`, goID, userID, sprintStart.Format("2006-01-02"), sprintEnd.Format("2006-01-02"),
 	).Scan(&sprintID); err != nil {

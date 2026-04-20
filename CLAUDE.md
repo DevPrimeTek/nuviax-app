@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.2.0  
-> Actualizat: 2026-04-19  
+> Versiune: 1.3.0  
+> Actualizat: 2026-04-20  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -29,6 +29,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F6 — Frontend MVP | ✅ | Build complet, zero erori TypeScript. Toate paginile și componentele funcționale. |
 | F7 — Smoke Test + Docs | ✅ | Build PASS, 71 unit tests, smoke plan + docs v1.2.0 |
 | F7.1 — Onboarding unblock | ✅ | AI `/goals/suggest-category` întoarce BM + directions; frontend trimite `dominant_behavior_model` la POST /goals |
+| F7.2 — Onboarding SMART parsing | ✅ | Nou endpoint `POST /goals/parse`: AI generează 3 variante SMART clickabile; eliminat pasul `verify` cu input text; flux nou: input → parsing → suggestions → analyzing |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
@@ -39,6 +40,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - F6 complet ✅ — Build success, zero erori TypeScript, audit endpoint-uri OK
 - F7 complet ✅ — Build PASS, 71 unit tests, API opacity CLEAN, docs → v1.2.0
 - F7.1 complet ✅ — Onboarding workflow E2E: AI → SMART check → categorie + BM + directions → user alege variantă → POST /goals cu BM → GO creat
+- F7.2 complet ✅ — Onboarding SMART parsing: `POST /goals/parse` (AI `ParseAndSuggestGO`) → 3 variante SMART clickabile per GO → selecție → creare automată cu categorie + BM
 
 ---
 
@@ -225,15 +227,23 @@ Codul pentru AI și Email **deja există** și funcționează. La rebuild (F3–
 | `GenerateTaskTexts(ctx, goalName, checkpoint, sprint, count)` | Generează 1-3 task-uri zilnice contextuale | Scheduler `jobGenerateDailyTasks` | Template-uri statice |
 | `AnalyzeGO(ctx, goalText)` | Clasificare SMART + BM detection | Handler `POST /goals/analyze` | Rule-based (vagueTerms, measurableKeywords) |
 | `SuggestGOCategory(ctx, title, desc)` | Sugerează categorie GO | Handler `POST /goals/suggest-category` | Empty response |
+| `ParseAndSuggestGO(ctx, rawText)` | Parsează GO brut și generează 3 variante SMART cu categorie + BM (C9, C10) | Handler `POST /goals/parse` | Returnează textul original cu fallback category/BM |
 
-**Flux AI în creare GO:**
+**Flux AI în creare GO (F7.2 — curent):**
 ```
-User introduce text GO → POST /goals/analyze
-  → ai.AnalyzeGO() cu 2s context timeout
-  → Dacă needsClarification=true → frontend cere reformulare
-  → Dacă needsClarification=false → user confirmă → POST /goals (creare GO)
+User introduce text GO (brut, poate fi vag) → POST /goals/parse
+  → ai.ParseAndSuggestGO() cu 10s timeout
+  → Returnează 3 variante SMART cu categorie + BM
+  → Frontend arată suggestions clickabile (NU input text)
+  → User alege o variantă → POST /goals cu behavior_model + domain detectate automat
   → La creare sprint: checkpoints generate
   → Scheduler 00:01 UTC: ai.GenerateTaskTexts() generează sarcini zilnice
+```
+
+**Flux AI legacy (endpoints păstrate, nu mai folosite în onboarding):**
+```
+POST /goals/analyze → ai.AnalyzeGO() → needsClarification + question + hint
+POST /goals/suggest-category → ai.SuggestGOCategory() → category + BM + directions
 ```
 
 ### Resend.com — `backend/internal/email/email.go`

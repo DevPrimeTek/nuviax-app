@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -273,6 +274,104 @@ return 1 direction that confirms it. Max 12 words per direction.`
 		result.Directions = result.Directions[:3]
 	}
 	return result
+}
+
+// GoalSuggestion is one AI-generated SMART reformulation of a raw goal.
+type GoalSuggestion struct {
+	Text          string  `json:"text"`
+	Category      string  `json:"category"`
+	BehaviorModel string  `json:"behavior_model"`
+	Confidence    float64 `json:"confidence"`
+}
+
+// GoalParseResult holds the output of ParseAndSuggestGO.
+type GoalParseResult struct {
+	DetectedGoals int              `json:"detected_goals"`
+	Suggestions   []GoalSuggestion `json:"suggestions"`
+}
+
+// ParseAndSuggestGO parses a raw (possibly vague) goal text and returns 3 SMART
+// reformulations for the user to choose from (C9 Semantic Parsing, C10 BM Classification).
+// Each suggestion includes category and dominant behavior model.
+// Timeout taken from the provided context — callers should set 10s for onboarding.
+func (c *Client) ParseAndSuggestGO(ctx context.Context, rawText string) (GoalParseResult, error) {
+	now := time.Now().UTC()
+	system := fmt.Sprintf(`You are a NuviaX goal coach. Today is %s.
+
+The user entered a raw goal text that may be vague, unmeasurable, or contain multiple separate goals.
+
+Your tasks:
+1. Detect how many SEPARATE goals are embedded in the text (e.g., "run more AND save money" = 2).
+2. Generate EXACTLY 3 different SMART reformulations for the PRIMARY (first) goal.
+   - SMART = Specific, Measurable, Achievable, Relevant, Time-bound
+   - In Romanian, max 15 words each
+   - Each must include a concrete metric (number, %%, kg, km, RON, ore, etc.)
+   - Each must include a deadline (month + year, realistic from today)
+   - Each reformulation must differ in target level or timeframe
+3. For each suggestion assign a category and behavior model.
+
+Behavior model rules:
+- CREATE   = start something new ("Lansez", "Construiesc", "Învăț de la zero")
+- INCREASE = raise a metric ("Alerg mai mult", "Câștig mai mult", "Citesc mai mult")
+- REDUCE   = lower a metric ("Slăbesc", "Reduc cheltuielile", "Tai din timp ecran")
+- MAINTAIN = keep a level ("Mențin greutatea", "Păstrez ritmul")
+- EVOLVE   = transform or pivot ("Schimb cariera", "Trec la alt domeniu")
+
+Respond ONLY with valid JSON — no prose, no markdown fences:
+{
+  "detected_goals": 1,
+  "suggestions": [
+    {
+      "text": "SMART reformulation in Romanian",
+      "category": "HEALTH|CAREER|FINANCE|RELATIONSHIPS|LEARNING|CREATIVITY|OTHER",
+      "behavior_model": "CREATE|INCREASE|REDUCE|MAINTAIN|EVOLVE",
+      "confidence": 0.90
+    }
+  ]
+}`, now.Format("January 2006"))
+
+	prompt := fmt.Sprintf("Raw goal text: %q\nGenerate exactly 3 SMART suggestions:", rawText)
+
+	text, err := c.complete(ctx, system, prompt, maxTokensLong)
+	if err != nil {
+		return GoalParseResult{}, err
+	}
+
+	var result GoalParseResult
+	if jsonErr := json.Unmarshal([]byte(text), &result); jsonErr != nil {
+		return GoalParseResult{}, fmt.Errorf("invalid JSON from AI: %w", jsonErr)
+	}
+
+	if result.DetectedGoals < 1 {
+		result.DetectedGoals = 1
+	}
+
+	validCats := map[string]bool{
+		"HEALTH": true, "CAREER": true, "FINANCE": true,
+		"RELATIONSHIPS": true, "LEARNING": true, "CREATIVITY": true, "OTHER": true,
+	}
+	validated := make([]GoalSuggestion, 0, len(result.Suggestions))
+	for _, s := range result.Suggestions {
+		s.Text = strings.TrimSpace(s.Text)
+		if s.Text == "" {
+			continue
+		}
+		if !validCats[s.Category] {
+			s.Category = "OTHER"
+		}
+		if !validBehaviorModels[s.BehaviorModel] {
+			s.BehaviorModel = "INCREASE"
+		}
+		if s.Confidence <= 0 || s.Confidence > 1 {
+			s.Confidence = 0.8
+		}
+		validated = append(validated, s)
+	}
+	if len(validated) > 3 {
+		validated = validated[:3]
+	}
+	result.Suggestions = validated
+	return result, nil
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

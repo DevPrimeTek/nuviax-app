@@ -219,7 +219,7 @@ var validBehaviorModels = map[string]bool{
 // Returns an empty SuggestionResult (not an error) on timeout or API failure,
 // so the caller can fall back to rule-based defaults.
 func (c *Client) SuggestGOCategory(title, description string) SuggestionResult {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	system := `You are a NuviaX goal coach. Given a user goal (title + optional description), return a JSON analysis.

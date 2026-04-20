@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 
 	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
@@ -21,6 +22,7 @@ import (
 	"github.com/devprimetek/nuviax-app/internal/engine"
 	"github.com/devprimetek/nuviax-app/internal/models"
 	"github.com/devprimetek/nuviax-app/pkg/crypto"
+	"github.com/devprimetek/nuviax-app/pkg/logger"
 )
 
 type Handlers struct {
@@ -400,5 +402,6 @@ func notFound(c *fiber.Ctx) error {
 }
 
 func serverError(c *fiber.Ctx, err error) error {
+	logger.Error("handler error", zap.Error(err), zap.String("path", c.Path()), zap.String("method", c.Method()))
 	return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Eroare internă. Încearcă din nou."})
 }

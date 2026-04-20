@@ -57,8 +57,11 @@ export default function OnboardingPage() {
   // When a GO has ≥2 directions, the user is asked to pick one before analysis.
   const [suggestedDirections, setSuggestedDirections] = useState<string[][]>([])
   const [chosenDirections, setChosenDirections] = useState<Record<number, string>>({})
+  const [verifyGoIndex, setVerifyGoIndex] = useState(0)
   const [directionGoIndex, setDirectionGoIndex] = useState(0)
   const suggestDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Working copy of goals built during the SMART check + direction flow.
+  const workingGoalsRef = useRef<string[]>([])
 
   useEffect(() => {
     fetch('/api/proxy/settings')
@@ -71,6 +74,14 @@ export default function OnboardingPage() {
       })
       .catch(() => {})
   }, [])
+
+  // Reset category suggestion state when the user moves to a new GO slot.
+  useEffect(() => {
+    setSuggestedCategory(null)
+    setSelectedCategory(null)
+    setSuggestionConfidence(0)
+    setSuggestionLoading(false)
+  }, [currentGoIndex])
 
   // Auto-suggest category when user types (debounced 1s)
   useEffect(() => {
@@ -136,49 +147,59 @@ export default function OnboardingPage() {
   async function handleAnalyze() {
     const filled = goInputs.filter(g => g.trim())
     if (!filled.length) return
+    workingGoalsRef.current = [...filled]
+    await runSmartCheck(0)
+  }
 
-    // Pass 1 — SMART check (C9/C10). First GO that needs clarification → verify step.
-    for (let i = 0; i < filled.length; i++) {
+  // Checks each GO for SMART compliance starting at fromIdx.
+  // Stops at the first non-SMART GO and shows the verify step for that specific GO.
+  async function runSmartCheck(fromIdx: number) {
+    const goals = workingGoalsRef.current
+    for (let i = fromIdx; i < goals.length; i++) {
       try {
         const res = await fetch('/api/proxy/goals/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: filled[i] }),
+          body: JSON.stringify({ text: goals[i] }),
         })
         if (res.ok) {
           const data = await res.json()
           if (data.needs_clarification) {
+            setVerifyGoIndex(i)
             setVerifyQuestion(data.question)
             setVerifyHint(data.hint)
             setStep('verify')
             return
           }
         } else {
-          // API error → ask for clarification as safety net
+          setVerifyGoIndex(i)
           setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
           setVerifyHint('Ex: Vreau să lansez un SaaS cu 100 clienți plătitori până în decembrie 2026')
           setStep('verify')
           return
         }
       } catch {
+        setVerifyGoIndex(i)
         setVerifyQuestion('Ajută-mă să înțeleg mai bine obiectivul tău: ce rezultat concret și măsurabil vrei să obții, și până când?')
         setVerifyHint('Ex: Vreau să slăbesc 10 kg până în septembrie 2026')
         setStep('verify')
         return
       }
     }
+    // All GOs passed SMART check — check AI directions or go to analysis.
+    goToDirectionOrAnalysis()
+  }
 
-    // Pass 2 — if any GO has ≥2 AI-proposed directions, let the user pick one.
-    const firstAmbiguous = filled.findIndex((_, i) => (suggestedDirections[i] || []).length >= 2)
+  function goToDirectionOrAnalysis() {
+    const goals = workingGoalsRef.current
+    const firstAmbiguous = goals.findIndex((_, i) => (suggestedDirections[i] || []).length >= 2)
     if (firstAmbiguous >= 0) {
       setDirectionGoIndex(firstAmbiguous)
       setStep('direction')
       return
     }
-
-    // Clear for all GOs → proceed to analysis.
     setStep('analyzing')
-    runAnalysis(filled)
+    runAnalysis(goals)
   }
 
   // Called from the 'direction' step — advances to the next ambiguous GO or
@@ -186,16 +207,14 @@ export default function OnboardingPage() {
   function handleDirectionChosen(choice: string) {
     setChosenDirections(prev => ({ ...prev, [directionGoIndex]: choice }))
 
-    const filled = goInputs.filter(g => g.trim())
-    // Find the next ambiguous GO after the current one.
-    const next = filled.findIndex((_, i) => i > directionGoIndex && (suggestedDirections[i] || []).length >= 2)
+    const goals = workingGoalsRef.current
+    const next = goals.findIndex((_, i) => i > directionGoIndex && (suggestedDirections[i] || []).length >= 2)
     if (next >= 0) {
       setDirectionGoIndex(next)
       return
     }
 
-    // All directions chosen — apply them and run analysis.
-    const refined = filled.map((g, i) => {
+    const refined = goals.map((g, i) => {
       if (i === directionGoIndex) return choice
       const stored = i < directionGoIndex ? (prevChosen(i, choice) ?? g) : g
       return stored
@@ -211,12 +230,8 @@ export default function OnboardingPage() {
     return chosenDirections[i] ?? null
   }
 
-  async function runAnalysis(goals: string[], clarification?: string) {
-    // If the user provided a clarification in the verify step, append it to the first GO.
+  async function runAnalysis(goals: string[]) {
     const refinedGoals = [...goals]
-    if (clarification?.trim() && refinedGoals[0]) {
-      refinedGoals[0] = `${refinedGoals[0]}. ${clarification.trim()}`
-    }
 
     // Progressive animation
     for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
@@ -446,7 +461,7 @@ export default function OnboardingPage() {
       <div className="auth-card" style={{maxWidth:520}}>
         <div className="auth-logo">NUVia<span>X</span></div>
         <div style={{fontSize:12,color:'var(--l0l)',fontFamily:'var(--ff-m)',fontWeight:600,marginBottom:8,letterSpacing:'0.05em'}}>
-          ANALIZĂ GO · Parser Semantic
+          ANALIZĂ GO {verifyGoIndex + 1} · Parser Semantic
         </div>
         <div style={{fontSize:20,fontWeight:700,fontFamily:'var(--ff-h)',marginBottom:12}}>
           O întrebare rapidă
@@ -477,9 +492,9 @@ export default function OnboardingPage() {
 
         <div style={{display:'flex',gap:10}}>
           <button
-            onClick={() => {
-              setStep('analyzing')
-              runAnalysis(goInputs.filter(g => g.trim()))
+            onClick={async () => {
+              setVerifyAnswer('')
+              await runSmartCheck(verifyGoIndex + 1)
             }}
             style={{
               flex:1, padding:'11px 0', borderRadius:8,
@@ -490,9 +505,12 @@ export default function OnboardingPage() {
             Sari peste
           </button>
           <button
-            onClick={() => {
-              setStep('analyzing')
-              runAnalysis(goInputs.filter(g => g.trim()), verifyAnswer)
+            onClick={async () => {
+              if (verifyAnswer.trim()) {
+                workingGoalsRef.current[verifyGoIndex] = `${workingGoalsRef.current[verifyGoIndex]}. ${verifyAnswer.trim()}`
+              }
+              setVerifyAnswer('')
+              await runSmartCheck(verifyGoIndex + 1)
             }}
             disabled={!verifyAnswer.trim()}
             className="auth-btn"

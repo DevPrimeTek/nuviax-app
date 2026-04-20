@@ -78,11 +78,12 @@ func NewServer(cfg Config) *fiber.App {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		dbOk := db.Healthcheck(cfg.DB) == nil
 		redisOk := cache.Healthcheck(cfg.Redis) == nil
+		aiOk := cfg.AIClient != nil
 		status, code := "ok", 200
 		if !dbOk || !redisOk {
 			status, code = "degraded", 503
 		}
-		return c.Status(code).JSON(fiber.Map{"status": status, "db": dbOk, "redis": redisOk})
+		return c.Status(code).JSON(fiber.Map{"status": status, "db": dbOk, "redis": redisOk, "ai": aiOk})
 	})
 
 	// Auth (strict rate limit)

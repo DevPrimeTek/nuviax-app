@@ -73,6 +73,7 @@ function api(path: string, init: RequestInit = {}) {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init.headers as object) },
   }).then(async r => {
+    if (r.status === 401) throw new Error('NOT_AUTHENTICATED')
     if (r.status === 404) throw new Error('NOT_ADMIN')
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || r.statusText) }
     return r.json()
@@ -100,7 +101,7 @@ function AdminShell({ userName, onRefresh, children }: {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
-    router.push('/auth/login')
+    router.push('/admin/login')
   }
 
   return (
@@ -239,8 +240,15 @@ export default function AdminPage() {
   const loadStats = useCallback(() => {
     setLoading(true)
     api('/stats').then(d => { setStats(d); setLoading(false) })
-      .catch(e => { setError(e.message === 'NOT_ADMIN' ? 'Acces interzis.' : e.message); setLoading(false) })
-  }, [])
+      .catch(e => {
+        if (e.message === 'NOT_AUTHENTICATED') {
+          router.replace('/admin/login')
+          return
+        }
+        setError(e.message === 'NOT_ADMIN' ? 'Acces interzis.' : e.message)
+        setLoading(false)
+      })
+  }, [router])
 
   const loadUsers = useCallback(() => {
     api('/users').then(d => setUsers(d.users || [])).catch(() => {})
@@ -313,19 +321,17 @@ export default function AdminPage() {
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,.35)', marginBottom: 24 }}>
             {error === 'Acces interzis.'
               ? 'Contul tău nu are drepturi de administrator.'
-              : 'Trebuie să fii autentificat pentru a accesa panoul de administrare.'}
+              : 'Trebuie să fii autentificat cu un cont admin pentru a accesa panoul.'}
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-            <button onClick={() => router.push('/dashboard')} style={{
-              padding: '10px 20px', borderRadius: 9,
-              border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.06)',
-              color: 'rgba(255,255,255,.7)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-            }}>← Dashboard</button>
-            <button onClick={() => router.push('/auth/login')} style={{
+            <button onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+              router.push('/admin/login')
+            }} style={{
               padding: '10px 20px', borderRadius: 9, border: 'none',
               background: 'linear-gradient(135deg, #ff6b35, #ff9a3c)',
               color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            }}>Login</button>
+            }}>Autentificare admin</button>
           </div>
         </div>
       </div>

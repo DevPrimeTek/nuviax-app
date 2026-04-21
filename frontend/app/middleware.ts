@@ -3,24 +3,39 @@ import type { NextRequest } from 'next/server'
 
 /**
  * Middleware pentru protecție rute
- * Redirecționează utilizatorii neautentificați către /login
+ * - /admin/* = spațiu autentificare separat (login la /admin/login)
+ * - restul aplicației = login la /auth/login
  */
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('nv_access')?.value
   const { pathname } = request.nextUrl
 
-  // Rute publice (nu necesită autentificare)
+  // ── Admin space (izolat de aplicație) ──────────────────────────
+  if (pathname.startsWith('/admin')) {
+    // /admin/login este public
+    if (pathname === '/admin/login') {
+      // dacă are deja token, lasă pagina să facă verificarea (poate nu e admin);
+      // nu facem redirect automat aici pentru a evita bucle de login
+      return NextResponse.next()
+    }
+    // oricare altă rută /admin/* necesită token
+    if (!token) {
+      const loginUrl = new URL('/admin/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+    return NextResponse.next()
+  }
+
+  // ── Restul aplicației ──────────────────────────────────────────
   const publicPaths = ['/auth']
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
 
-  // Dacă utilizatorul nu este autentificat și încearcă să acceseze o rută protejată
   if (!token && !isPublicPath && pathname !== '/') {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Dacă utilizatorul este autentificat și încearcă să acceseze /auth/login sau /auth/register
   if (token && (pathname === '/auth/login' || pathname === '/auth/register')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

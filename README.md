@@ -109,6 +109,8 @@ PROMPTS_MVP.md           # prompturi sesiuni Claude Code
 | `ANTHROPIC_API_KEY` | ❌ opțional | Claude Haiku — fallback rule-based dacă lipsește |
 | `RESEND_API_KEY` | ❌ opțional | Email service — fallback log dacă lipsește |
 | `EMAIL_FROM` | ❌ opțional | Sender (ex: `NuviaX <noreply@nuviax.app>`) |
+| `ADMIN_BOOTSTRAP_EMAIL` | ❌ opțional | Email pentru auto-creare/promovare cont admin la startup |
+| `ADMIN_BOOTSTRAP_PASSWORD` | ❌ opțional | Parolă pentru contul admin (folosită doar la crearea inițială) |
 
 ---
 

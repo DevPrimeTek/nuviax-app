@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.3.0  
-> Actualizat: 2026-04-20  
+> Versiune: 1.4.0  
+> Actualizat: 2026-04-21  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -30,6 +30,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F7 — Smoke Test + Docs | ✅ | Build PASS, 71 unit tests, smoke plan + docs v1.2.0 |
 | F7.1 — Onboarding unblock | ✅ | AI `/goals/suggest-category` întoarce BM + directions; frontend trimite `dominant_behavior_model` la POST /goals |
 | F7.2 — Onboarding SMART parsing | ✅ | Nou endpoint `POST /goals/parse`: AI generează 3 variante SMART clickabile; eliminat pasul `verify` cu input text; flux nou: input → parsing → suggestions → analyzing |
+| F7.3 — Admin panel separat | ✅ | `/admin/login` standalone (propriu flux auth, nu trece prin login-ul app), `/api/admin/login` verifică `is_admin` înainte de setare cookies, middleware redirect `/admin/*` → `/admin/login`, bootstrap admin auto-promote/create prin `ADMIN_BOOTSTRAP_EMAIL`/`ADMIN_BOOTSTRAP_PASSWORD` |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
@@ -41,6 +42,7 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - F7 complet ✅ — Build PASS, 71 unit tests, API opacity CLEAN, docs → v1.2.0
 - F7.1 complet ✅ — Onboarding workflow E2E: AI → SMART check → categorie + BM + directions → user alege variantă → POST /goals cu BM → GO creat
 - F7.2 complet ✅ — Onboarding SMART parsing: `POST /goals/parse` (AI `ParseAndSuggestGO`) → 3 variante SMART clickabile per GO → selecție → creare automată cu categorie + BM
+- F7.3 complet ✅ — Admin panel complet separat: `/admin/login` (pagină dedicată, fără layout app), middleware propriu pentru `/admin/*`, `/api/admin/login` validează `is_admin` ÎNAINTE de setarea cookies, bootstrap admin idempotent via env vars
 
 ---
 

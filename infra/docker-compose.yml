@@ -108,6 +108,9 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-noreply@nuviax.app}
       # App environment
       APP_ENV: ${APP_ENV:-production}
+      # Admin bootstrap — idempotent: creează sau promovează user la admin la startup
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
       # Nginx proxy — SSL auto prin acme-companion existent
       VIRTUAL_HOST: api.nuviax.app
       VIRTUAL_PORT: "8080"

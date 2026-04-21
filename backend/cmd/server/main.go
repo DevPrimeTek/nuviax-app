@@ -12,6 +12,7 @@ import (
 
 	"github.com/devprimetek/nuviax-app/internal/ai"
 	"github.com/devprimetek/nuviax-app/internal/api"
+	"github.com/devprimetek/nuviax-app/internal/bootstrap"
 	"github.com/devprimetek/nuviax-app/internal/cache"
 	"github.com/devprimetek/nuviax-app/internal/db"
 	"github.com/devprimetek/nuviax-app/internal/email"
@@ -46,6 +47,9 @@ func main() {
 	if err := db.RunMigrations(pool); err != nil {
 		logger.Fatal("DB migration failed", zap.Error(err))
 	}
+
+	// Ensure admin user exists if ADMIN_BOOTSTRAP_* env vars are set (idempotent).
+	bootstrap.EnsureAdmin(context.Background(), pool, []byte(cfg.EncryptionKey))
 
 	// ── Redis ──────────────────────────────────────────────────
 	rdb, err := cache.Connect(cfg.RedisAddr, cfg.RedisPassword)

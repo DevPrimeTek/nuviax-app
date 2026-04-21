@@ -171,6 +171,9 @@ func ensureGoalsTables(ctx context.Context, pool *pgxpool.Pool) error {
 			created_at               TIMESTAMPTZ DEFAULT NOW()
 		)`,
 
+		// Schema migrations for existing tables (idempotent — ADD COLUMN IF NOT EXISTS)
+		`ALTER TABLE sprints ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE`,
+
 		// Indexes
 		`CREATE INDEX IF NOT EXISTS idx_global_objectives_user_id ON global_objectives (user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_sprints_go_id             ON sprints (go_id)`,

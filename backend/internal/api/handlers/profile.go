@@ -4,12 +4,33 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/devprimetek/nuviax-app/internal/api/middleware"
+	"github.com/devprimetek/nuviax-app/internal/db"
 )
 
 type activityEntry struct {
 	Date           string `json:"date"`
 	TasksCompleted int    `json:"tasks_completed"`
 	ActiveMinutes  int    `json:"active_minutes"`
+}
+
+// GET /settings — returns user display settings (name, locale, theme).
+func (h *Handlers) GetSettings(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	user, err := db.GetUserByID(c.Context(), h.db, userID)
+	if err != nil {
+		return serverError(c, err)
+	}
+	name := ""
+	if user.FullName != nil {
+		name = *user.FullName
+	}
+	return c.JSON(fiber.Map{
+		"full_name":  name,
+		"user_name":  name,
+		"locale":     user.Locale,
+		"theme":      user.Theme,
+		"mfa_enabled": user.MFAEnabled,
+	})
 }
 
 // GET /profile/activity — returns daily activity metrics for the past 365 days.

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +27,13 @@ func New(pool *pgxpool.Pool, rdb *redis.Client) *Engine {
 // Rules: C14 (non-empty fields), C2 (valid BM), C3 (max 3 active), C4 (max 365 days).
 func ValidateGO(name string, bm string, startDate, endDate time.Time, activeCount int) error {
 	if name == "" {
-		return errors.New("name is required")
+		return errors.New("Numele obiectivului este obligatoriu.")
+	}
+	if len(strings.TrimSpace(name)) < 5 {
+		return errors.New("Numele obiectivului trebuie să aibă cel puțin 5 caractere.")
+	}
+	if len(name) > 200 {
+		return errors.New("Numele obiectivului nu poate depăși 200 de caractere.")
 	}
 	if bm == "" {
 		return errors.New("behavior model is required")

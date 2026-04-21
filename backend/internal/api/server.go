@@ -139,6 +139,7 @@ func NewServer(cfg Config) *fiber.App {
 
 	// Profile + Settings
 	p.Get("/profile/activity", h.GetProfileActivity)
+	p.Get("/settings", h.GetSettings)
 	p.Patch("/settings", h.UpdateSettings)
 
 	// Admin (404 for non-admin)

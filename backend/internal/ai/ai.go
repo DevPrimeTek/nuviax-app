@@ -22,14 +22,15 @@ import (
 )
 
 const (
-	apiURL    = "https://api.anthropic.com/v1/messages"
-	model     = "claude-haiku-4-5-20251001"
+	apiURL     = "https://api.anthropic.com/v1/messages"
+	model      = "claude-haiku-4-5-20251001"
 	apiVersion = "2023-06-01"
 	// Timeout generously set so slow API doesn't block requests
 	httpTimeout = 12 * time.Second
 	// Max tokens for short responses (task names, analysis)
 	maxTokensShort = 256
-	maxTokensLong  = 512
+	// 1024 tokens — enough for 3 Romanian SMART suggestions (~400 tokens) plus JSON overhead
+	maxTokensLong = 1024
 )
 
 // Client wraps the Anthropic Messages API.
@@ -175,7 +176,7 @@ Nu adăuga niciun text în afara JSON-ului.`
 		Question           *string `json:"question"`
 		Hint               *string `json:"hint"`
 	}
-	if jsonErr := json.Unmarshal([]byte(text), &result); jsonErr != nil {
+	if jsonErr := json.Unmarshal([]byte(stripJSONFences(text)), &result); jsonErr != nil {
 		// If Claude returned invalid JSON, treat as needs clarification
 		return true, "Poți descrie obiectivul mai specific? Ce rezultat concret vrei să obții și până când?", "", nil
 	}
@@ -253,7 +254,7 @@ return 1 direction that confirms it. Max 12 words per direction.`
 	}
 
 	var result SuggestionResult
-	if jsonErr := json.Unmarshal([]byte(text), &result); jsonErr != nil {
+	if jsonErr := json.Unmarshal([]byte(stripJSONFences(text)), &result); jsonErr != nil {
 		return SuggestionResult{}
 	}
 
@@ -338,7 +339,7 @@ Respond ONLY with valid JSON — no prose, no markdown fences:
 	}
 
 	var result GoalParseResult
-	if jsonErr := json.Unmarshal([]byte(text), &result); jsonErr != nil {
+	if jsonErr := json.Unmarshal([]byte(stripJSONFences(text)), &result); jsonErr != nil {
 		return GoalParseResult{}, fmt.Errorf("invalid JSON from AI: %w", jsonErr)
 	}
 
@@ -375,6 +376,25 @@ Respond ONLY with valid JSON — no prose, no markdown fences:
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// stripJSONFences removes markdown code fences that some models prepend/append
+// to JSON responses despite being instructed not to.
+// Handles ```json ... ``` and ``` ... ``` variants.
+func stripJSONFences(s string) string {
+	s = strings.TrimSpace(s)
+	// Remove leading fence
+	for _, prefix := range []string{"```json", "```JSON", "```"} {
+		if strings.HasPrefix(s, prefix) {
+			s = strings.TrimPrefix(s, prefix)
+			break
+		}
+	}
+	// Remove trailing fence
+	if idx := strings.LastIndex(s, "```"); idx >= 0 {
+		s = s[:idx]
+	}
+	return strings.TrimSpace(s)
+}
 
 // parseLines splits multi-line text into at most maxCount non-empty lines.
 func parseLines(text string, maxCount int) []string {

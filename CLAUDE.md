@@ -1,7 +1,7 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.4.0  
-> Actualizat: 2026-04-21  
+> Versiune: 1.5.0  
+> Actualizat: 2026-05-06  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
 ---
@@ -43,6 +43,12 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - F7.1 complet ✅ — Onboarding workflow E2E: AI → SMART check → categorie + BM + directions → user alege variantă → POST /goals cu BM → GO creat
 - F7.2 complet ✅ — Onboarding SMART parsing: `POST /goals/parse` (AI `ParseAndSuggestGO`) → 3 variante SMART clickabile per GO → selecție → creare automată cu categorie + BM
 - F7.3 complet ✅ — Admin panel complet separat: `/admin/login` (pagină dedicată, fără layout app), middleware propriu pentru `/admin/*`, `/api/admin/login` validează `is_admin` ÎNAINTE de setarea cookies, bootstrap admin idempotent via env vars
+
+**Stare REVYX (2026-05-06) — S6 Phase 3 Production Hardening:**
+- S6 Tech Specs complete ✅ — pgvector production, multi-tenant AI isolation, observability stack, pre-launch hardening
+- S6 Workflow complete ✅ — Incident response cu SEV1-4 matrix, GDPR Art. 33-34 SLA, post-mortem template
+- S6 Legal complete ✅ — TIA OpenAI Schrems II (draft, pending DPO sign-off)
+- Phase 0 Security checklist actualizat ✅ — JWT RS256, RBAC exhaustiv, AUDIT_LOG completeness, BYPASSRLS CI check
 
 ---
 
@@ -155,6 +161,30 @@ grep -rn "sk-ant-\|re_[A-Za-z0-9]\{20,\}\|PRIVATE.*KEY.*=.*[A-Za-z0-9/+]" \
 grep -rn "drift\|chaos_index\|weights\|threshold" backend/internal/api/handlers/ 2>/dev/null
 # ZERO rezultate în handlere. Aceste valori sunt INTERNE.
 ```
+
+### Pas 2b — REVYX S6: verificări suplimentare (Phase 2/3 confirmate) ★
+```bash
+# Verifică că niciun query pe tabele tenant-scoped nu lipsește tenant_id filter
+# (pattern: SELECT/INSERT/UPDATE/DELETE fără WHERE tenant_id — CI sqlfluff rule REVYX001)
+
+# Verifică că niciun rol applicație nu are BYPASSRLS
+# (rulat și ca CI step — scripts/check_bypassrls.sh)
+
+# Verifică că PII fields (email, phone, cnp) nu apar în log output
+grep -rn "zap.String(\"email\"\|zap.String(\"phone\"\|zap.String(\"cnp\"" backend/ 2>/dev/null
+# ZERO rezultate — PII se loghează DOAR prin PIIRedactor (redactat)
+```
+
+**Items confirmate de Phase 2/3 (S5/S6):**
+- [x] JWT RS256 cu rotație dual-key (zero-downtime) — spec: `TECH_SPEC_REVYX_pre-launch-hardening_v1.0.0.md §1.1`
+- [x] RBAC matrix exhaustiv (7 roluri × 7 resurse) — spec: `§1.2`
+- [x] AUDIT_LOG completeness: toate tabelele write-sensitive acoperite de triggers — spec: `§1.3`
+- [x] Webhook HMAC-SHA256 constant-time verify — spec: `§1.4`
+- [x] Cross-tenant query auditing + BYPASSRLS CI check — spec: `TECH_SPEC_REVYX_multitenant-ai-isolation_v1.0.0.md §7`
+- [x] PII redaction în logs (PIIRedactor registry) — spec: `TECH_SPEC_REVYX_observability-stack_v1.0.0.md §3`
+- [x] KMS envelope encryption per tenant — spec: `multitenant §6`
+- [x] GDPR Art. 33-34 breach notification SLA (72h CNPDCP) — workflow: `WORKFLOW_REVYX_incident-response_v1.0.0.md §6`
+- [x] TIA OpenAI Schrems II — spec: `docs/legal/TIA_OPENAI_v1.0.0.md` (pending DPO sign-off)
 
 ### Pas 3 — Actualizează CLAUDE.md
 - Dacă o fază s-a completat → marchează ✅ în secțiunea 1
@@ -319,6 +349,15 @@ La orice sesiune F3–F7: citește `ai.go` și `email.go` ÎNAINTE de a modifica
 - `infra/.env.example` — variabile env
 - `infra/verify-deployment.sh` — verificare post-deploy
 - `scripts/setup_admin.sh` — bootstrap admin
+
+**REVYX — Tech Specs (S6):**
+- `docs/tech-spec/TECH_SPEC_REVYX_pgvector-production_v1.0.0.md` — HNSW tuning, reindex, quantization, fail-back
+- `docs/tech-spec/TECH_SPEC_REVYX_multitenant-ai-isolation_v1.0.0.md` — per-tenant data sovereignty, KMS, cross-tenant audit
+- `docs/tech-spec/TECH_SPEC_REVYX_observability-stack_v1.0.0.md` — OTel, logs PII redact, metrics catalog, SLOs, Grafana
+- `docs/tech-spec/TECH_SPEC_REVYX_pre-launch-hardening_v1.0.0.md` — JWT RS256, RBAC, pen-test, load test, DPIA, go/no-go gate
+- `docs/workflow/WORKFLOW_REVYX_incident-response_v1.0.0.md` — SEV matrix, on-call, war-room, GDPR breach notification
+- `docs/legal/TIA_OPENAI_v1.0.0.md` — Transfer Impact Assessment Schrems II (draft, pending DPO sign-off)
+- `docs/observability/dashboards/` — Grafana dashboard JSON (pending SRE delivery)
 
 ---
 

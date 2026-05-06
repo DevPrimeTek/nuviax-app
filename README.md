@@ -2,8 +2,8 @@
 
 Platformă SaaS de management al obiectivelor personale/profesionale, construită pe **NuviaX Growth Framework Rev 5.6**.
 
-**Versiune documentație:** `1.1.0`  
-**Stare produs:** MVP complet — F0–F7 verificate ✅
+**Versiune documentație:** `1.6.0`  
+**Stare produs:** MVP complet + REVYX live în producție — S7 Phase 4 Post-Launch ✅
 
 ---
 

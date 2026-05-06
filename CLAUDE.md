@@ -1,6 +1,6 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
-> Versiune: 1.5.0  
+> Versiune: 1.6.0  
 > Actualizat: 2026-05-06  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
 
@@ -49,6 +49,14 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 - S6 Workflow complete ✅ — Incident response cu SEV1-4 matrix, GDPR Art. 33-34 SLA, post-mortem template
 - S6 Legal complete ✅ — TIA OpenAI Schrems II (draft, pending DPO sign-off)
 - Phase 0 Security checklist actualizat ✅ — JWT RS256, RBAC exhaustiv, AUDIT_LOG completeness, BYPASSRLS CI check
+
+**Stare REVYX (2026-05-06) — S7 Phase 4 Post-Launch:**
+- S7-1 Multi-Language UI ✅ — next-intl, RO+RU, namespace split, AI pre-fill workflow, RTL-ready
+- S7-2 ML Pricing Phase 3 ✅ — LightGBM, feature store, drift PSI, MLflow versioning, A/B 20/80, fallback rule-based
+- S7-3 Churn Prediction ✅ — LightGBM classifier, AUC-ROC ≥0.78, NBA re-engagement, CS escalation, privacy-safe features
+- S7-4 Market Expansion RO+UA ✅ — ANCPI cadastral, SIRUTA geocoding, ECB rates, UA translation pipeline, Schrems II confirmed
+- S7-5 Partnerships API ✅ — imobiliare.ro/storia.ro feed import, HMAC webhook, Redis rate limit, SHA256 dedup, outbound notify
+- S7-6 Billing Metering Operational ✅ — Stripe Meters API, usage metering, grace period FSM, invoice retention 10y, margin report
 
 ---
 
@@ -358,6 +366,14 @@ La orice sesiune F3–F7: citește `ai.go` și `email.go` ÎNAINTE de a modifica
 - `docs/workflow/WORKFLOW_REVYX_incident-response_v1.0.0.md` — SEV matrix, on-call, war-room, GDPR breach notification
 - `docs/legal/TIA_OPENAI_v1.0.0.md` — Transfer Impact Assessment Schrems II (draft, pending DPO sign-off)
 - `docs/observability/dashboards/` — Grafana dashboard JSON (pending SRE delivery)
+
+**REVYX — Tech Specs (S7):**
+- `docs/tech-spec/TECH_SPEC_REVYX_multilang-ui_v1.0.0.md` — next-intl i18n, RO+RU, namespace split, AI pre-fill, RTL-ready
+- `docs/tech-spec/TECH_SPEC_REVYX_ml-pricing-phase3_v1.0.0.md` — LightGBM pricing, feature store, PSI drift, MLflow, A/B test
+- `docs/tech-spec/TECH_SPEC_REVYX_churn-prediction_v1.0.0.md` — B2B churn model, risk tiers, NBA re-engagement, CS escalation
+- `docs/tech-spec/TECH_SPEC_REVYX_market-expansion-ro-ua_v1.0.0.md` — ANCPI, SIRUTA, ECB rates, UA translation, Schrems II
+- `docs/tech-spec/TECH_SPEC_REVYX_partnerships-api_v1.0.0.md` — partner feed import, rate limiting, dedup, outbound webhooks
+- `docs/tech-spec/TECH_SPEC_REVYX_billing-metering-operational_v1.0.0.md` — Stripe Meters, grace FSM, invoice retention, margin report
 
 ---
 

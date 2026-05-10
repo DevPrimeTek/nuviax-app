@@ -1,8 +1,15 @@
 # CLAUDE.md — NuviaX Master Context (Source of Truth)
 
 > Versiune: 1.6.0  
-> Actualizat: 2026-05-06  
+> Actualizat: 2026-05-10  
 > **Regula #1:** orice sesiune Claude Code începe cu citirea acestui fișier.
+
+> **🚨 STARE CRITICĂ (2026-05-10):** Auditul AUDIT-01 a identificat **28 devieri MAJORE** între Framework Rev 5.6 și implementare. MVP **NU este lansabil** până la finalizarea fazei F8 (F8.1–F8.8). Sursa de adevăr pentru fix work:  
+> - Plan master: `docs/fix-plan/00-PLAN-MASTER.md`  
+> - Echipă: `docs/fix-plan/01-TEAM-ROSTER.md`  
+> - Backlog: `docs/fix-plan/02-BACKLOG.md`  
+> - Strategie testare: `docs/fix-plan/03-TESTING-STRATEGY.md`  
+> - Prompturi sesiuni fix: `docs/fix-plan/04-PROMPTS-FIX-SESSIONS.md`
 
 ---
 
@@ -31,18 +38,41 @@ Proiectul a trecut printr-un **MVP Reset**. Engine-ul vechi (~30% conformitate) 
 | F7.1 — Onboarding unblock | ✅ | AI `/goals/suggest-category` întoarce BM + directions; frontend trimite `dominant_behavior_model` la POST /goals |
 | F7.2 — Onboarding SMART parsing | ✅ | Nou endpoint `POST /goals/parse`: AI generează 3 variante SMART clickabile; eliminat pasul `verify` cu input text; flux nou: input → parsing → suggestions → analyzing |
 | F7.3 — Admin panel separat | ✅ | `/admin/login` standalone (propriu flux auth, nu trece prin login-ul app), `/api/admin/login` verifică `is_admin` înainte de setare cookies, middleware redirect `/admin/*` → `/admin/login`, bootstrap admin auto-promote/create prin `ADMIN_BOOTSTRAP_EMAIL`/`ADMIN_BOOTSTRAP_PASSWORD` |
+| AUDIT-01 — System Alignment Audit | ✅ | 28 devieri identificate (8 CRITICAL, 9 HIGH, 7 MEDIUM, 4 LOW). Raport: `docs/audit/AUDIT-01-deviation-report.md`. Data: 2026-04-28. |
+| **F8.1 — Schema Reconciliation** | ⏳ PENDING | Tabele DB lipsă local (srm_events, ceremonies, growth_trajectories etc.) — DEV-02/03/04/17 |
+| **F8.2 — Engine Restructure** | ⏳ PENDING | Funcții engine lipsă: GenerateProgressVisualization, FreezeExpectedTrajectory, MarkEvolutionSprint, ApplySRMFallback etc. — DEV-11 |
+| **F8.3 — API Security Hardening** | ⏳ PENDING | Eliminare scurgere `sprint_score` + opacity test — DEV-01 |
+| **F8.4 — Scheduler Wiring** | ⏳ PENDING | Apeluri reale către trajectory/achievement/SRM — DEV-05/07/08/09/10/16/18/19 |
+| **F8.5 — Handler Hardening** | ⏳ PENDING | Day-1 viz, SRM L3 freeze, energy DB write, ALI breakdown — DEV-06/12/13/14/15/20/22/23/25/26/27/28 |
+| **F8.6 — Frontend Polish** | ⏳ PENDING | Onboarding selecție durată GO + envelope updates — DEV-21/26/27/28 (FE) |
+| **F8.7 — Integration & E2E Tests** | ⏳ PENDING | Automatizare TS-01..TS-12 + CI pipeline + coverage report |
+| **F8.8 — Staging + Production Validation** | ⏳ PENDING | Deploy staging, smoke full, perf baseline, security scan, sign-off final |
 
 **DB activă:** schema `public`, 32 tabele, migrări 001–013 din repo.
 
-**Stare (2026-04-19):**
+> ⚠️ DEV-02 din AUDIT: doar 1 migrare (`001_schema.sql`) este în repo local; celelalte există doar pe server. F8.1 va reconstitui local toate cele ~17 tabele referite de cod.
+
+**Stare (2026-05-10):**
 - F5a rezolvat: Goals/Today/Dashboard + AI client integrat în server.go ✅
 - F5b rezolvat: SRM/Achievements/Profile/Admin handlers implementate ✅
 - F5 complet ✅ — Frontend poate integra toate endpoint-urile
 - F6 complet ✅ — Build success, zero erori TypeScript, audit endpoint-uri OK
 - F7 complet ✅ — Build PASS, 71 unit tests, API opacity CLEAN, docs → v1.2.0
-- F7.1 complet ✅ — Onboarding workflow E2E: AI → SMART check → categorie + BM + directions → user alege variantă → POST /goals cu BM → GO creat
-- F7.2 complet ✅ — Onboarding SMART parsing: `POST /goals/parse` (AI `ParseAndSuggestGO`) → 3 variante SMART clickabile per GO → selecție → creare automată cu categorie + BM
-- F7.3 complet ✅ — Admin panel complet separat: `/admin/login` (pagină dedicată, fără layout app), middleware propriu pentru `/admin/*`, `/api/admin/login` validează `is_admin` ÎNAINTE de setarea cookies, bootstrap admin idempotent via env vars
+- F7.1 complet ✅ — Onboarding workflow E2E
+- F7.2 complet ✅ — Onboarding SMART parsing
+- F7.3 complet ✅ — Admin panel separat
+- AUDIT-01 complet ✅ — 28 devieri documentate (`docs/audit/AUDIT-01-deviation-report.md`)
+- **F8 — Fix MVP** 🚧 PENDING (8 sub-faze, ~10–12h estimat). Sursa de adevăr: `docs/fix-plan/`.
+
+**Echipa F8 (10 roluri specializate):** Solution Architect (Opus), Senior Backend Engineer (Sonnet), Senior Frontend Engineer (Sonnet), DBA (Sonnet), Senior QA Tester (Sonnet), Security Engineer (Opus), Senior PM (Sonnet), DevOps Engineer (Sonnet), Product Manager / Framework Owner (Opus), UX Lead (Sonnet). Detaliu: `docs/fix-plan/01-TEAM-ROSTER.md`.
+
+**Reguli F8 — non-negociabile:**
+1. Niciun fix nu pornește fără ca gate-ul precedent să fie verde (vezi `03-TESTING-STRATEGY.md`).
+2. Fiecare DEV-XX din BACKLOG este un item de tracking — status updates fac PM în BACKLOG.md.
+3. Fiecare sesiune fix folosește prompt dedicat din `04-PROMPTS-FIX-SESSIONS.md`.
+4. Branch convention: `claude/fix-<phase>-<slug>` (ex: `claude/fix-01-schema-reconciliation`).
+5. Items noi descoperite → adăugate ca `NEW-XX` în BACKLOG, triate de PM.
+6. F8.8 este gate FINAL — necesită 5 sign-off-uri (Architect, QA, Security, DevOps, PM) înainte de declarat „MVP launched".
 
 **Stare REVYX (2026-05-06) — S6 Phase 3 Production Hardening:**
 - S6 Tech Specs complete ✅ — pgvector production, multi-tenant AI isolation, observability stack, pre-launch hardening
@@ -323,9 +353,15 @@ La orice sesiune F3–F7: citește `ai.go` și `email.go` ÎNAINTE de a modifica
 
 **Governance:**
 - `CLAUDE.md` — acest fișier
-- `ROADMAP.md` — faze F0–F7 + post-MVP
+- `ROADMAP.md` — faze F0–F8 + post-MVP
 - `MVP_SCOPE.md` — matrice C1–C40 cu justificări
 - `PROMPTS_MVP.md` — prompturi pentru Claude Code (F0.1, F3–F7)
+- `docs/audit/AUDIT-01-deviation-report.md` — raport audit 28 devieri
+- `docs/fix-plan/00-PLAN-MASTER.md` — plan master fix F8.1-F8.8
+- `docs/fix-plan/01-TEAM-ROSTER.md` — 10 roluri specializate
+- `docs/fix-plan/02-BACKLOG.md` — backlog viu cu impact analysis
+- `docs/fix-plan/03-TESTING-STRATEGY.md` — gate-uri testare per fază
+- `docs/fix-plan/04-PROMPTS-FIX-SESSIONS.md` — prompturi engleză pentru sesiuni F8
 
 **Framework (citește doar la nevoie):**
 - `docs/framework/rev5_6/00-intro.md` — principii + changelog

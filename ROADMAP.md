@@ -1,7 +1,7 @@
 # ROADMAP.md — NuviaX Implementation Roadmap
 
-> **Versiune:** 1.3.0  
-> **Actualizat:** 2026-05-10  
+> **Versiune:** 1.6.0  
+> **Actualizat:** 2026-05-06  
 > **Framework:** NuviaX Growth Framework Rev 5.6 (C1–C40)  
 > **MVP Scope:** 29 componente (14 FULL + 15 SIMPLIFIED), 11 POST_MVP
 
@@ -283,6 +283,23 @@ F8.1 → F8.2 → F8.4 → F8.5 → F8.7 → F8.8
 
 ---
 
-*v1.3.0 | 2026-05-10 — Adăugat F8 (8 sub-faze), AUDIT-01 ca milestone separat, status PENDING pentru toate sub-fazele F8*  
-*v1.2.0 | 2026-04-20 — F7.1, F7.2 documentate*  
-*v1.1.0 | 2026-04-18 — F7 complet: MVP F0–F7 verificat, build PASS, 12/12 unit tests, docs finale*
+---
+
+## REVYX S7 — Phase 4 Post-Launch ✅ (2026-05-06)
+
+Platform REVYX live în producție (go/no-go gate trecut S6). S7 = expansiune funcțională.
+
+| Livrabil | Status | Tech Spec |
+|---|---|---|
+| S7-1 Multi-Language UI (RO+RU) | ✅ | `TECH_SPEC_REVYX_multilang-ui_v1.0.0.md` |
+| S7-2 ML Pricing Phase 3 (LightGBM) | ✅ | `TECH_SPEC_REVYX_ml-pricing-phase3_v1.0.0.md` |
+| S7-3 Churn Prediction B2B | ✅ | `TECH_SPEC_REVYX_churn-prediction_v1.0.0.md` |
+| S7-4 Market Expansion RO Rural + UA Diaspora | ✅ | `TECH_SPEC_REVYX_market-expansion-ro-ua_v1.0.0.md` |
+| S7-5 Partnerships API (imobiliare.ro, storia.ro) | ✅ | `TECH_SPEC_REVYX_partnerships-api_v1.0.0.md` |
+| S7-6 Billing & Metering Operational (Stripe) | ✅ | `TECH_SPEC_REVYX_billing-metering-operational_v1.0.0.md` |
+
+**Migrări noi (S7):** 014 (users.language), 015 (feature_snapshots, market_zone_stats), 016 (churn_feature_snapshots, churn_predictions), 017 (properties ANCPI fields, uat_geocodes, exchange_rates), 018 (partners, partner_import_log, listing_fingerprints), 019 (tenants billing columns, invoices)
+
+---
+
+*v1.6.0 | 2026-05-06 — REVYX S7 Phase 4 Post-Launch: 6 livrabile tech spec complete*

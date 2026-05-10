@@ -1,9 +1,11 @@
 # ROADMAP.md — NuviaX Implementation Roadmap
 
-> **Versiune:** 1.2.0  
-> **Actualizat:** 2026-04-20  
+> **Versiune:** 1.3.0  
+> **Actualizat:** 2026-05-10  
 > **Framework:** NuviaX Growth Framework Rev 5.6 (C1–C40)  
 > **MVP Scope:** 29 componente (14 FULL + 15 SIMPLIFIED), 11 POST_MVP
+
+> **🚨 STATUS BUILD:** F0–F7.3 complete. AUDIT-01 (2026-04-28) a identificat 28 devieri majore. **Faza F8 (8 sub-faze) este NECESARĂ pentru lansare MVP.** Plan: `docs/fix-plan/00-PLAN-MASTER.md`.
 
 ---
 
@@ -22,6 +24,16 @@
 | F7 — Smoke Test | ✅ | Build PASS, 12/12 unit tests, smoke plan documentat | 2026-04-18 |
 | F7.1 — Onboarding unblock | ✅ | AI suggest-category + BM + directions integrate în onboarding | 2026-04-19 |
 | F7.2 — Onboarding SMART parsing | ✅ | `POST /goals/parse` + `ParseAndSuggestGO` + flux suggestions clickabile | 2026-04-20 |
+| F7.3 — Admin panel separat | ✅ | `/admin/login` standalone, middleware dedicat | 2026-04-21 |
+| AUDIT-01 — System Alignment Audit | ✅ | 28 devieri identificate (8 CRIT + 9 HIGH + 7 MED + 4 LOW) | 2026-04-28 |
+| **F8.1 — Schema Reconciliation** | ⏳ PENDING | DEV-02/03/04/17 — tabele DB lipsă local | — |
+| **F8.2 — Engine Restructure** | ⏳ PENDING | DEV-11 — funcții engine lipsă | — |
+| **F8.3 — API Security Hardening** | ⏳ PENDING | DEV-01 — sprint_score leak + opacity test | — |
+| **F8.4 — Scheduler Wiring** | ⏳ PENDING | DEV-05/07/08/09/10/16/18/19 — apeluri reale | — |
+| **F8.5 — Handler Hardening** | ⏳ PENDING | DEV-06/12/13/14/15/20/22/23/25/26/27/28 | — |
+| **F8.6 — Frontend Polish** | ⏳ PENDING | DEV-21 + envelope updates frontend | — |
+| **F8.7 — Integration & E2E Tests** | ⏳ PENDING | Automatizare TS-01..TS-12, CI pipeline | — |
+| **F8.8 — Staging + Production Validation** | ⏳ PENDING | Deploy staging, smoke full, sign-off final | — |
 
 ### Stare detaliată F5
 
@@ -168,6 +180,81 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
+## AUDIT-01 — System Alignment Audit ✅ (2026-04-28)
+
+Audit complet codebase vs Framework Rev 5.6 + scenarii TS-01..TS-12.
+
+**Output:** `docs/audit/AUDIT-01-deviation-report.md` (475 linii) — 28 devieri.
+
+| Severitate | Count | Status |
+|------------|-------|--------|
+| CRITICAL | 8 | 0 RESOLVED |
+| HIGH | 9 | 0 RESOLVED |
+| MEDIUM | 7 | 0 RESOLVED |
+| LOW | 4 | 1 RESOLVED (DEV-24) |
+
+**SA-1..SA-7 status:** SA-4, SA-5, SA-7 ✅ rezolvate; SA-3 ⚠️ parțial; SA-1, SA-2, SA-6 ❌ deschise.
+
+---
+
+## F8 — MVP Fix Phase ⏳ PENDING (estimat 10–12h)
+
+> **Obiectiv:** rezolvare completă a celor 27 devieri rămase din AUDIT-01; aducere MVP la calitate de lansare. Sursa de adevăr: `docs/fix-plan/00-PLAN-MASTER.md`.
+
+### F8.1 — Schema Reconciliation
+- **Owner:** DBA  |  **Estimare:** 60 min
+- **Backlog:** DEV-02 (9 tabele lipsă), DEV-03 (users column drift), DEV-04 (sessions vs user_sessions), DEV-17 (achievements canonical name)
+- **Output:** `backend/migrations/002_runtime_baseline.sql`, `backend/scripts/schema-check.sh`
+- **Gate:** schema check exit 0; `db.RunMigrations()` curat
+
+### F8.2 — Engine Restructure
+- **Owner:** Backend Senior + Architect  |  **Estimare:** 90 min
+- **Backlog:** DEV-11 (funcții engine lipsă)
+- **Output:** `backend/internal/engine/{visualization,regulatory,evolution,clock}.go`
+- **Funcții:** GenerateProgressVisualization, FreezeExpectedTrajectory, ApplySRMFallback, MarkEvolutionSprint, ComputeALIBreakdown, GenerateCompletionCeremony, CheckAndRecordRegressionEvent
+- **Gate:** coverage engine ≥ 80%
+
+### F8.3 — API Security Hardening
+- **Owner:** Security Engineer  |  **Estimare:** 30 min
+- **Backlog:** DEV-01 (`sprint_score` leak)
+- **Output:** opacity_test.go cu 9 endpoints, `docs/integrations.md` API contract
+- **Gate:** zero matches în opacity scan
+
+### F8.4 — Scheduler Wiring
+- **Owner:** Backend Senior  |  **Estimare:** 90 min
+- **Backlog:** DEV-05, DEV-07, DEV-08, DEV-09, DEV-10, DEV-16, DEV-18, DEV-19
+- **Output:** scheduler apelează engine functions; growth_trajectories/achievement_badges/srm_events populate corect
+- **Gate:** integration test scheduler verde
+
+### F8.5 — Handler Hardening
+- **Owner:** Backend Senior  |  **Estimare:** 90 min
+- **Backlog:** DEV-06, DEV-12, DEV-13, DEV-14, DEV-15, DEV-20, DEV-22, DEV-23, DEV-25, DEV-26, DEV-27, DEV-28
+- **Output:** Day-1 viz fallback, SRM L3 freeze, energy DB write, ALI breakdown în SRM status
+- **Gate:** TS-04, TS-06, TS-08, TS-11 manual green
+
+### F8.6 — Frontend Polish
+- **Owner:** Frontend Senior + UX  |  **Estimare:** 60 min
+- **Backlog:** DEV-21 + frontend portion DEV-26/27/28
+- **Output:** onboarding cu selecție durată; envelope-uri sincronizate
+- **Gate:** `npm run build` clean, manual onboarding 4 durate
+
+### F8.7 — Integration & E2E Tests
+- **Owner:** Senior QA  |  **Estimare:** 120 min
+- **Output:** TS-01..TS-12 automate, Playwright E2E, CI pipeline `.github/workflows/ci.yml`
+- **Gate:** CI green, coverage handlers ≥ 70%, engine ≥ 80%
+
+### F8.8 — Staging + Production Validation
+- **Owner:** DevOps + QA + PM  |  **Estimare:** 90 min
+- **Output:** deploy staging, smoke 12/12, perf baseline, security scan, 5 sign-off
+- **Gate FINAL:** MVP autorizat pentru lansare
+
+### Drum critic
+```
+F8.1 → F8.2 → F8.4 → F8.5 → F8.7 → F8.8
+        ↓                ↑
+       F8.3 (paralel) F8.6 (paralel)
+```
+
 ---
 
 # POST-MVP
@@ -196,4 +283,6 @@ Fișiere moarte din era v10.x eliminate: `infra/init-db.sql`, `PLAN.md`, `PROMPT
 
 ---
 
+*v1.3.0 | 2026-05-10 — Adăugat F8 (8 sub-faze), AUDIT-01 ca milestone separat, status PENDING pentru toate sub-fazele F8*  
+*v1.2.0 | 2026-04-20 — F7.1, F7.2 documentate*  
 *v1.1.0 | 2026-04-18 — F7 complet: MVP F0–F7 verificat, build PASS, 12/12 unit tests, docs finale*
